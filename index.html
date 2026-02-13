@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MedCode Flashcards</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-a" aria-hidden="true"></div>
+    <div class="bg-shape bg-shape-b" aria-hidden="true"></div>
+
+    <main class="app">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Medical Coding Virtual Practice Tool</p>
+          <h1>Practice Flashcards</h1>
+        </div>
+        <button id="endSessionBtn" class="ghost-btn" type="button">End Session</button>
+      </header>
+
+      <section class="auth panel" id="authPanel">
+        <h2>Start Session</h2>
+        <div class="auth-grid">
+          <label>
+            Name
+            <input id="userName" type="text" placeholder="Trainee name" />
+          </label>
+          <label>
+            Email
+            <input id="userEmail" type="email" placeholder="name@email.com" />
+          </label>
+          <label>
+            Phone
+            <input id="userPhone" type="text" placeholder="+91 xxxxxxxxxx" />
+          </label>
+          <label>
+            Role
+            <select id="roleSelect">
+              <option value="trial">Trial User</option>
+              <option value="trainee">Trainee</option>
+              <option value="trainer">Trainer</option>
+            </select>
+          </label>
+          <label id="traineeCodeWrap" class="hidden">
+            Trainee Access Code
+            <input id="traineeCode" type="password" placeholder="Enter access code" />
+          </label>
+          <label id="trainerKeyWrap" class="hidden">
+            Trainer Key
+            <input id="trainerKey" type="password" placeholder="Enter trainer key" />
+          </label>
+        </div>
+        <div class="panel-actions">
+          <button id="startBtn" class="primary-btn" type="button">Start</button>
+        </div>
+        <p id="sessionStatus" class="status" aria-live="polite"></p>
+      </section>
+
+      <section class="dashboard" aria-label="Session analytics">
+        <div class="metric">
+          <span class="metric-label">Correct Answers</span>
+          <strong id="correctCount">0</strong>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Wrong Answers</span>
+          <strong id="wrongCount">0</strong>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Attempted</span>
+          <strong id="attemptedCount">0</strong>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Session Score</span>
+          <strong id="sessionScore">0%</strong>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <article class="flashcard" id="flashcard" tabindex="0" aria-live="polite">
+          <section class="visual-half">
+            <div class="utility-split">
+              <section class="utility-pane">
+                <h3>Select Category</h3>
+                <p class="status">Choose one coding stream and practice only that tag.</p>
+                <div id="categoryButtons" class="category-buttons"></div>
+                <p id="categoryStatus" class="status">Showing all categories.</p>
+                <label class="inline-toggle">
+                  <input id="weakDrillToggle" type="checkbox" />
+                  <span>Weak Topic Drill Mode</span>
+                </label>
+                <div class="exam-controls">
+                  <button id="toggleExamPanelBtn" class="ghost-btn" type="button">Timed Exam Options</button>
+                  <div id="examPanel" class="hidden">
+                    <h4>Timed Exam Mode</h4>
+                    <label>
+                      Questions
+                      <select id="examQuestionCount">
+                        <option value="30">30</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                      </select>
+                    </label>
+                    <label>
+                      Duration (minutes)
+                      <select id="examDuration">
+                        <option value="30">30</option>
+                        <option value="45">45</option>
+                        <option value="60">60</option>
+                      </select>
+                    </label>
+                    <div class="panel-actions">
+                      <button id="startExamBtn" class="ghost-btn" type="button">Start Exam</button>
+                      <button id="stopExamBtn" class="ghost-btn" type="button">Stop Exam</button>
+                    </div>
+                  </div>
+                  <p id="examStatus" class="status">Exam mode inactive.</p>
+                  <p id="examTimer" class="status">Time left: --:--</p>
+                </div>
+              </section>
+
+              <section class="utility-pane">
+                <h3>Coding Resources</h3>
+                <ul id="resourceList" class="resource-list"></ul>
+                <div id="resourceManager" class="resource-manager hidden">
+                  <label>
+                    Link Title
+                    <input id="resourceTitle" type="text" placeholder="e.g., CMS Updates" />
+                  </label>
+                  <label>
+                    Link URL
+                    <input id="resourceUrl" type="text" placeholder="https://example.com" />
+                  </label>
+                  <button id="addResourceBtn" class="ghost-btn" type="button">Add Link</button>
+                </div>
+                <p id="resourceStatus" class="status"></p>
+              </section>
+            </div>
+          </section>
+
+          <section class="question-quarter">
+            <h3>Question</h3>
+            <p class="card-meta" id="cardTag">General</p>
+            <p id="cardPrompt">Start session to begin.</p>
+          </section>
+
+          <section class="answer-quarter">
+            <label for="userAnswer" class="answer-label">Your Answer</label>
+            <div class="answer-row">
+              <input id="userAnswer" type="text" placeholder="Type diagnosis/procedure code" />
+              <button id="checkBtn" class="primary-btn" type="button">Check</button>
+              <button id="nextBtn" class="ghost-btn" type="button">Next</button>
+            </div>
+            <p id="feedback" class="status" aria-live="polite"></p>
+            <div class="rationale-box">
+              <p id="rationalePlaceholder" class="status">Rationale section reserved for future explanation details.</p>
+              <p id="trialLockNotice" class="status hidden"></p>
+            </div>
+          </section>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h3>Per-Category Scorecards</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Attempted</th>
+                <th>Correct</th>
+                <th>Wrong</th>
+                <th>Accuracy</th>
+              </tr>
+            </thead>
+            <tbody id="categoryScoreBody">
+              <tr>
+                <td colspan="5">No attempts yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel-row" id="trainerZone">
+        <section class="panel">
+          <h3>Trainer Deck Manager</h3>
+          <p>CSV columns: <code>tag,question,answer</code>. Multiple valid answers: separate with <code>|</code>.</p>
+          <label>
+            Upload CSV File
+            <input id="csvFileInput" type="file" accept=".csv,text/csv" />
+          </label>
+          <textarea id="csvInput" rows="7" placeholder="tag,question,answer&#10;ICD-10-CM,Type 2 diabetes mellitus without complications,E11.9"></textarea>
+          <div class="panel-actions">
+            <button id="importFileBtn" class="primary-btn" type="button">Import CSV File</button>
+            <button id="importBtn" class="primary-btn" type="button">Import CSV</button>
+            <button id="loadStarterBtn" class="ghost-btn" type="button">Load Starter Deck</button>
+            <button id="exportBtn" class="ghost-btn" type="button">Export Deck</button>
+          </div>
+          <p id="importStatus" class="status" aria-live="polite"></p>
+        </section>
+
+        <section class="panel">
+          <h3>Trainer Session Console</h3>
+          <div class="panel-actions">
+            <button id="refreshSessionsBtn" class="ghost-btn" type="button">Refresh Sessions</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Role</th>
+                  <th>Correct</th>
+                  <th>Wrong</th>
+                  <th>Score</th>
+                  <th>Started</th>
+                </tr>
+              </thead>
+              <tbody id="sessionTableBody">
+                <tr>
+                  <td colspan="6">No sessions loaded.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p id="sessionLoadStatus" class="status" aria-live="polite"></p>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
