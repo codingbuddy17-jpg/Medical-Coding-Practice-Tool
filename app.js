@@ -755,6 +755,19 @@ async function startSession() {
     return;
   }
 
+  if (role === "trainer") {
+    try {
+      const verification = await apiRequest("/api/trainer/verify", "POST", { trainerKey });
+      if (!verification.valid) {
+        setStatus(dom.sessionStatus, "Invalid trainer key.", "error");
+        return;
+      }
+    } catch {
+      setStatus(dom.sessionStatus, "Could not verify trainer key. Try again.", "error");
+      return;
+    }
+  }
+
   stopExam();
   resetStudyOrder();
 

@@ -112,6 +112,16 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (url.pathname === "/api/trainer/verify" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const key = String(body.trainerKey || "");
+      return json(res, 200, { valid: Boolean(TRAINER_KEY) && key === TRAINER_KEY });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
   if (url.pathname === "/api/session/start" && req.method === "POST") {
     try {
       const body = await parseBody(req);
