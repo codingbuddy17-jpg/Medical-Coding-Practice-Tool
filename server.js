@@ -4,7 +4,7 @@ const path = require("path");
 const { URL } = require("url");
 
 const PORT = process.env.PORT || 4173;
-const HOST = "127.0.0.1";
+const HOST = process.env.HOST || "0.0.0.0";
 const TRAINER_KEY = process.env.TRAINER_KEY || "TRAINER123";
 
 const ROOT = __dirname;
