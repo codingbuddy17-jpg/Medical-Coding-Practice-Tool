@@ -5,7 +5,8 @@ const { URL } = require("url");
 
 const PORT = process.env.PORT || 4173;
 const HOST = process.env.HOST || "0.0.0.0";
-const TRAINER_KEY = process.env.TRAINER_KEY || "TRAINER123";
+const TRAINER_KEY = process.env.TRAINER_KEY || "";
+const TRAINEE_ACCESS_CODE = process.env.TRAINEE_ACCESS_CODE || "";
 
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
@@ -101,11 +102,23 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true, timestamp: Date.now() });
   }
 
+  if (url.pathname === "/api/access/verify" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const code = String(body.code || "");
+      return json(res, 200, { valid: Boolean(TRAINEE_ACCESS_CODE) && code === TRAINEE_ACCESS_CODE });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
   if (url.pathname === "/api/session/start" && req.method === "POST") {
     try {
       const body = await parseBody(req);
       const sessionId = String(body.sessionId || `session_${Math.random().toString(36).slice(2, 10)}`);
       const userName = String(body.userName || "anonymous");
+      const userEmail = String(body.userEmail || "");
+      const userPhone = String(body.userPhone || "");
       const role = String(body.role || "trainee");
       const sessions = readSessions();
 
@@ -116,6 +129,8 @@ const server = http.createServer(async (req, res) => {
       sessions.unshift({
         id: sessionId,
         userName,
+        userEmail,
+        userPhone,
         role,
         startedAt: Date.now(),
         endedAt: null,
@@ -218,5 +233,4 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, HOST, () => {
   ensureDataStore();
   console.log(`MedCode app running at http://${HOST}:${PORT}`);
-  console.log(`Trainer key: ${TRAINER_KEY}`);
 });

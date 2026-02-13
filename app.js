@@ -1,6 +1,4 @@
 const STORAGE_KEY = "medcode_flashcards_role_v4";
-const TRAINER_KEY_FALLBACK = "TRAINER123";
-const TRAINEE_ACCESS_CODE = "TRAINEE2026";
 const TRIAL_QUESTION_LIMIT = 20;
 
 const CATEGORY_OPTIONS = [
@@ -739,9 +737,17 @@ async function startSession() {
     return;
   }
 
-  if (role === "trainee" && traineeCode !== TRAINEE_ACCESS_CODE) {
-    setStatus(dom.sessionStatus, "Invalid trainee access code.", "error");
-    return;
+  if (role === "trainee") {
+    try {
+      const verification = await apiRequest("/api/access/verify", "POST", { code: traineeCode });
+      if (!verification.valid) {
+        setStatus(dom.sessionStatus, "Invalid trainee access code.", "error");
+        return;
+      }
+    } catch {
+      setStatus(dom.sessionStatus, "Could not verify trainee access code. Try again.", "error");
+      return;
+    }
   }
 
   if (role === "trainer" && !trainerKey) {
@@ -1062,7 +1068,11 @@ function removeResource(index) {
 async function loadSessions() {
   if (state.role !== "trainer") return;
 
-  const trainerKey = state.trainerKey || TRAINER_KEY_FALLBACK;
+  const trainerKey = state.trainerKey;
+  if (!trainerKey) {
+    setStatus(dom.sessionLoadStatus, "Enter trainer key.", "error");
+    return;
+  }
   try {
     const data = await apiRequest(`/api/sessions?trainerKey=${encodeURIComponent(trainerKey)}`);
     const sessions = data.sessions || [];
