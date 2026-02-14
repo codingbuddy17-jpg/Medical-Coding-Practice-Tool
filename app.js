@@ -316,8 +316,14 @@ const dom = {
   analyticsTrendBody: document.getElementById("analyticsTrendBody")
 };
 
-function uid(prefix = "id") {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+function uid(prefix) {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function hardReset() {
+  if (!confirm("This will clear ALL local data and maximize storage. You will need to re-import questions. Continue?")) return;
+  localStorage.clear();
+  window.location.reload();
 }
 
 function setStatus(el, message, mode = "") {
@@ -3436,6 +3442,7 @@ function bindEvents() {
   });
   dom.verifyAdminBtn.addEventListener("click", verifyAdmin);
   dom.loadAdminDataBtn.addEventListener("click", loadAdminData);
+  dom.clearCacheBtn.addEventListener("click", hardReset);
   dom.saveAccessConfigBtn.addEventListener("click", saveAccessConfig);
   dom.createCohortBtn.addEventListener("click", createCohortFromForm);
   dom.updateCohortBtn.addEventListener("click", updateSelectedCohortFromForm);

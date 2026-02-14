@@ -1,725 +1,743 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PracticeBuddy Lab | CodingBuddy360</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div class="bg-shape bg-shape-a" aria-hidden="true"></div>
-    <div class="bg-shape bg-shape-b" aria-hidden="true"></div>
 
-    <main class="app">
-      <header class="topbar">
-        <div class="brand-block">
-          <img class="brand-logo" src="CCB.png" alt="CodingBuddy360 logo" />
-          <div>
-            <p class="eyebrow">CodingBuddy360</p>
-            <h1>PracticeBuddy Lab</h1>
-            <p class="status">The Coding Competency, Practice & Certification Engine</p>
-            <p class="status">360° From Learning to Leadership in Medical Coding</p>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PracticeBuddy Lab | CodingBuddy360</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <div class="bg-shape bg-shape-a" aria-hidden="true"></div>
+  <div class="bg-shape bg-shape-b" aria-hidden="true"></div>
+
+  <main class="app">
+    <header class="topbar">
+      <div class="brand-block">
+        <img class="brand-logo" src="CCB.png" alt="CodingBuddy360 logo" />
+        <div>
+          <p class="eyebrow">CodingBuddy360</p>
+          <h1>PracticeBuddy Lab</h1>
+          <p class="status">The Coding Competency, Practice & Certification Engine</p>
+          <p class="status">360° From Learning to Leadership in Medical Coding</p>
+        </div>
+      </div>
+      <div class="panel-actions">
+        <button id="exportReportBtn" class="ghost-btn" type="button">Export PDF Report</button>
+        <button id="endSessionBtn" class="ghost-btn" type="button">End Session</button>
+      </div>
+    </header>
+
+    <section class="panel brand-intro" id="brandIntro">
+      <h2>A CodingBuddy360 Product</h2>
+      <p class="status">Enterprise-style coding practice environment built for classroom performance, certification
+        outcomes, and placement readiness.</p>
+    </section>
+
+    <section id="preSessionLanding" class="panel landing-panel">
+      <h2>PracticeBuddy Lab Dashboard</h2>
+      <p class="status">A high-performance environment for coding practice, mock exam preparation, and measurable
+        learner improvement.</p>
+      <div class="landing-grid">
+        <article class="landing-tile">
+          <h3>Structured Practice</h3>
+          <p class="status">Tag-based short and MCQ drills with instant validation and rationale-ready flow.</p>
+        </article>
+        <article class="landing-tile">
+          <h3>Mock Exam Readiness</h3>
+          <p class="status">Blueprint-driven exam practice with timed rules, pass thresholds, and cohort assignment.</p>
+        </article>
+        <article class="landing-tile">
+          <h3>Performance Intelligence</h3>
+          <p class="status">Learner and cohort analytics, weak-topic insights, and mentor action controls.</p>
+        </article>
+      </div>
+      <div class="panel-actions">
+        <button id="landingStartTrialBtn" class="primary-btn" type="button">Start Trial</button>
+        <button id="landingFullAccessBtn" class="ghost-btn cta-secondary" type="button">Request Full Access</button>
+      </div>
+    </section>
+
+    <section class="auth panel" id="authPanel">
+      <h2>Start Session</h2>
+      <div class="auth-grid">
+        <label>
+          Name
+          <input id="userName" type="text" placeholder="Learner name" />
+        </label>
+        <label>
+          Email
+          <input id="userEmail" type="email" placeholder="name@email.com" />
+        </label>
+        <label>
+          Phone
+          <input id="userPhone" type="text" placeholder="+91 xxxxxxxxxx" />
+        </label>
+        <label>
+          Role
+          <select id="roleSelect">
+            <option value="trial">Trial Access</option>
+            <option value="trainee">Learner Access</option>
+            <option value="trainer">Mentor Console</option>
+          </select>
+        </label>
+        <label id="traineeCodeWrap" class="hidden">
+          Learner Access Code
+          <input id="traineeCode" type="password" placeholder="Enter access code" />
+        </label>
+        <label id="trainerKeyWrap" class="hidden">
+          Mentor Key
+          <input id="trainerKey" type="password" placeholder="Enter trainer key" />
+        </label>
+      </div>
+      <div class="panel-actions">
+        <button id="startBtn" class="primary-btn" type="button">Start</button>
+      </div>
+      <p id="sessionStatus" class="status" aria-live="polite"></p>
+    </section>
+
+    <section class="dashboard" aria-label="Session analytics">
+      <div class="metric">
+        <span class="metric-label">Correct Answers</span>
+        <strong id="correctCount">0</strong>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Wrong Answers</span>
+        <strong id="wrongCount">0</strong>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Attempted</span>
+        <strong id="attemptedCount">0</strong>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Session Score</span>
+        <strong id="sessionScore">0%</strong>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <article class="flashcard" id="flashcard" tabindex="0" aria-live="polite">
+        <section class="visual-half">
+          <div class="utility-split">
+            <section class="utility-pane">
+              <h3>Select Category</h3>
+              <p class="status">Choose one coding stream and practice only that tag.</p>
+              <div id="categoryButtons" class="category-buttons"></div>
+              <p id="categoryStatus" class="status">Showing all categories.</p>
+              <label class="inline-toggle">
+                <input id="weakDrillToggle" type="checkbox" />
+                <span>Weak Topic Drill Mode</span>
+              </label>
+              <div class="exam-controls">
+                <button id="toggleExamPanelBtn" class="ghost-btn" type="button">Mock Exam Practice Mode</button>
+                <div id="examPanel" class="hidden">
+                  <h4>Timed Exam Mode</h4>
+                  <label>
+                    Blueprint
+                    <select id="examBlueprintSelect">
+                      <option value="">Manual</option>
+                    </select>
+                  </label>
+                  <label>
+                    Questions
+                    <select id="examQuestionCount">
+                      <option value="30">30</option>
+                      <option value="50">50</option>
+                      <option value="100">100</option>
+                    </select>
+                  </label>
+                  <label>
+                    Pass Threshold (%)
+                    <input id="examPassThreshold" type="number" min="1" max="100" step="1" value="80" />
+                  </label>
+                  <label class="inline-toggle">
+                    <input id="examStrictTiming" type="checkbox" checked />
+                    <span>Strict timing (auto-stop on time)</span>
+                  </label>
+                  <label>
+                    Duration (minutes)
+                    <select id="examDuration">
+                      <option value="30">30</option>
+                      <option value="45">45</option>
+                      <option value="60">60</option>
+                    </select>
+                  </label>
+                  <div class="panel-actions">
+                    <button id="startExamBtn" class="ghost-btn" type="button">Start Exam</button>
+                    <button id="stopExamBtn" class="ghost-btn" type="button">Stop Exam</button>
+                  </div>
+                </div>
+                <p id="examStatus" class="status">Exam mode inactive.</p>
+                <div id="examTrialContactWrap" class="hidden">
+                  <button id="examTrialContactBtn" class="ghost-btn cta-secondary" type="button">Contact For Trainee
+                    Access</button>
+                </div>
+                <p id="examTimer" class="status">Time left: --:--</p>
+              </div>
+            </section>
+
+            <section class="utility-pane">
+              <h3>Coding Resources</h3>
+              <ul id="resourceList" class="resource-list"></ul>
+              <div id="resourceManager" class="resource-manager hidden">
+                <label>
+                  Link Title
+                  <input id="resourceTitle" type="text" placeholder="e.g., CMS Updates" />
+                </label>
+                <label>
+                  Link URL
+                  <input id="resourceUrl" type="text" placeholder="https://example.com" />
+                </label>
+                <button id="addResourceBtn" class="ghost-btn" type="button">Add Link</button>
+              </div>
+              <p id="resourceStatus" class="status"></p>
+            </section>
+          </div>
+        </section>
+
+        <section class="question-quarter">
+          <h3>Question</h3>
+          <p class="card-meta" id="cardTag">General</p>
+          <p id="cardPrompt">Start session to begin.</p>
+        </section>
+
+        <section class="answer-quarter">
+          <label for="userAnswer" class="answer-label">Your Answer</label>
+          <div id="shortAnswerRow" class="answer-row">
+            <input id="userAnswer" type="text" placeholder="Type diagnosis/procedure code" />
+            <button id="checkBtn" class="primary-btn" type="button">Check</button>
+            <button id="nextBtn" class="ghost-btn" type="button">Next</button>
+          </div>
+          <div class="panel-actions">
+            <button id="flagQuestionBtn" class="ghost-btn" type="button">Flag This Question</button>
+          </div>
+          <div id="mcqOptions" class="mcq-options hidden" aria-live="polite"></div>
+          <p id="feedback" class="status" aria-live="polite"></p>
+          <div class="rationale-box">
+            <p id="rationalePlaceholder" class="status">Rationale section reserved for future explanation details.</p>
+            <p id="trialLockNotice" class="status hidden"></p>
+          </div>
+          <div id="trialInfoBanner" class="trial-info hidden">
+            <p class="status">You are using the Trial Version. For full access to complete question bank and exam
+              features, contact us.</p>
+            <button id="trialInfoWhatsappBtn" class="ghost-btn cta-secondary" type="button">Contact On WhatsApp</button>
+          </div>
+        </section>
+
+        <section id="upgradeWall" class="panel upgrade-wall hidden">
+          <h3>Upgrade To Full Practice Access</h3>
+          <p class="status">
+            Your trial practice limit is complete. Enroll in our guided training program for full question bank access,
+            structured exam preparation, and mentor-led support.
+          </p>
+          <div class="panel-actions">
+            <button id="unlockAccessBtn" class="primary-btn cta-emphasis" type="button">Request Full Access</button>
+            <button id="whatsappUpgradeBtn" class="ghost-btn cta-secondary" type="button">Chat On WhatsApp</button>
+            <button id="callUpgradeBtn" class="ghost-btn cta-secondary" type="button">Call Program Advisor</button>
+            <button id="demoClassBtn" class="ghost-btn cta-secondary" type="button">Attend Free Live Demo Class</button>
+            <button id="brochureBtn" class="ghost-btn cta-secondary" type="button">Download Program Brochure</button>
+            <button id="syllabusBtn" class="ghost-btn cta-secondary" type="button">View Syllabus PDF</button>
+          </div>
+          <form id="counselingForm" class="auth-grid">
+            <label>
+              Name
+              <input id="counselName" type="text" placeholder="Your name" />
+            </label>
+            <label>
+              Email
+              <input id="counselEmail" type="email" placeholder="name@email.com" />
+            </label>
+            <label>
+              Phone
+              <input id="counselPhone" type="text" placeholder="+91 xxxxxxxxxx" />
+            </label>
+            <label>
+              Message
+              <input id="counselMessage" type="text"
+                placeholder="I need guidance on batch selection and full access." />
+            </label>
+            <div class="panel-actions">
+              <button id="bookCounselingBtn" class="primary-btn cta-emphasis" type="submit">Book Free Counseling
+                Session</button>
+            </div>
+          </form>
+          <p id="upgradeStatus" class="status"></p>
+        </section>
+      </article>
+    </section>
+
+    <section class="panel">
+      <h3>Per-Category Scorecards</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Attempted</th>
+              <th>Correct</th>
+              <th>Wrong</th>
+              <th>Accuracy</th>
+            </tr>
+          </thead>
+          <tbody id="categoryScoreBody">
+            <tr>
+              <td colspan="5">No attempts yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel-row" id="trainerZone">
+      <section class="panel">
+        <h3>Mentor Deck Manager</h3>
+        <p>CSV/XLSX headers (order can vary):
+          <code>tag/tags,type,question,answer,rationale,option_a,option_b,option_c,option_d,correct_option</code>.</p>
+        <label>
+          Upload CSV File
+          <input id="csvFileInput" type="file"
+            accept=".csv,.tsv,.txt,.xlsx,.xls,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" />
+        </label>
+        <textarea id="csvInput" rows="7"
+          placeholder="tag,question,answer&#10;ICD-10-CM,Type 2 diabetes mellitus without complications,E11.9"></textarea>
+        <div class="panel-actions">
+          <button id="importFileBtn" class="primary-btn" type="button">Import CSV File</button>
+          <button id="importBtn" class="primary-btn" type="button">Import CSV</button>
+          <button id="loadStarterBtn" class="ghost-btn" type="button">Load Starter Deck</button>
+          <button id="exportBtn" class="ghost-btn" type="button">Export Deck</button>
+        </div>
+        <div id="importPreviewPanel" class="panel import-preview hidden">
+          <h4>Import Preview</h4>
+          <p id="importPreviewSummary" class="status"></p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Row</th>
+                  <th>Status</th>
+                  <th>Tag</th>
+                  <th>Question</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody id="importPreviewBody">
+                <tr>
+                  <td colspan="5">No preview yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-actions">
+            <button id="confirmImportBtn" class="primary-btn" type="button">Confirm Import</button>
+            <button id="cancelImportPreviewBtn" class="ghost-btn" type="button">Cancel Preview</button>
           </div>
         </div>
-        <div class="panel-actions">
-          <button id="exportReportBtn" class="ghost-btn" type="button">Export PDF Report</button>
-          <button id="endSessionBtn" class="ghost-btn" type="button">End Session</button>
-        </div>
-      </header>
-
-      <section class="panel brand-intro" id="brandIntro">
-        <h2>A CodingBuddy360 Product</h2>
-        <p class="status">Enterprise-style coding practice environment built for classroom performance, certification outcomes, and placement readiness.</p>
-      </section>
-
-      <section id="preSessionLanding" class="panel landing-panel">
-        <h2>PracticeBuddy Lab Dashboard</h2>
-        <p class="status">A high-performance environment for coding practice, mock exam preparation, and measurable learner improvement.</p>
-        <div class="landing-grid">
-          <article class="landing-tile">
-            <h3>Structured Practice</h3>
-            <p class="status">Tag-based short and MCQ drills with instant validation and rationale-ready flow.</p>
-          </article>
-          <article class="landing-tile">
-            <h3>Mock Exam Readiness</h3>
-            <p class="status">Blueprint-driven exam practice with timed rules, pass thresholds, and cohort assignment.</p>
-          </article>
-          <article class="landing-tile">
-            <h3>Performance Intelligence</h3>
-            <p class="status">Learner and cohort analytics, weak-topic insights, and mentor action controls.</p>
-          </article>
-        </div>
-        <div class="panel-actions">
-          <button id="landingStartTrialBtn" class="primary-btn" type="button">Start Trial</button>
-          <button id="landingFullAccessBtn" class="ghost-btn cta-secondary" type="button">Request Full Access</button>
-        </div>
-      </section>
-
-      <section class="auth panel" id="authPanel">
-        <h2>Start Session</h2>
-        <div class="auth-grid">
-          <label>
-            Name
-            <input id="userName" type="text" placeholder="Learner name" />
-          </label>
-          <label>
-            Email
-            <input id="userEmail" type="email" placeholder="name@email.com" />
-          </label>
-          <label>
-            Phone
-            <input id="userPhone" type="text" placeholder="+91 xxxxxxxxxx" />
-          </label>
-          <label>
-            Role
-            <select id="roleSelect">
-              <option value="trial">Trial Access</option>
-              <option value="trainee">Learner Access</option>
-              <option value="trainer">Mentor Console</option>
-            </select>
-          </label>
-          <label id="traineeCodeWrap" class="hidden">
-            Learner Access Code
-            <input id="traineeCode" type="password" placeholder="Enter access code" />
-          </label>
-          <label id="trainerKeyWrap" class="hidden">
-            Mentor Key
-            <input id="trainerKey" type="password" placeholder="Enter trainer key" />
-          </label>
-        </div>
-        <div class="panel-actions">
-          <button id="startBtn" class="primary-btn" type="button">Start</button>
-        </div>
-        <p id="sessionStatus" class="status" aria-live="polite"></p>
-      </section>
-
-      <section class="dashboard" aria-label="Session analytics">
-        <div class="metric">
-          <span class="metric-label">Correct Answers</span>
-          <strong id="correctCount">0</strong>
-        </div>
-        <div class="metric">
-          <span class="metric-label">Wrong Answers</span>
-          <strong id="wrongCount">0</strong>
-        </div>
-        <div class="metric">
-          <span class="metric-label">Attempted</span>
-          <strong id="attemptedCount">0</strong>
-        </div>
-        <div class="metric">
-          <span class="metric-label">Session Score</span>
-          <strong id="sessionScore">0%</strong>
-        </div>
-      </section>
-
-      <section class="workspace">
-        <article class="flashcard" id="flashcard" tabindex="0" aria-live="polite">
-          <section class="visual-half">
-            <div class="utility-split">
-              <section class="utility-pane">
-                <h3>Select Category</h3>
-                <p class="status">Choose one coding stream and practice only that tag.</p>
-                <div id="categoryButtons" class="category-buttons"></div>
-                <p id="categoryStatus" class="status">Showing all categories.</p>
-                <label class="inline-toggle">
-                  <input id="weakDrillToggle" type="checkbox" />
-                  <span>Weak Topic Drill Mode</span>
-                </label>
-                <div class="exam-controls">
-                  <button id="toggleExamPanelBtn" class="ghost-btn" type="button">Mock Exam Practice Mode</button>
-                  <div id="examPanel" class="hidden">
-                    <h4>Timed Exam Mode</h4>
-                    <label>
-                      Blueprint
-                      <select id="examBlueprintSelect">
-                        <option value="">Manual</option>
-                      </select>
-                    </label>
-                    <label>
-                      Questions
-                      <select id="examQuestionCount">
-                        <option value="30">30</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                      </select>
-                    </label>
-                    <label>
-                      Pass Threshold (%)
-                      <input id="examPassThreshold" type="number" min="1" max="100" step="1" value="80" />
-                    </label>
-                    <label class="inline-toggle">
-                      <input id="examStrictTiming" type="checkbox" checked />
-                      <span>Strict timing (auto-stop on time)</span>
-                    </label>
-                    <label>
-                      Duration (minutes)
-                      <select id="examDuration">
-                        <option value="30">30</option>
-                        <option value="45">45</option>
-                        <option value="60">60</option>
-                      </select>
-                    </label>
-                    <div class="panel-actions">
-                      <button id="startExamBtn" class="ghost-btn" type="button">Start Exam</button>
-                      <button id="stopExamBtn" class="ghost-btn" type="button">Stop Exam</button>
-                    </div>
-                  </div>
-                  <p id="examStatus" class="status">Exam mode inactive.</p>
-                  <div id="examTrialContactWrap" class="hidden">
-                    <button id="examTrialContactBtn" class="ghost-btn cta-secondary" type="button">Contact For Trainee Access</button>
-                  </div>
-                  <p id="examTimer" class="status">Time left: --:--</p>
-                </div>
-              </section>
-
-              <section class="utility-pane">
-                <h3>Coding Resources</h3>
-                <ul id="resourceList" class="resource-list"></ul>
-                <div id="resourceManager" class="resource-manager hidden">
-                  <label>
-                    Link Title
-                    <input id="resourceTitle" type="text" placeholder="e.g., CMS Updates" />
-                  </label>
-                  <label>
-                    Link URL
-                    <input id="resourceUrl" type="text" placeholder="https://example.com" />
-                  </label>
-                  <button id="addResourceBtn" class="ghost-btn" type="button">Add Link</button>
-                </div>
-                <p id="resourceStatus" class="status"></p>
-              </section>
-            </div>
-          </section>
-
-          <section class="question-quarter">
-            <h3>Question</h3>
-            <p class="card-meta" id="cardTag">General</p>
-            <p id="cardPrompt">Start session to begin.</p>
-          </section>
-
-          <section class="answer-quarter">
-            <label for="userAnswer" class="answer-label">Your Answer</label>
-            <div id="shortAnswerRow" class="answer-row">
-              <input id="userAnswer" type="text" placeholder="Type diagnosis/procedure code" />
-              <button id="checkBtn" class="primary-btn" type="button">Check</button>
-              <button id="nextBtn" class="ghost-btn" type="button">Next</button>
-            </div>
-            <div class="panel-actions">
-              <button id="flagQuestionBtn" class="ghost-btn" type="button">Flag This Question</button>
-            </div>
-            <div id="mcqOptions" class="mcq-options hidden" aria-live="polite"></div>
-            <p id="feedback" class="status" aria-live="polite"></p>
-            <div class="rationale-box">
-              <p id="rationalePlaceholder" class="status">Rationale section reserved for future explanation details.</p>
-              <p id="trialLockNotice" class="status hidden"></p>
-            </div>
-            <div id="trialInfoBanner" class="trial-info hidden">
-              <p class="status">You are using the Trial Version. For full access to complete question bank and exam features, contact us.</p>
-              <button id="trialInfoWhatsappBtn" class="ghost-btn cta-secondary" type="button">Contact On WhatsApp</button>
-            </div>
-          </section>
-
-          <section id="upgradeWall" class="panel upgrade-wall hidden">
-            <h3>Upgrade To Full Practice Access</h3>
-            <p class="status">
-              Your trial practice limit is complete. Enroll in our guided training program for full question bank access, structured exam preparation, and mentor-led support.
-            </p>
-            <div class="panel-actions">
-              <button id="unlockAccessBtn" class="primary-btn cta-emphasis" type="button">Request Full Access</button>
-              <button id="whatsappUpgradeBtn" class="ghost-btn cta-secondary" type="button">Chat On WhatsApp</button>
-              <button id="callUpgradeBtn" class="ghost-btn cta-secondary" type="button">Call Program Advisor</button>
-              <button id="demoClassBtn" class="ghost-btn cta-secondary" type="button">Attend Free Live Demo Class</button>
-              <button id="brochureBtn" class="ghost-btn cta-secondary" type="button">Download Program Brochure</button>
-              <button id="syllabusBtn" class="ghost-btn cta-secondary" type="button">View Syllabus PDF</button>
-            </div>
-            <form id="counselingForm" class="auth-grid">
-              <label>
-                Name
-                <input id="counselName" type="text" placeholder="Your name" />
-              </label>
-              <label>
-                Email
-                <input id="counselEmail" type="email" placeholder="name@email.com" />
-              </label>
-              <label>
-                Phone
-                <input id="counselPhone" type="text" placeholder="+91 xxxxxxxxxx" />
-              </label>
-              <label>
-                Message
-                <input id="counselMessage" type="text" placeholder="I need guidance on batch selection and full access." />
-              </label>
-              <div class="panel-actions">
-                <button id="bookCounselingBtn" class="primary-btn cta-emphasis" type="submit">Book Free Counseling Session</button>
-              </div>
-            </form>
-            <p id="upgradeStatus" class="status"></p>
-          </section>
-        </article>
+        <p id="importStatus" class="status" aria-live="polite"></p>
       </section>
 
       <section class="panel">
-        <h3>Per-Category Scorecards</h3>
+        <h3>Import Quality Queue</h3>
+        <div class="panel-actions">
+          <select id="importReviewStatusFilter">
+            <option value="open">Open</option>
+            <option value="">All</option>
+            <option value="resolved">Resolved</option>
+          </select>
+          <button id="refreshImportReviewBtn" class="ghost-btn" type="button">Refresh Queue</button>
+          <button id="resolveAllImportReviewBtn" class="ghost-btn" type="button">Resolve All Open</button>
+          <button id="exportImportReviewBtn" class="ghost-btn" type="button">Export Queue CSV</button>
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Category</th>
+                <th>Status</th>
+                <th>Tag</th>
+                <th>Question</th>
+                <th>Reason</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="importReviewBody">
+              <tr>
+                <td colspan="5">No import review items.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p id="importReviewStatus" class="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel">
+        <h3>Import Batch Audit</h3>
+        <div class="panel-actions">
+          <button id="refreshImportBatchesBtn" class="ghost-btn" type="button">Refresh Batches</button>
+          <input id="rollbackBatchIdInput" type="text" placeholder="Enter batch ID for rollback" />
+          <button id="rollbackBatchBtn" class="ghost-btn" type="button">Rollback Batch</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Batch ID</th>
+                <th>Inserted</th>
+                <th>Warn</th>
+                <th>Fail</th>
+                <th>Skipped</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody id="importBatchBody">
+              <tr>
+                <td colspan="6">No import batches loaded.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p id="importBatchStatus" class="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel">
+        <h3>Mentor Session Console</h3>
+        <div class="panel-actions">
+          <input id="sessionSearchInput" type="text" placeholder="Search learner" />
+          <select id="sessionRoleFilter">
+            <option value="">All Access Types</option>
+            <option value="trial">Trial Access</option>
+            <option value="trainee">Learner Access</option>
+            <option value="trainer">Mentor Console</option>
+          </select>
+          <button id="refreshSessionsBtn" class="ghost-btn" type="button">Refresh Sessions</button>
+          <button id="exportSessionsBtn" class="ghost-btn" type="button">Export Sessions CSV</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Access Type</th>
+                <th>Attempted</th>
+                <th>Correct</th>
+                <th>Wrong</th>
+                <th>Score</th>
+                <th>Started</th>
+              </tr>
+            </thead>
+            <tbody id="sessionTableBody">
+              <tr>
+                <td colspan="7">No sessions loaded.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p id="sessionLoadStatus" class="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel">
+        <h3>Question Review Queue</h3>
+        <div class="panel-actions">
+          <select id="flagStatusFilter">
+            <option value="open">Open</option>
+            <option value="">All</option>
+            <option value="resolved">Resolved</option>
+            <option value="replaced">Replaced</option>
+          </select>
+          <button id="refreshFlagsBtn" class="ghost-btn" type="button">Refresh Queue</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tag</th>
+                <th>Question</th>
+                <th>Raised By</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="flagQueueBody">
+              <tr>
+                <td colspan="6">No flagged questions loaded.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p id="flagQueueStatus" class="status"></p>
+      </section>
+
+      <section class="panel">
+        <h3>Access Management</h3>
+        <p class="status">Use this single section to manage trainer keys, trainee access, cohort controls, and access
+          lifecycle.</p>
+        <div class="auth-grid">
+          <label>
+            Admin Key
+            <input id="adminKeyInput" type="password" placeholder="Enter admin key" />
+          </label>
+          <div class="panel-actions">
+            <button id="verifyAdminBtn" class="ghost-btn" type="button">Verify Admin</button>
+            <button id="loadAdminDataBtn" class="ghost-btn" type="button">Load Admin Data</button>
+            <button id="clearCacheBtn" class="ghost-btn" type="button"
+              style="color:var(--danger); border-color:var(--danger);">Clear Cache & Reload</button>
+          </div>
+        </div>
+        <p id="adminStatus" class="status" aria-live="polite"></p>
+
+        <div id="adminTools" class="hidden">
+          <h4>Global Access Settings</h4>
+          <div class="auth-grid">
+            <label>
+              Trainee Access Code
+              <input id="adminTraineeCode" type="text" placeholder="Set trainee code" />
+            </label>
+            <label>
+              Trainer Key
+              <input id="adminTrainerKey" type="text" placeholder="Set trainer key" />
+            </label>
+            <label>
+              Trial Question Limit
+              <input id="adminTrialLimit" type="number" min="1" step="1" placeholder="20" />
+            </label>
+            <label>
+              Trainee Access Active
+              <select id="adminTraineeActive">
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </label>
+            <label>
+              Trainee Access Expiry
+              <input id="adminTraineeExpiry" type="date" />
+            </label>
+          </div>
+          <div class="panel-actions">
+            <button id="saveAccessConfigBtn" class="primary-btn" type="button">Save Access Settings</button>
+          </div>
+          <p id="accessConfigStatus" class="status"></p>
+
+          <h4>Cohort / Class Management</h4>
+          <div class="auth-grid">
+            <label>
+              Cohort Name
+              <input id="cohortNameInput" type="text" placeholder="Batch A - CPC Jan" />
+            </label>
+            <label>
+              Cohort Access Code
+              <input id="cohortCodeInput" type="text" placeholder="CPCJAN2026" />
+            </label>
+            <label>
+              Cohort Question Limit
+              <input id="cohortLimitInput" type="number" min="1" step="1" placeholder="1000" />
+            </label>
+            <label>
+              Active
+              <select id="cohortActiveInput">
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </label>
+            <label>
+              Cohort Expiry
+              <input id="cohortExpiryInput" type="date" />
+            </label>
+          </div>
+          <div class="panel-actions">
+            <button id="createCohortBtn" class="primary-btn" type="button">Create Cohort</button>
+            <button id="updateCohortBtn" class="ghost-btn" type="button">Update Selected Cohort</button>
+            <button id="refreshCohortsBtn" class="ghost-btn" type="button">Refresh Cohorts</button>
+          </div>
+          <p id="cohortStatus" class="status"></p>
+
+          <label>
+            Existing Cohorts
+            <select id="cohortSelect"></select>
+          </label>
+          <div class="auth-grid">
+            <label>
+              Member Name
+              <input id="memberNameInput" type="text" placeholder="Optional name" />
+            </label>
+            <label>
+              Member Email
+              <input id="memberEmailInput" type="email" placeholder="trainee@email.com" />
+            </label>
+            <label>
+              Member Phone
+              <input id="memberPhoneInput" type="text" placeholder="+91 xxxxxxxxxx" />
+            </label>
+            <label>
+              Member Active
+              <select id="memberActiveInput">
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </label>
+            <label>
+              Member Expiry
+              <input id="memberExpiryInput" type="date" />
+            </label>
+          </div>
+          <div class="panel-actions">
+            <button id="enrollMemberBtn" class="ghost-btn" type="button">Enroll / Update Member</button>
+          </div>
+          <p id="enrollStatus" class="status"></p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Cohort</th>
+                  <th>Access Code</th>
+                  <th>Limit</th>
+                  <th>Active</th>
+                  <th>Members</th>
+                </tr>
+              </thead>
+              <tbody id="cohortTableBody">
+                <tr>
+                  <td colspan="5">No cohorts loaded.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>Exam Blueprint Assignment</h4>
+          <div class="auth-grid">
+            <label>
+              Blueprint Template
+              <select id="blueprintTemplateSelect">
+                <option value="">Select template</option>
+              </select>
+            </label>
+            <label>
+              Questions
+              <input id="blueprintQuestionCount" type="number" min="1" step="1" placeholder="50" />
+            </label>
+            <label>
+              Duration (mins)
+              <input id="blueprintDuration" type="number" min="1" step="1" placeholder="45" />
+            </label>
+            <label>
+              Pass Threshold (%)
+              <input id="blueprintPassThreshold" type="number" min="1" max="100" step="1" placeholder="80" />
+            </label>
+            <label class="inline-toggle">
+              <input id="blueprintStrictTiming" type="checkbox" checked />
+              <span>Strict timing</span>
+            </label>
+          </div>
+          <div class="panel-actions">
+            <button id="refreshBlueprintsBtn" class="ghost-btn" type="button">Refresh Blueprints</button>
+            <button id="assignBlueprintBtn" class="primary-btn" type="button">Assign to Selected Cohort</button>
+          </div>
+          <p id="blueprintStatus" class="status"></p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Weak-Topic Analytics</h3>
+        <div class="auth-grid">
+          <label>
+            User Email
+            <input id="analyticsUserEmail" type="email" placeholder="trainee@email.com" />
+          </label>
+          <label>
+            Cohort
+            <select id="analyticsCohortSelect">
+              <option value="">Select cohort</option>
+            </select>
+          </label>
+          <label>
+            Time Window
+            <select id="analyticsDays">
+              <option value="7">Last 7 days</option>
+              <option value="14">Last 14 days</option>
+              <option value="30" selected>Last 30 days</option>
+              <option value="60">Last 60 days</option>
+            </select>
+          </label>
+        </div>
+        <div class="panel-actions">
+          <button id="loadUserAnalyticsBtn" class="primary-btn" type="button">Load User Analytics</button>
+          <button id="loadBatchAnalyticsBtn" class="ghost-btn" type="button">Load Batch Analytics</button>
+          <button id="loadDrillRecommendationsBtn" class="ghost-btn" type="button">Recommend Daily Drill</button>
+          <button id="shareTrendEmailBtn" class="ghost-btn" type="button">Share Trend by Email</button>
+        </div>
+        <p id="analyticsStatus" class="status"></p>
+        <section class="dashboard analytics-summary">
+          <div class="metric">
+            <span class="metric-label">Analyzed Attempts</span>
+            <strong id="analyticsAttempted">0</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Correct</span>
+            <strong id="analyticsCorrect">0</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Wrong</span>
+            <strong id="analyticsWrong">0</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Overall Score</span>
+            <strong id="analyticsScore">0%</strong>
+          </div>
+        </section>
+
+        <p class="status"><strong>Recommended Tags:</strong> <span id="analyticsRecommendedTags">--</span></p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tag</th>
                 <th>Attempted</th>
                 <th>Correct</th>
                 <th>Wrong</th>
                 <th>Accuracy</th>
               </tr>
             </thead>
-            <tbody id="categoryScoreBody">
+            <tbody id="analyticsTagBody">
               <tr>
-                <td colspan="5">No attempts yet.</td>
+                <td colspan="5">No analytics loaded.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Attempted</th>
+                <th>Correct</th>
+                <th>Wrong</th>
+                <th>Accuracy</th>
+              </tr>
+            </thead>
+            <tbody id="analyticsTrendBody">
+              <tr>
+                <td colspan="5">No trend loaded.</td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
-
-      <section class="panel-row" id="trainerZone">
-        <section class="panel">
-          <h3>Mentor Deck Manager</h3>
-          <p>CSV/XLSX headers (order can vary): <code>tag/tags,type,question,answer,rationale,option_a,option_b,option_c,option_d,correct_option</code>.</p>
-          <label>
-            Upload CSV File
-            <input
-              id="csvFileInput"
-              type="file"
-              accept=".csv,.tsv,.txt,.xlsx,.xls,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-            />
-          </label>
-          <textarea id="csvInput" rows="7" placeholder="tag,question,answer&#10;ICD-10-CM,Type 2 diabetes mellitus without complications,E11.9"></textarea>
-          <div class="panel-actions">
-            <button id="importFileBtn" class="primary-btn" type="button">Import CSV File</button>
-            <button id="importBtn" class="primary-btn" type="button">Import CSV</button>
-            <button id="loadStarterBtn" class="ghost-btn" type="button">Load Starter Deck</button>
-            <button id="exportBtn" class="ghost-btn" type="button">Export Deck</button>
-          </div>
-          <div id="importPreviewPanel" class="panel import-preview hidden">
-            <h4>Import Preview</h4>
-            <p id="importPreviewSummary" class="status"></p>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Row</th>
-                    <th>Status</th>
-                    <th>Tag</th>
-                    <th>Question</th>
-                    <th>Reason</th>
-                  </tr>
-                </thead>
-                <tbody id="importPreviewBody">
-                  <tr>
-                    <td colspan="5">No preview yet.</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="panel-actions">
-              <button id="confirmImportBtn" class="primary-btn" type="button">Confirm Import</button>
-              <button id="cancelImportPreviewBtn" class="ghost-btn" type="button">Cancel Preview</button>
-            </div>
-          </div>
-          <p id="importStatus" class="status" aria-live="polite"></p>
-        </section>
-
-        <section class="panel">
-          <h3>Import Quality Queue</h3>
-          <div class="panel-actions">
-            <select id="importReviewStatusFilter">
-              <option value="open">Open</option>
-              <option value="">All</option>
-              <option value="resolved">Resolved</option>
-            </select>
-            <button id="refreshImportReviewBtn" class="ghost-btn" type="button">Refresh Queue</button>
-            <button id="resolveAllImportReviewBtn" class="ghost-btn" type="button">Resolve All Open</button>
-            <button id="exportImportReviewBtn" class="ghost-btn" type="button">Export Queue CSV</button>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Status</th>
-                  <th>Tag</th>
-                  <th>Question</th>
-                  <th>Reason</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody id="importReviewBody">
-                <tr>
-                  <td colspan="5">No import review items.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p id="importReviewStatus" class="status" aria-live="polite"></p>
-        </section>
-
-        <section class="panel">
-          <h3>Import Batch Audit</h3>
-          <div class="panel-actions">
-            <button id="refreshImportBatchesBtn" class="ghost-btn" type="button">Refresh Batches</button>
-            <input id="rollbackBatchIdInput" type="text" placeholder="Enter batch ID for rollback" />
-            <button id="rollbackBatchBtn" class="ghost-btn" type="button">Rollback Batch</button>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Batch ID</th>
-                  <th>Inserted</th>
-                  <th>Warn</th>
-                  <th>Fail</th>
-                  <th>Skipped</th>
-                  <th>Created</th>
-                </tr>
-              </thead>
-              <tbody id="importBatchBody">
-                <tr>
-                  <td colspan="6">No import batches loaded.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p id="importBatchStatus" class="status" aria-live="polite"></p>
-        </section>
-
-        <section class="panel">
-          <h3>Mentor Session Console</h3>
-          <div class="panel-actions">
-            <input id="sessionSearchInput" type="text" placeholder="Search learner" />
-            <select id="sessionRoleFilter">
-              <option value="">All Access Types</option>
-              <option value="trial">Trial Access</option>
-              <option value="trainee">Learner Access</option>
-              <option value="trainer">Mentor Console</option>
-            </select>
-            <button id="refreshSessionsBtn" class="ghost-btn" type="button">Refresh Sessions</button>
-            <button id="exportSessionsBtn" class="ghost-btn" type="button">Export Sessions CSV</button>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Access Type</th>
-                  <th>Attempted</th>
-                  <th>Correct</th>
-                  <th>Wrong</th>
-                  <th>Score</th>
-                  <th>Started</th>
-                </tr>
-              </thead>
-              <tbody id="sessionTableBody">
-                <tr>
-                  <td colspan="7">No sessions loaded.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p id="sessionLoadStatus" class="status" aria-live="polite"></p>
-        </section>
-
-        <section class="panel">
-          <h3>Question Review Queue</h3>
-          <div class="panel-actions">
-            <select id="flagStatusFilter">
-              <option value="open">Open</option>
-              <option value="">All</option>
-              <option value="resolved">Resolved</option>
-              <option value="replaced">Replaced</option>
-            </select>
-            <button id="refreshFlagsBtn" class="ghost-btn" type="button">Refresh Queue</button>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Tag</th>
-                  <th>Question</th>
-                  <th>Raised By</th>
-                  <th>Reason</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody id="flagQueueBody">
-                <tr>
-                  <td colspan="6">No flagged questions loaded.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p id="flagQueueStatus" class="status"></p>
-        </section>
-
-        <section class="panel">
-          <h3>Access Management</h3>
-          <p class="status">Use this single section to manage trainer keys, trainee access, cohort controls, and access lifecycle.</p>
-          <div class="auth-grid">
-            <label>
-              Admin Key
-              <input id="adminKeyInput" type="password" placeholder="Enter admin key" />
-            </label>
-            <div class="panel-actions">
-              <button id="verifyAdminBtn" class="ghost-btn" type="button">Verify Admin</button>
-              <button id="loadAdminDataBtn" class="ghost-btn" type="button">Load Admin Data</button>
-            </div>
-          </div>
-          <p id="adminStatus" class="status" aria-live="polite"></p>
-
-          <div id="adminTools" class="hidden">
-            <h4>Global Access Settings</h4>
-            <div class="auth-grid">
-              <label>
-                Trainee Access Code
-                <input id="adminTraineeCode" type="text" placeholder="Set trainee code" />
-              </label>
-              <label>
-                Trainer Key
-                <input id="adminTrainerKey" type="text" placeholder="Set trainer key" />
-              </label>
-              <label>
-                Trial Question Limit
-                <input id="adminTrialLimit" type="number" min="1" step="1" placeholder="20" />
-              </label>
-              <label>
-                Trainee Access Active
-                <select id="adminTraineeActive">
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
-                </select>
-              </label>
-              <label>
-                Trainee Access Expiry
-                <input id="adminTraineeExpiry" type="date" />
-              </label>
-            </div>
-            <div class="panel-actions">
-              <button id="saveAccessConfigBtn" class="primary-btn" type="button">Save Access Settings</button>
-            </div>
-            <p id="accessConfigStatus" class="status"></p>
-
-            <h4>Cohort / Class Management</h4>
-            <div class="auth-grid">
-              <label>
-                Cohort Name
-                <input id="cohortNameInput" type="text" placeholder="Batch A - CPC Jan" />
-              </label>
-              <label>
-                Cohort Access Code
-                <input id="cohortCodeInput" type="text" placeholder="CPCJAN2026" />
-              </label>
-              <label>
-                Cohort Question Limit
-                <input id="cohortLimitInput" type="number" min="1" step="1" placeholder="1000" />
-              </label>
-              <label>
-                Active
-                <select id="cohortActiveInput">
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
-                </select>
-              </label>
-              <label>
-                Cohort Expiry
-                <input id="cohortExpiryInput" type="date" />
-              </label>
-            </div>
-            <div class="panel-actions">
-              <button id="createCohortBtn" class="primary-btn" type="button">Create Cohort</button>
-              <button id="updateCohortBtn" class="ghost-btn" type="button">Update Selected Cohort</button>
-              <button id="refreshCohortsBtn" class="ghost-btn" type="button">Refresh Cohorts</button>
-            </div>
-            <p id="cohortStatus" class="status"></p>
-
-            <label>
-              Existing Cohorts
-              <select id="cohortSelect"></select>
-            </label>
-            <div class="auth-grid">
-              <label>
-                Member Name
-                <input id="memberNameInput" type="text" placeholder="Optional name" />
-              </label>
-              <label>
-                Member Email
-                <input id="memberEmailInput" type="email" placeholder="trainee@email.com" />
-              </label>
-              <label>
-                Member Phone
-                <input id="memberPhoneInput" type="text" placeholder="+91 xxxxxxxxxx" />
-              </label>
-              <label>
-                Member Active
-                <select id="memberActiveInput">
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
-                </select>
-              </label>
-              <label>
-                Member Expiry
-                <input id="memberExpiryInput" type="date" />
-              </label>
-            </div>
-            <div class="panel-actions">
-              <button id="enrollMemberBtn" class="ghost-btn" type="button">Enroll / Update Member</button>
-            </div>
-            <p id="enrollStatus" class="status"></p>
-
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Cohort</th>
-                    <th>Access Code</th>
-                    <th>Limit</th>
-                    <th>Active</th>
-                    <th>Members</th>
-                  </tr>
-                </thead>
-                <tbody id="cohortTableBody">
-                  <tr>
-                    <td colspan="5">No cohorts loaded.</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <h4>Exam Blueprint Assignment</h4>
-            <div class="auth-grid">
-              <label>
-                Blueprint Template
-                <select id="blueprintTemplateSelect">
-                  <option value="">Select template</option>
-                </select>
-              </label>
-              <label>
-                Questions
-                <input id="blueprintQuestionCount" type="number" min="1" step="1" placeholder="50" />
-              </label>
-              <label>
-                Duration (mins)
-                <input id="blueprintDuration" type="number" min="1" step="1" placeholder="45" />
-              </label>
-              <label>
-                Pass Threshold (%)
-                <input id="blueprintPassThreshold" type="number" min="1" max="100" step="1" placeholder="80" />
-              </label>
-              <label class="inline-toggle">
-                <input id="blueprintStrictTiming" type="checkbox" checked />
-                <span>Strict timing</span>
-              </label>
-            </div>
-            <div class="panel-actions">
-              <button id="refreshBlueprintsBtn" class="ghost-btn" type="button">Refresh Blueprints</button>
-              <button id="assignBlueprintBtn" class="primary-btn" type="button">Assign to Selected Cohort</button>
-            </div>
-            <p id="blueprintStatus" class="status"></p>
-          </div>
-        </section>
-
-        <section class="panel">
-          <h3>Weak-Topic Analytics</h3>
-          <div class="auth-grid">
-            <label>
-              User Email
-              <input id="analyticsUserEmail" type="email" placeholder="trainee@email.com" />
-            </label>
-            <label>
-              Cohort
-              <select id="analyticsCohortSelect">
-                <option value="">Select cohort</option>
-              </select>
-            </label>
-            <label>
-              Time Window
-              <select id="analyticsDays">
-                <option value="7">Last 7 days</option>
-                <option value="14">Last 14 days</option>
-                <option value="30" selected>Last 30 days</option>
-                <option value="60">Last 60 days</option>
-              </select>
-            </label>
-          </div>
-          <div class="panel-actions">
-            <button id="loadUserAnalyticsBtn" class="primary-btn" type="button">Load User Analytics</button>
-            <button id="loadBatchAnalyticsBtn" class="ghost-btn" type="button">Load Batch Analytics</button>
-            <button id="loadDrillRecommendationsBtn" class="ghost-btn" type="button">Recommend Daily Drill</button>
-            <button id="shareTrendEmailBtn" class="ghost-btn" type="button">Share Trend by Email</button>
-          </div>
-          <p id="analyticsStatus" class="status"></p>
-          <section class="dashboard analytics-summary">
-            <div class="metric">
-              <span class="metric-label">Analyzed Attempts</span>
-              <strong id="analyticsAttempted">0</strong>
-            </div>
-            <div class="metric">
-              <span class="metric-label">Correct</span>
-              <strong id="analyticsCorrect">0</strong>
-            </div>
-            <div class="metric">
-              <span class="metric-label">Wrong</span>
-              <strong id="analyticsWrong">0</strong>
-            </div>
-            <div class="metric">
-              <span class="metric-label">Overall Score</span>
-              <strong id="analyticsScore">0%</strong>
-            </div>
-          </section>
-
-          <p class="status"><strong>Recommended Tags:</strong> <span id="analyticsRecommendedTags">--</span></p>
-
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Tag</th>
-                  <th>Attempted</th>
-                  <th>Correct</th>
-                  <th>Wrong</th>
-                  <th>Accuracy</th>
-                </tr>
-              </thead>
-              <tbody id="analyticsTagBody">
-                <tr><td colspan="5">No analytics loaded.</td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Attempted</th>
-                  <th>Correct</th>
-                  <th>Wrong</th>
-                  <th>Accuracy</th>
-                </tr>
-              </thead>
-              <tbody id="analyticsTrendBody">
-                <tr><td colspan="5">No trend loaded.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </section>
+    </section>
   </main>
 
-    <a id="floatingWhatsappBtn" class="floating-whatsapp" href="#" aria-label="WhatsApp us">Chat For Full Access</a>
+  <a id="floatingWhatsappBtn" class="floating-whatsapp" href="#" aria-label="WhatsApp us">Chat For Full Access</a>
 
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-    <script src="app.js"></script>
-  </body>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+
 </html>
