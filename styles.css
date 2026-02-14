@@ -326,6 +326,25 @@ textarea {
   gap: 0.4rem;
 }
 
+.mcq-options {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.mcq-option {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #cfdad6;
+  background: #fff;
+  color: var(--ink);
+}
+
+.mcq-option.selected {
+  border-color: #8fcec0;
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
 .rationale-box {
   margin-top: 0.3rem;
   min-height: 130px;

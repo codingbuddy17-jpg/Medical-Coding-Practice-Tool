@@ -149,11 +149,12 @@
 
           <section class="answer-quarter">
             <label for="userAnswer" class="answer-label">Your Answer</label>
-            <div class="answer-row">
+            <div id="shortAnswerRow" class="answer-row">
               <input id="userAnswer" type="text" placeholder="Type diagnosis/procedure code" />
               <button id="checkBtn" class="primary-btn" type="button">Check</button>
               <button id="nextBtn" class="ghost-btn" type="button">Next</button>
             </div>
+            <div id="mcqOptions" class="mcq-options hidden" aria-live="polite"></div>
             <p id="feedback" class="status" aria-live="polite"></p>
             <div class="rationale-box">
               <p id="rationalePlaceholder" class="status">Rationale section reserved for future explanation details.</p>

@@ -1,5 +1,6 @@
 const STORAGE_KEY = "medcode_flashcards_role_v4";
 const TRIAL_QUESTION_LIMIT = 20;
+const MCQ_PREFIX = "__MCQ__:";
 
 const CATEGORY_OPTIONS = [
   { key: "ALL", label: "All Tags" },
@@ -7,7 +8,10 @@ const CATEGORY_OPTIONS = [
   { key: "ICD-10-PCS", label: "ICD 10 PCS" },
   { key: "CPT", label: "CPT" },
   { key: "MODIFIERS", label: "Modifiers" },
-  { key: "GUIDELINES", label: "Guidelines" }
+  { key: "GUIDELINES", label: "Guidelines" },
+  { key: "CCS", label: "CCS" },
+  { key: "CPC", label: "CPC" },
+  { key: "CDIP", label: "CDIP" }
 ];
 
 const TRACKED_CATEGORY_KEYS = CATEGORY_OPTIONS.filter((item) => item.key !== "ALL").map((item) => item.key);
@@ -78,6 +82,7 @@ const state = {
     wrong: 0
   },
   awaitingNext: false,
+  selectedMcqOption: "",
   studyOrder: {
     queues: {},
     cursors: {}
@@ -123,6 +128,8 @@ const dom = {
 
   cardTag: document.getElementById("cardTag"),
   cardPrompt: document.getElementById("cardPrompt"),
+  shortAnswerRow: document.getElementById("shortAnswerRow"),
+  mcqOptions: document.getElementById("mcqOptions"),
   userAnswer: document.getElementById("userAnswer"),
   checkBtn: document.getElementById("checkBtn"),
   nextBtn: document.getElementById("nextBtn"),
@@ -173,6 +180,9 @@ function normalizeTagKey(tag) {
   if (cleaned.includes("CPT")) return "CPT";
   if (cleaned.includes("MODIFIER")) return "MODIFIERS";
   if (cleaned.includes("GUIDELINE")) return "GUIDELINES";
+  if (cleaned.includes("CCS")) return "CCS";
+  if (cleaned.includes("CPC")) return "CPC";
+  if (cleaned.includes("CDIP")) return "CDIP";
   return "OTHER";
 }
 
@@ -190,29 +200,102 @@ function hasTrialLimitReached() {
   return isTrialUser() && state.session.attempted >= TRIAL_QUESTION_LIMIT;
 }
 
+function trialUpgradeMessage() {
+  return "Contact Admin for full access. Contact or WhatsApp at +91 8309661352.";
+}
+
 function updateTrialLockUI() {
   if (hasTrialLimitReached()) {
     dom.userAnswer.disabled = true;
     dom.checkBtn.disabled = true;
     dom.nextBtn.disabled = true;
+    dom.mcqOptions.querySelectorAll("button").forEach((btn) => {
+      btn.disabled = true;
+    });
     dom.trialLockNotice.classList.remove("hidden");
-    dom.trialLockNotice.textContent =
-      "Trial complete (20 questions). Contact Admin for full access. Contact or WhatsApp at +91 8309661352.";
+    dom.trialLockNotice.textContent = `Trial complete (20 questions). ${trialUpgradeMessage()}`;
     return;
   }
 
   dom.userAnswer.disabled = false;
+  dom.mcqOptions.querySelectorAll("button").forEach((btn) => {
+    btn.disabled = false;
+  });
   dom.trialLockNotice.classList.add("hidden");
   dom.trialLockNotice.textContent = "";
 }
 
-function hydrateCards(cards) {
-  return cards.map((card, index) => ({
-    id: card.id || `${normalizeTagKey(card.tag)}_${index}_${uid("card")}`,
-    tag: (card.tag || "General").trim(),
+function toMcqOptionKey(value) {
+  const raw = String(value || "").trim().toUpperCase();
+  if (["A", "B", "C", "D"].includes(raw)) return raw;
+  return "";
+}
+
+function decodeEmbeddedCard(rawAnswer) {
+  const value = String(rawAnswer || "");
+  if (!value.startsWith(MCQ_PREFIX)) return null;
+  try {
+    const parsed = JSON.parse(value.slice(MCQ_PREFIX.length));
+    const options = Array.isArray(parsed.options) ? parsed.options.map((x) => String(x || "").trim()) : [];
+    if (options.length < 2) return null;
+    const correctOption = toMcqOptionKey(parsed.correctOption);
+    if (!correctOption) return null;
+    return {
+      type: "mcq",
+      options: options.slice(0, 4),
+      correctOption
+    };
+  } catch {
+    return null;
+  }
+}
+
+function encodeCardForCloud(card) {
+  const type = String(card.type || "").toLowerCase();
+  if (type !== "mcq") {
+    return {
+      tag: String(card.tag || "General").trim(),
+      question: String(card.question || "").trim(),
+      answer: String(card.answer || "").trim()
+    };
+  }
+
+  const options = Array.isArray(card.options) ? card.options.map((x) => String(x || "").trim()).slice(0, 4) : [];
+  const correctOption = toMcqOptionKey(card.correctOption);
+  const payload = {
+    options,
+    correctOption
+  };
+  return {
+    tag: String(card.tag || "General").trim(),
     question: String(card.question || "").trim(),
-    answer: String(card.answer || "").trim()
-  }));
+    answer: `${MCQ_PREFIX}${JSON.stringify(payload)}`
+  };
+}
+
+function hydrateCards(cards) {
+  return cards.map((card, index) => {
+    const embedded = decodeEmbeddedCard(card.answer);
+    const explicitType = String(card.type || "").toLowerCase();
+    const isMcq = explicitType === "mcq" || Boolean(embedded);
+    const optionA = String(card.option_a || card.optionA || "").trim();
+    const optionB = String(card.option_b || card.optionB || "").trim();
+    const optionC = String(card.option_c || card.optionC || "").trim();
+    const optionD = String(card.option_d || card.optionD || "").trim();
+    const explicitOptions = [optionA, optionB, optionC, optionD].filter(Boolean);
+    const options = embedded?.options || explicitOptions;
+    const correctOption = embedded?.correctOption || toMcqOptionKey(card.correct_option || card.correctOption);
+
+    return {
+      id: card.id || `${normalizeTagKey(card.tag)}_${index}_${uid("card")}`,
+      tag: (card.tag || "General").trim(),
+      question: String(card.question || "").trim(),
+      type: isMcq ? "mcq" : "short",
+      answer: isMcq ? "" : String(card.answer || "").trim(),
+      options: isMcq ? options.slice(0, 4) : [],
+      correctOption: isMcq ? correctOption : ""
+    };
+  });
 }
 
 function saveLocal() {
@@ -328,7 +411,24 @@ function isTextMatchFlexible(userInput, option) {
   return distance / maxLen <= 0.12;
 }
 
-function checkAnswer(userInput, expectedAnswer) {
+function checkAnswer(userInput, expectedAnswer, card = null) {
+  const type = String(card?.type || "").toLowerCase();
+
+  if (type === "mcq") {
+    const options = Array.isArray(card?.options) ? card.options : [];
+    const correctOption = toMcqOptionKey(card?.correctOption);
+    const selected = toMcqOptionKey(userInput);
+    const isCorrect = selected && correctOption && selected === correctOption;
+    const correctIdx = correctOption ? correctOption.charCodeAt(0) - 65 : -1;
+    const correctText = correctIdx >= 0 ? options[correctIdx] || "" : "";
+    const primaryAnswer = correctOption ? `${correctOption}) ${correctText}`.trim() : "";
+    return {
+      isCorrect: Boolean(isCorrect),
+      primaryAnswer,
+      acceptedAnswers: correctOption ? [correctOption, correctText].filter(Boolean) : []
+    };
+  }
+
   const answers = splitAnswers(expectedAnswer);
   const matched = answers.some((option) => {
     if (looksLikeCode(userInput) || looksLikeCode(option)) {
@@ -470,10 +570,12 @@ function renderCategoryScorecards() {
 function updateRoleUI() {
   const isTrainer = state.role === "trainer";
   const isTrainee = state.role === "trainee";
+  const canUseExam = isTrainer || isTrainee;
   dom.trainerZone.classList.toggle("hidden", !isTrainer);
   dom.resourceManager.classList.toggle("hidden", !isTrainer);
   dom.traineeCodeWrap.classList.toggle("hidden", !isTrainee);
   dom.trainerKeyWrap.classList.toggle("hidden", !isTrainer);
+  if (!canUseExam) dom.examPanel.classList.add("hidden");
   dom.importStatus.textContent = "";
   dom.sessionLoadStatus.textContent = "";
   renderResources();
@@ -521,6 +623,10 @@ function renderCard() {
         ? "No cards available. Trainer can import a deck."
         : `No cards found for ${state.selectedTag}. Select another category.`;
     dom.userAnswer.value = "";
+    state.selectedMcqOption = "";
+    dom.mcqOptions.innerHTML = "";
+    dom.mcqOptions.classList.add("hidden");
+    dom.userAnswer.classList.remove("hidden");
     setStatus(dom.feedback, "");
     setAwaitingNext(false);
     updateTrialLockUI();
@@ -533,6 +639,10 @@ function renderCard() {
     dom.cardPrompt.textContent =
       "You have completed your 20-question trial. Contact Admin for full access. Contact or WhatsApp at +91 8309661352.";
     dom.userAnswer.value = "";
+    state.selectedMcqOption = "";
+    dom.mcqOptions.innerHTML = "";
+    dom.mcqOptions.classList.add("hidden");
+    dom.userAnswer.classList.remove("hidden");
     setStatus(dom.feedback, "");
     setStatus(dom.rationalePlaceholder, "Unlock full access to continue practicing all questions.");
     setAwaitingNext(false);
@@ -544,6 +654,25 @@ function renderCard() {
   dom.cardTag.textContent = card.tag;
   dom.cardPrompt.textContent = card.question;
   dom.userAnswer.value = "";
+  state.selectedMcqOption = "";
+  dom.mcqOptions.innerHTML = "";
+  dom.mcqOptions.classList.add("hidden");
+  dom.userAnswer.classList.remove("hidden");
+
+  if (card.type === "mcq") {
+    dom.userAnswer.classList.add("hidden");
+    dom.mcqOptions.classList.remove("hidden");
+    const labels = ["A", "B", "C", "D"];
+    dom.mcqOptions.innerHTML = (card.options || [])
+      .map((opt, idx) => {
+        const key = labels[idx];
+        return `<button type="button" class="mcq-option" data-option-key="${key}">${key}) ${opt}</button>`;
+      })
+      .join("");
+    dom.checkBtn.disabled = hasTrialLimitReached();
+    dom.nextBtn.disabled = true;
+  }
+
   setStatus(dom.feedback, "");
   setStatus(dom.rationalePlaceholder, "Rationale section reserved for future explanation details.");
   setAwaitingNext(false);
@@ -555,7 +684,7 @@ function renderCard() {
     dom.categoryStatus.textContent = `Showing ${cards.length} cards for ${state.selectedTag}.`;
   }
 
-  dom.userAnswer.focus();
+  if (card.type !== "mcq") dom.userAnswer.focus();
 }
 
 function setSelectedTag(tag) {
@@ -644,6 +773,12 @@ function shuffledCopy(items) {
 }
 
 function startExam() {
+  if (isTrialUser()) {
+    setStatus(dom.examStatus, trialUpgradeMessage(), "error");
+    dom.examPanel.classList.add("hidden");
+    return;
+  }
+
   if (!state.session.isActive) {
     setStatus(dom.examStatus, "Start session before exam mode.", "error");
     return;
@@ -947,13 +1082,22 @@ async function validateCurrentAnswer() {
     return;
   }
 
-  const typed = dom.userAnswer.value.trim();
-  if (!typed) {
-    setStatus(dom.feedback, "Enter an answer before checking.", "error");
-    return;
+  let responseValue = "";
+  if (card.type === "mcq") {
+    responseValue = state.selectedMcqOption;
+    if (!responseValue) {
+      setStatus(dom.feedback, "Select an option before checking.", "error");
+      return;
+    }
+  } else {
+    responseValue = dom.userAnswer.value.trim();
+    if (!responseValue) {
+      setStatus(dom.feedback, "Enter an answer before checking.", "error");
+      return;
+    }
   }
 
-  const result = checkAnswer(typed, card.answer);
+  const result = checkAnswer(responseValue, card.answer, card);
   state.session.attempted += 1;
 
   if (result.isCorrect) {
@@ -976,7 +1120,7 @@ async function validateCurrentAnswer() {
     question: card.question,
     expectedAnswer: result.primaryAnswer,
     acceptedAnswers: result.acceptedAnswers,
-    userAnswer: typed,
+    userAnswer: responseValue,
     isCorrect: result.isCorrect,
     at: Date.now()
   });
@@ -1057,10 +1201,19 @@ function cleanImportText(text) {
 }
 
 function sanitizeQuestionCard(card) {
+  const typeRaw = cleanImportText(card.type || "short").toLowerCase();
+  const type = typeRaw === "mcq" ? "mcq" : "short";
+  const cleanOption = (v) => cleanImportText(v || "");
   return {
     tag: cleanImportText(card.tag || "General"),
+    type,
     question: cleanImportText(card.question || ""),
-    answer: cleanImportText(card.answer || "")
+    answer: cleanImportText(card.answer || ""),
+    option_a: cleanOption(card.option_a || card.optionA || ""),
+    option_b: cleanOption(card.option_b || card.optionB || ""),
+    option_c: cleanOption(card.option_c || card.optionC || ""),
+    option_d: cleanOption(card.option_d || card.optionD || ""),
+    correct_option: cleanImportText(card.correct_option || card.correctOption || "").toUpperCase()
   };
 }
 
@@ -1113,13 +1266,7 @@ function parseCsv(text) {
 
   const delimiter = detectDelimiter(lines[0]);
   const rows = lines.map((line) => parseDelimitedLine(line, delimiter));
-  const startAt = rows[0][0]?.toLowerCase() === "tag" ? 1 : 0;
-
-  return rows.slice(startAt).map((row) => ({
-    tag: cleanImportText(row[0] || "General"),
-    question: cleanImportText(row[1] || ""),
-    answer: cleanImportText(row[2] || "")
-  }));
+  return parseRowsMatrix(rows);
 }
 
 function parseExcelArrayBuffer(buffer) {
@@ -1129,15 +1276,73 @@ function parseExcelArrayBuffer(buffer) {
   if (!firstSheetName) return [];
   const sheet = workbook.Sheets[firstSheetName];
   const rows = window.XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" });
-  if (!rows.length) return [];
-  const headerRow = rows[0].map((x) => cleanImportText(x).toLowerCase());
-  const hasHeader = headerRow[0] === "tag" || (headerRow[1] === "question" && headerRow[2] === "answer");
-  const startAt = hasHeader ? 1 : 0;
-  return rows.slice(startAt).map((row) => ({
-    tag: cleanImportText(row[0] || "General"),
-    question: cleanImportText(row[1] || ""),
-    answer: cleanImportText(row[2] || "")
-  }));
+  return parseRowsMatrix(rows);
+}
+
+function parseRowsMatrix(rows) {
+  if (!Array.isArray(rows) || !rows.length) return [];
+  const header = rows[0].map((x) => cleanImportText(x).toLowerCase());
+  const headerMap = {};
+  header.forEach((name, idx) => {
+    headerMap[name] = idx;
+  });
+
+  const hasNamedHeader = header.includes("question") && (header.includes("answer") || header.includes("option_a"));
+  const startAt = hasNamedHeader ? 1 : 0;
+
+  const getCell = (row, idx) => cleanImportText(idx >= 0 ? row[idx] : "");
+  const getByName = (row, names, fallbackIdx = -1) => {
+    for (const name of names) {
+      if (Object.prototype.hasOwnProperty.call(headerMap, name)) {
+        return getCell(row, headerMap[name]);
+      }
+    }
+    return getCell(row, fallbackIdx);
+  };
+
+  return rows.slice(startAt).map((row) => {
+    const tag = getByName(row, ["tag"], 0) || "General";
+    const type = (getByName(row, ["type"], 1) || (hasNamedHeader ? "short" : "")).toLowerCase();
+    const question = getByName(row, ["question"], hasNamedHeader ? -1 : 1);
+    const answer = getByName(row, ["answer"], hasNamedHeader ? -1 : 2);
+    const optionA = getByName(row, ["option_a", "optiona", "a"], -1);
+    const optionB = getByName(row, ["option_b", "optionb", "b"], -1);
+    const optionC = getByName(row, ["option_c", "optionc", "c"], -1);
+    const optionD = getByName(row, ["option_d", "optiond", "d"], -1);
+    const correctOption = getByName(row, ["correct_option", "correctoption", "correct"], -1).toUpperCase();
+
+    return {
+      tag,
+      type: type === "mcq" ? "mcq" : "short",
+      question,
+      answer,
+      option_a: optionA,
+      option_b: optionB,
+      option_c: optionC,
+      option_d: optionD,
+      correct_option: correctOption
+    };
+  });
+}
+
+function formatCardsForTextarea(cards) {
+  const header = "tag,type,question,answer,option_a,option_b,option_c,option_d,correct_option";
+  const rows = cards.map((r) => {
+    const type = String(r.type || "short").toLowerCase() === "mcq" ? "mcq" : "short";
+    const cols = [
+      r.tag || "General",
+      type,
+      r.question || "",
+      type === "mcq" ? "" : r.answer || "",
+      r.option_a || "",
+      r.option_b || "",
+      r.option_c || "",
+      r.option_d || "",
+      r.correct_option || ""
+    ];
+    return cols.map((v) => String(v).replaceAll("\n", " ").trim()).join(",");
+  });
+  return [header, ...rows].join("\n");
 }
 
 async function readFileAsImportCards(file) {
@@ -1163,7 +1368,15 @@ async function readFileAsImportCards(file) {
 }
 
 async function importParsedCards(parsed) {
-  const sanitizedCards = parsed.map(sanitizeQuestionCard).filter((r) => r.question && r.answer);
+  const sanitizedCards = parsed
+    .map(sanitizeQuestionCard)
+    .filter((r) => {
+      if (!r.question) return false;
+      if (r.type === "mcq") {
+        return Boolean(r.option_a && r.option_b && r.option_c && r.option_d && toMcqOptionKey(r.correct_option));
+      }
+      return Boolean(r.answer);
+    });
   if (!sanitizedCards.length) {
     setStatus(dom.importStatus, "No valid cards after cleaning import data.", "error");
     return;
@@ -1179,7 +1392,7 @@ async function importParsedCards(parsed) {
     try {
       const result = await apiRequest("/api/questions/import", "POST", {
         trainerKey,
-        cards: sanitizedCards
+        cards: sanitizedCards.map(encodeCardForCloud)
       });
       state.trainerKey = trainerKey;
       await loadDeckFromCloud();
@@ -1203,9 +1416,9 @@ async function importParsedCards(parsed) {
 async function importCsv() {
   if (state.role !== "trainer") return;
 
-  const parsed = parseCsv(dom.csvInput.value).filter((r) => r.question && r.answer);
+  const parsed = parseCsv(dom.csvInput.value).filter((r) => r.question);
   if (!parsed.length) {
-    setStatus(dom.importStatus, "No valid cards. Use tag,question,answer format.", "error");
+    setStatus(dom.importStatus, "No valid cards. Use tag,type,question,... format or legacy tag,question,answer.", "error");
     return;
   }
 
@@ -1222,12 +1435,12 @@ async function importCsvFile() {
   }
 
   try {
-    const parsed = (await readFileAsImportCards(file)).filter((r) => r.question && r.answer);
+    const parsed = (await readFileAsImportCards(file)).filter((r) => r.question);
     if (!parsed.length) {
       setStatus(dom.importStatus, "File has no valid cards.", "error");
       return;
     }
-    dom.csvInput.value = parsed.map((r) => `${r.tag},${r.question},${r.answer}`).join("\n");
+    dom.csvInput.value = formatCardsForTextarea(parsed);
     await importParsedCards(parsed);
   } catch {
     setStatus(dom.importStatus, "Could not read file. Use CSV/TSV or Excel (.xlsx/.xls).", "error");
@@ -1247,9 +1460,19 @@ function exportCsv() {
     return;
   }
 
-  const header = "tag,question,answer";
+  const header = "tag,type,question,answer,option_a,option_b,option_c,option_d,correct_option";
   const rows = state.deck.map((card) =>
-    [card.tag, card.question, card.answer]
+    [
+      card.tag,
+      card.type || "short",
+      card.question,
+      card.type === "mcq" ? "" : card.answer,
+      card.type === "mcq" ? card.options?.[0] || "" : "",
+      card.type === "mcq" ? card.options?.[1] || "" : "",
+      card.type === "mcq" ? card.options?.[2] || "" : "",
+      card.type === "mcq" ? card.options?.[3] || "" : "",
+      card.type === "mcq" ? card.correctOption || "" : ""
+    ]
       .map((value) => `"${String(value).replaceAll('"', '""')}"`)
       .join(",")
   );
@@ -1354,6 +1577,16 @@ function bindEvents() {
     setSelectedTag(btn.dataset.tag);
   });
 
+  dom.mcqOptions.addEventListener("click", (event) => {
+    const optionBtn = event.target.closest("button[data-option-key]");
+    if (!optionBtn) return;
+    if (state.awaitingNext || hasTrialLimitReached()) return;
+    state.selectedMcqOption = optionBtn.dataset.optionKey || "";
+    dom.mcqOptions.querySelectorAll("button[data-option-key]").forEach((btn) => {
+      btn.classList.toggle("selected", btn === optionBtn);
+    });
+  });
+
   dom.weakDrillToggle.addEventListener("change", (event) => {
     state.weakDrillEnabled = event.target.checked;
     saveLocal();
@@ -1370,6 +1603,11 @@ function bindEvents() {
   });
 
   dom.toggleExamPanelBtn.addEventListener("click", () => {
+    if (isTrialUser()) {
+      setStatus(dom.examStatus, trialUpgradeMessage(), "error");
+      dom.examPanel.classList.add("hidden");
+      return;
+    }
     dom.examPanel.classList.toggle("hidden");
   });
 
@@ -1394,7 +1632,7 @@ function bindEvents() {
     if (!file) return;
     try {
       const parsed = await readFileAsImportCards(file);
-      dom.csvInput.value = parsed.map((r) => `${r.tag},${r.question},${r.answer}`).join("\n");
+      dom.csvInput.value = formatCardsForTextarea(parsed);
     } catch {
       // fallback: manual paste
     }
