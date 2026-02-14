@@ -313,7 +313,6 @@ function uid(prefix) {
 }
 
 async function hardReset() {
-  alert("Reset button clicked! Starting process..."); // Debug line to confirm action
   const choice = confirm("Do you want to clear the Server Database as well? (Click OK for Server & Local, Cancel for Local Only)");
 
   if (choice) {
@@ -497,14 +496,21 @@ function decodeEmbeddedCard(rawAnswer) {
   if (!value.startsWith(MCQ_PREFIX)) return null;
   try {
     const parsed = JSON.parse(value.slice(MCQ_PREFIX.length));
-    const options = Array.isArray(parsed.options) ? parsed.options.map((x) => String(x || "").trim()) : [];
+    // Check for explicit options array OR flat properties in parsing
+    let options = Array.isArray(parsed.options) ? parsed.options : [];
+    if (!options.length) {
+      // Try fallback if JSON has them
+      options = [parsed.optionA, parsed.optionB, parsed.optionC, parsed.optionD].filter(Boolean);
+    }
+    options = options.map((x) => String(x || "").trim());
+
     if (options.length < 2) return null;
     const correctOption = toMcqOptionKey(parsed.correctOption);
-    if (!correctOption) return null;
+    // Relaxed check: Return MCQ even if correctOption is missing to preserve UI
     return {
       type: "mcq",
       options: options.slice(0, 4),
-      correctOption,
+      correctOption: correctOption || "",
       rationale: String(parsed.rationale || "").trim()
     };
   } catch {
@@ -560,7 +566,8 @@ function encodeCardForCloud(card) {
     options = [optA, optB, optC, optD].filter(Boolean);
   }
 
-  const correctOption = toMcqOptionKey(card.correctOption);
+  // FIX: Check both snake_case (from CSV parser) and camelCase
+  const correctOption = toMcqOptionKey(card.correctOption || card.correct_option);
   const payload = {
     options,
     correctOption,
