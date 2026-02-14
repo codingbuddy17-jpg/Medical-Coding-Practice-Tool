@@ -320,8 +320,27 @@ function uid(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function hardReset() {
-  if (!confirm("This will clear ALL local data and maximize storage. You will need to re-import questions. Continue?")) return;
+async function hardReset() {
+  const choice = confirm("Do you want to clear the Server Database as well? (Click OK for Server & Local, Cancel for Local Only)");
+
+  if (choice) {
+    const key = prompt("Enter Admin Key to confirm Server Reset:");
+    if (!key) return;
+
+    try {
+      const res = await apiRequest("/api/admin/reset-data", {
+        method: "POST",
+        body: JSON.stringify({ adminKey: key })
+      });
+      alert("Server data cleared.");
+    } catch (err) {
+      alert(`Server reset failed: ${err.message}`);
+      return;
+    }
+  } else {
+    if (!confirm("This will clear ALL local data and maximize storage. You will need to re-import questions. Continue?")) return;
+  }
+
   localStorage.clear();
   window.location.reload();
 }
