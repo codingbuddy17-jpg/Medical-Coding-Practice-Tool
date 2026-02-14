@@ -29,6 +29,8 @@ const COHORTS_FILE = path.join(DATA_DIR, "cohorts.json");
 const EXAMS_FILE = path.join(DATA_DIR, "exam-blueprints.json");
 const FLAGS_FILE = path.join(DATA_DIR, "question-flags.json");
 const CTA_FILE = path.join(DATA_DIR, "cta-events.json");
+const IMPORT_REVIEWS_FILE = path.join(DATA_DIR, "import-reviews.json");
+const IMPORT_BATCHES_FILE = path.join(DATA_DIR, "import-batches.json");
 
 const DEFAULT_EXAM_TEMPLATES = [
   {
@@ -88,6 +90,8 @@ function ensureDataStore() {
   }
   if (!fs.existsSync(FLAGS_FILE)) fs.writeFileSync(FLAGS_FILE, JSON.stringify({ flags: [] }, null, 2));
   if (!fs.existsSync(CTA_FILE)) fs.writeFileSync(CTA_FILE, JSON.stringify({ events: [] }, null, 2));
+  if (!fs.existsSync(IMPORT_REVIEWS_FILE)) fs.writeFileSync(IMPORT_REVIEWS_FILE, JSON.stringify({ items: [] }, null, 2));
+  if (!fs.existsSync(IMPORT_BATCHES_FILE)) fs.writeFileSync(IMPORT_BATCHES_FILE, JSON.stringify({ batches: [] }, null, 2));
 }
 
 function readSessions() {
@@ -232,6 +236,38 @@ function writeCtaEvents(events) {
   fs.writeFileSync(CTA_FILE, JSON.stringify({ events }, null, 2));
 }
 
+function readImportReviews() {
+  ensureDataStore();
+  const raw = fs.readFileSync(IMPORT_REVIEWS_FILE, "utf8");
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.items) ? parsed.items : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeImportReviews(items) {
+  ensureDataStore();
+  fs.writeFileSync(IMPORT_REVIEWS_FILE, JSON.stringify({ items }, null, 2));
+}
+
+function readImportBatches() {
+  ensureDataStore();
+  const raw = fs.readFileSync(IMPORT_BATCHES_FILE, "utf8");
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.batches) ? parsed.batches : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeImportBatches(batches) {
+  ensureDataStore();
+  fs.writeFileSync(IMPORT_BATCHES_FILE, JSON.stringify({ batches }, null, 2));
+}
+
 function sanitizeTemplate(input) {
   const id = String(input.id || "").trim();
   const name = String(input.name || "").trim();
@@ -291,6 +327,8 @@ function contentType(filePath) {
   if (ext === ".js") return "application/javascript; charset=utf-8";
   if (ext === ".json") return "application/json; charset=utf-8";
   if (ext === ".svg") return "image/svg+xml";
+  if (ext === ".png") return "image/png";
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
   return "text/plain; charset=utf-8";
 }
 
@@ -913,6 +951,12 @@ function questionCompositeKey(tag, question, answer) {
   return `${normalizeKeyPart(tag)}|${normalizeKeyPart(question)}|${normalizeKeyPart(answer)}`;
 }
 
+function nearQuestionKey(question) {
+  return String(question || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
 function sanitizeQuestionCard(card) {
   const clean = (input) => {
     const raw = String(input || "").replace(/\u0000/g, "");
@@ -942,7 +986,13 @@ function sanitizeQuestionCard(card) {
   };
 }
 
-async function storageImportQuestions(cards) {
+async function storageImportQuestions(cards, meta = {}) {
+  const uploadedBy = String(meta.uploadedBy || "trainer");
+  const reviewRows = Array.isArray(meta.reviewRows) ? meta.reviewRows : [];
+  const batchSummary = meta.batchSummary && typeof meta.batchSummary === "object" ? meta.batchSummary : null;
+  const sourceName = String(meta.sourceName || "").trim();
+  const batchId = `batch_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
   const sanitized = cards.map(sanitizeQuestionCard).filter((c) => c.question && c.answer);
   const uniqueIncoming = [];
   const incomingSeen = new Set();
@@ -953,7 +1003,7 @@ async function storageImportQuestions(cards) {
     uniqueIncoming.push(card);
   }
 
-  if (!uniqueIncoming.length) return { inserted: 0, skipped: cards.length };
+  if (!uniqueIncoming.length) return { inserted: 0, skipped: cards.length, batchId, reviewQueued: 0 };
 
   if (!USE_SUPABASE) {
     const existing = readQuestions();
@@ -969,7 +1019,26 @@ async function storageImportQuestions(cards) {
       created_at: new Date(now).toISOString()
     }));
     writeQuestions([...existing, ...newRows]);
-    return { inserted: newRows.length, skipped: cards.length - newRows.length };
+
+    const batches = readImportBatches();
+    const summary = batchSummary || {};
+    batches.unshift({
+      id: batchId,
+      uploadedBy,
+      sourceName,
+      totalRows: Number(summary.total || cards.length),
+      insertedCount: newRows.length,
+      skippedCount: Number(summary.skip || cards.length - newRows.length),
+      warnCount: Number(summary.warn || 0),
+      failCount: Number(summary.fail || 0),
+      insertedQuestionIds: newRows.map((row) => row.id),
+      createdAt: now,
+      rolledBackAt: null,
+      rollbackCount: 0
+    });
+    writeImportBatches(batches);
+    const queued = await storageCreateImportReviewItems({ batchId, rows: reviewRows, createdBy: uploadedBy });
+    return { inserted: newRows.length, skipped: cards.length - newRows.length, batchId, reviewQueued: queued.queued };
   }
 
   const { data: existingRows, error: existingErr } = await supabase
@@ -981,7 +1050,23 @@ async function storageImportQuestions(cards) {
   const existingSet = new Set((existingRows || []).map((q) => questionCompositeKey(q.tag, q.question, q.answer)));
   const toInsert = uniqueIncoming.filter((c) => !existingSet.has(questionCompositeKey(c.tag, c.question, c.answer)));
 
-  if (!toInsert.length) return { inserted: 0, skipped: cards.length };
+  if (!toInsert.length) {
+    const summary = batchSummary || {};
+    const { error: batchErr } = await supabase.from("import_batches").insert({
+      batch_id: batchId,
+      uploaded_by: uploadedBy,
+      source_name: sourceName || null,
+      total_rows: Number(summary.total || cards.length),
+      inserted_count: 0,
+      skipped_count: Number(summary.skip || cards.length),
+      warn_count: Number(summary.warn || 0),
+      fail_count: Number(summary.fail || 0),
+      notes: String(meta.notes || "").trim() || null
+    });
+    if (batchErr) throw batchErr;
+    const queued = await storageCreateImportReviewItems({ batchId, rows: reviewRows, createdBy: uploadedBy });
+    return { inserted: 0, skipped: cards.length, batchId, reviewQueued: queued.queued };
+  }
 
   const payload = toInsert.map((c) => ({
     tag: c.tag,
@@ -990,10 +1075,378 @@ async function storageImportQuestions(cards) {
     is_active: true
   }));
 
-  const { error: insertErr } = await supabase.from("questions").insert(payload);
+  const { data: insertedRows, error: insertErr } = await supabase.from("questions").insert(payload).select("id");
   if (insertErr) throw insertErr;
+  const insertedIds = (insertedRows || []).map((row) => row.id).filter(Boolean);
 
-  return { inserted: payload.length, skipped: cards.length - payload.length };
+  const summary = batchSummary || {};
+  const { error: batchErr } = await supabase.from("import_batches").insert({
+    batch_id: batchId,
+    uploaded_by: uploadedBy,
+    source_name: sourceName || null,
+    total_rows: Number(summary.total || cards.length),
+    inserted_count: payload.length,
+    skipped_count: Number(summary.skip || cards.length - payload.length),
+    warn_count: Number(summary.warn || 0),
+    fail_count: Number(summary.fail || 0),
+    notes: String(meta.notes || "").trim() || null
+  });
+  if (batchErr) throw batchErr;
+
+  if (insertedIds.length) {
+    const batchItems = insertedIds.map((id) => ({
+      batch_id: batchId,
+      question_id: id,
+      disposition: "inserted"
+    }));
+    const { error: itemsErr } = await supabase.from("import_batch_items").insert(batchItems);
+    if (itemsErr) throw itemsErr;
+  }
+
+  const queued = await storageCreateImportReviewItems({ batchId, rows: reviewRows, createdBy: uploadedBy });
+  return { inserted: payload.length, skipped: cards.length - payload.length, batchId, reviewQueued: queued.queued };
+}
+
+async function storagePreviewImportQuestions(cards) {
+  const incoming = cards.map(sanitizeQuestionCard);
+  const exactSeen = new Set();
+  const nearSeen = new Set();
+
+  const validIncoming = incoming.filter((c) => c.question && c.answer);
+  if (!validIncoming.length) {
+    return {
+      summary: { total: incoming.length, pass: 0, warn: 0, fail: incoming.length, skip: 0 },
+      rows: incoming.map((c, idx) => ({
+        rowNumber: idx + 1,
+        tag: c.tag || "",
+        question: c.question || "",
+        status: "fail",
+        reasons: ["Missing question/answer"]
+      }))
+    };
+  }
+
+  let existingRows = [];
+  if (!USE_SUPABASE) {
+    existingRows = readQuestions().filter((q) => q.is_active !== false);
+  } else {
+    const { data, error } = await supabase.from("questions").select("tag,question,answer").eq("is_active", true);
+    if (error) throw error;
+    existingRows = data || [];
+  }
+
+  const existingExact = new Set(existingRows.map((q) => questionCompositeKey(q.tag, q.question, q.answer)));
+  const existingNear = new Set(existingRows.map((q) => nearQuestionKey(q.question)));
+
+  const rows = incoming.map((card, idx) => {
+    const reasons = [];
+    let status = "pass";
+    if (!card.question || !card.answer) {
+      status = "fail";
+      reasons.push("Missing question/answer");
+      return {
+        rowNumber: idx + 1,
+        tag: card.tag || "",
+        question: card.question || "",
+        status,
+        reasons
+      };
+    }
+
+    const exactKey = questionCompositeKey(card.tag, card.question, card.answer);
+    const nearKey = nearQuestionKey(card.question);
+
+    if (exactSeen.has(exactKey)) {
+      status = "skip";
+      reasons.push("Exact duplicate in this file");
+    } else if (existingExact.has(exactKey)) {
+      status = "skip";
+      reasons.push("Exact duplicate already in database");
+    } else {
+      exactSeen.add(exactKey);
+    }
+
+    if (status !== "skip") {
+      if (nearSeen.has(nearKey)) {
+        status = "warn";
+        reasons.push("Near duplicate question in this file");
+      } else if (existingNear.has(nearKey)) {
+        status = "warn";
+        reasons.push("Near duplicate question already in database");
+      }
+    }
+
+    nearSeen.add(nearKey);
+
+    return {
+      rowNumber: idx + 1,
+      tag: card.tag || "",
+      question: card.question || "",
+      status,
+      reasons
+    };
+  });
+
+  const summary = rows.reduce(
+    (acc, row) => {
+      acc.total += 1;
+      if (row.status === "pass") acc.pass += 1;
+      else if (row.status === "warn") acc.warn += 1;
+      else if (row.status === "skip") acc.skip += 1;
+      else acc.fail += 1;
+      return acc;
+    },
+    { total: 0, pass: 0, warn: 0, fail: 0, skip: 0 }
+  );
+
+  return { summary, rows };
+}
+
+function sanitizeImportReviewRow(row) {
+  return {
+    tag: String(row?.tag || "General").trim() || "General",
+    question: String(row?.question || "").trim(),
+    answer: String(row?.answer || "").trim(),
+    reasons: Array.isArray(row?.reasons) ? row.reasons.map((x) => String(x || "").trim()).filter(Boolean) : [],
+    sourceRowNumber: Number(row?.rowNumber || 0)
+  };
+}
+
+async function storageCreateImportReviewItems({ batchId, rows, createdBy }) {
+  const now = Date.now();
+  const cleanRows = (Array.isArray(rows) ? rows : []).map(sanitizeImportReviewRow).filter((r) => r.question && r.answer);
+  if (!cleanRows.length) return { queued: 0 };
+
+  if (!USE_SUPABASE) {
+    const items = readImportReviews();
+    cleanRows.forEach((row) => {
+      items.unshift({
+        id: `ir_${now}_${Math.random().toString(36).slice(2, 8)}`,
+        batchId: String(batchId || ""),
+        status: "open",
+        tag: row.tag,
+        question: row.question,
+        answer: row.answer,
+        reasons: row.reasons,
+        sourceRowNumber: row.sourceRowNumber || null,
+        createdBy: String(createdBy || "trainer"),
+        createdAt: now,
+        updatedAt: now,
+        resolution: null
+      });
+    });
+    writeImportReviews(items);
+    return { queued: cleanRows.length };
+  }
+
+  const payload = cleanRows.map((row) => ({
+    batch_id: String(batchId || null),
+    status: "open",
+    tag: row.tag,
+    question: row.question,
+    answer: row.answer,
+    reasons: row.reasons,
+    source_row_number: row.sourceRowNumber || null,
+    created_by: String(createdBy || "trainer")
+  }));
+  const { error } = await supabase.from("import_review_queue").insert(payload);
+  if (error) throw error;
+  return { queued: payload.length };
+}
+
+async function storageListImportReviewItems(status) {
+  const wanted = String(status || "").trim().toLowerCase();
+  if (!USE_SUPABASE) {
+    let items = readImportReviews();
+    if (wanted) items = items.filter((item) => String(item.status || "").toLowerCase() === wanted);
+    return items.slice(0, 1000);
+  }
+
+  let query = supabase
+    .from("import_review_queue")
+    .select("id,batch_id,status,tag,question,answer,reasons,source_row_number,created_by,created_at,updated_at,resolution_note,resolution_action,resolved_at")
+    .order("created_at", { ascending: false })
+    .limit(1000);
+  if (wanted) query = query.eq("status", wanted);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []).map((row) => ({
+    id: String(row.id || ""),
+    batchId: String(row.batch_id || ""),
+    status: String(row.status || "open"),
+    tag: String(row.tag || ""),
+    question: String(row.question || ""),
+    answer: String(row.answer || ""),
+    reasons: Array.isArray(row.reasons) ? row.reasons : [],
+    sourceRowNumber: Number(row.source_row_number || 0) || null,
+    createdBy: String(row.created_by || ""),
+    createdAt: Date.parse(row.created_at),
+    updatedAt: Date.parse(row.updated_at),
+    resolution: row.resolution_action
+      ? {
+          action: String(row.resolution_action),
+          note: String(row.resolution_note || ""),
+          at: row.resolved_at ? Date.parse(row.resolved_at) : Date.parse(row.updated_at)
+        }
+      : null
+  }));
+}
+
+async function storageResolveImportReviewItem({ reviewId, action, note }) {
+  const cleanId = String(reviewId || "").trim();
+  const cleanAction = String(action || "").trim().toLowerCase();
+  const cleanNote = String(note || "").trim().slice(0, 300);
+  if (!cleanId || !cleanAction) throw new Error("reviewId and action are required");
+
+  if (!USE_SUPABASE) {
+    const items = readImportReviews();
+    const idx = items.findIndex((item) => String(item.id) === cleanId);
+    if (idx < 0) throw new Error("Review item not found");
+    items[idx].status = cleanAction === "reopen" ? "open" : "resolved";
+    items[idx].updatedAt = Date.now();
+    items[idx].resolution = {
+      action: cleanAction,
+      note: cleanNote,
+      at: Date.now()
+    };
+    writeImportReviews(items);
+    return items[idx];
+  }
+
+  const payload =
+    cleanAction === "reopen"
+      ? {
+          status: "open",
+          resolution_action: null,
+          resolution_note: null,
+          resolved_at: null
+        }
+      : {
+          status: "resolved",
+          resolution_action: cleanAction,
+          resolution_note: cleanNote,
+          resolved_at: toIso(Date.now())
+        };
+  const { error } = await supabase.from("import_review_queue").update(payload).eq("id", cleanId);
+  if (error) throw error;
+  const items = await storageListImportReviewItems("");
+  const found = items.find((item) => String(item.id) === cleanId);
+  if (!found) throw new Error("Review item not found");
+  return found;
+}
+
+async function storageResolveAllImportReviewItems(note = "") {
+  const cleanNote = String(note || "").trim().slice(0, 300);
+  if (!USE_SUPABASE) {
+    const items = readImportReviews();
+    let count = 0;
+    const now = Date.now();
+    items.forEach((item) => {
+      if (String(item.status || "") === "open") {
+        item.status = "resolved";
+        item.updatedAt = now;
+        item.resolution = {
+          action: "resolve_all",
+          note: cleanNote || "Bulk resolved from trainer queue.",
+          at: now
+        };
+        count += 1;
+      }
+    });
+    writeImportReviews(items);
+    return { updated: count };
+  }
+
+  const { data, error } = await supabase
+    .from("import_review_queue")
+    .update({
+      status: "resolved",
+      resolution_action: "resolve_all",
+      resolution_note: cleanNote || "Bulk resolved from trainer queue.",
+      resolved_at: toIso(Date.now())
+    })
+    .eq("status", "open")
+    .select("id");
+  if (error) throw error;
+  return { updated: Array.isArray(data) ? data.length : 0 };
+}
+
+async function storageListImportBatches(limit = 100) {
+  const max = Math.max(1, Math.min(500, Number(limit || 100)));
+  if (!USE_SUPABASE) return readImportBatches().slice(0, max);
+  const { data, error } = await supabase
+    .from("import_batches")
+    .select("id,batch_id,uploaded_by,total_rows,inserted_count,skipped_count,warn_count,fail_count,created_at,notes")
+    .order("created_at", { ascending: false })
+    .limit(max);
+  if (error) throw error;
+  return (data || []).map((row) => ({
+    id: String(row.batch_id || row.id || ""),
+    uploadedBy: String(row.uploaded_by || ""),
+    totalRows: Number(row.total_rows || 0),
+    insertedCount: Number(row.inserted_count || 0),
+    skippedCount: Number(row.skipped_count || 0),
+    warnCount: Number(row.warn_count || 0),
+    failCount: Number(row.fail_count || 0),
+    notes: String(row.notes || ""),
+    createdAt: Date.parse(row.created_at)
+  }));
+}
+
+async function storageRollbackImportBatch(batchId) {
+  const cleanBatchId = String(batchId || "").trim();
+  if (!cleanBatchId) throw new Error("batchId is required");
+
+  if (!USE_SUPABASE) {
+    const batches = readImportBatches();
+    const batch = batches.find((b) => String(b.id) === cleanBatchId);
+    if (!batch) throw new Error("Batch not found");
+    if (batch.rolledBackAt) throw new Error("Batch already rolled back");
+
+    const questions = readQuestions();
+    const idSet = new Set(Array.isArray(batch.insertedQuestionIds) ? batch.insertedQuestionIds.map((id) => String(id)) : []);
+    let affected = 0;
+    questions.forEach((q) => {
+      if (idSet.has(String(q.id)) && q.is_active !== false) {
+        q.is_active = false;
+        affected += 1;
+      }
+    });
+    writeQuestions(questions);
+
+    batch.rolledBackAt = Date.now();
+    batch.rollbackCount = affected;
+    writeImportBatches(batches);
+    return { batchId: cleanBatchId, affected };
+  }
+
+  const { data: batchRows, error: batchErr } = await supabase
+    .from("import_batches")
+    .select("id,batch_id,rolled_back_at")
+    .eq("batch_id", cleanBatchId)
+    .limit(1);
+  if (batchErr) throw batchErr;
+  const batch = (batchRows || [])[0];
+  if (!batch) throw new Error("Batch not found");
+  if (batch.rolled_back_at) throw new Error("Batch already rolled back");
+
+  const { data: items, error: itemsErr } = await supabase
+    .from("import_batch_items")
+    .select("question_id")
+    .eq("batch_id", cleanBatchId)
+    .eq("disposition", "inserted");
+  if (itemsErr) throw itemsErr;
+  const ids = (items || []).map((row) => row.question_id).filter(Boolean);
+  if (!ids.length) return { batchId: cleanBatchId, affected: 0 };
+
+  const { error: updateErr } = await supabase.from("questions").update({ is_active: false }).in("id", ids);
+  if (updateErr) throw updateErr;
+  const { error: markErr } = await supabase
+    .from("import_batches")
+    .update({ rolled_back_at: toIso(Date.now()), rollback_count: ids.length })
+    .eq("batch_id", cleanBatchId);
+  if (markErr) throw markErr;
+  return { batchId: cleanBatchId, affected: ids.length };
 }
 
 async function storageListQuestions(tag) {
@@ -1472,7 +1925,102 @@ const server = http.createServer(async (req, res) => {
       if (!cards.length) return json(res, 400, { error: "No cards provided" });
       if (cards.length > 10000) return json(res, 400, { error: "Batch too large" });
 
-      const result = await storageImportQuestions(cards);
+      const result = await storageImportQuestions(cards, {
+        uploadedBy: String(body.uploadedBy || "trainer"),
+        reviewRows: Array.isArray(body.reviewRows) ? body.reviewRows : [],
+        batchSummary: body.batchSummary && typeof body.batchSummary === "object" ? body.batchSummary : null,
+        sourceName: String(body.sourceName || ""),
+        notes: String(body.notes || "")
+      });
+      return json(res, 200, result);
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/import/review" && req.method === "GET") {
+    const trainerKey = url.searchParams.get("trainerKey");
+    const access = readAccessConfig();
+    if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+    try {
+      const status = String(url.searchParams.get("status") || "");
+      const items = await storageListImportReviewItems(status);
+      return json(res, 200, { items });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/import/review/action" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const trainerKey = String(body.trainerKey || "");
+      const access = readAccessConfig();
+      if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+      const item = await storageResolveImportReviewItem({
+        reviewId: body.reviewId,
+        action: body.action,
+        note: body.note
+      });
+      return json(res, 200, { item });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/import/review/resolve-all" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const trainerKey = String(body.trainerKey || "");
+      const access = readAccessConfig();
+      if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+      const result = await storageResolveAllImportReviewItems(body.note);
+      return json(res, 200, result);
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/import/batches" && req.method === "GET") {
+    const trainerKey = url.searchParams.get("trainerKey");
+    const access = readAccessConfig();
+    if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+    try {
+      const limit = Number(url.searchParams.get("limit") || 100);
+      const batches = await storageListImportBatches(limit);
+      return json(res, 200, { batches });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/import/batches/rollback" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const trainerKey = String(body.trainerKey || "");
+      const access = readAccessConfig();
+      if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+      const result = await storageRollbackImportBatch(body.batchId);
+      return json(res, 200, result);
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/questions/import/preview" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const trainerKey = String(body.trainerKey || "");
+      const access = readAccessConfig();
+      if (!access.trainerKey || trainerKey !== access.trainerKey) {
+        return json(res, 403, { error: "Forbidden" });
+      }
+
+      const cards = Array.isArray(body.cards) ? body.cards : [];
+      if (!cards.length) return json(res, 400, { error: "No cards provided" });
+      if (cards.length > 10000) return json(res, 400, { error: "Batch too large" });
+
+      const result = await storagePreviewImportQuestions(cards);
       return json(res, 200, result);
     } catch (err) {
       return json(res, 400, { error: err.message });

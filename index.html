@@ -16,7 +16,7 @@
     <main class="app">
       <header class="topbar">
         <div class="brand-block">
-          <img class="brand-logo" src="CB360F.png" alt="CodingBuddy360 logo" />
+          <img class="brand-logo" src="CB.png" alt="CodingBuddy360 logo" />
           <div>
             <p class="eyebrow">CodingBuddy360</p>
             <h1>PracticeBuddy Lab</h1>
@@ -302,7 +302,95 @@
             <button id="loadStarterBtn" class="ghost-btn" type="button">Load Starter Deck</button>
             <button id="exportBtn" class="ghost-btn" type="button">Export Deck</button>
           </div>
+          <div id="importPreviewPanel" class="panel import-preview hidden">
+            <h4>Import Preview</h4>
+            <p id="importPreviewSummary" class="status"></p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Row</th>
+                    <th>Status</th>
+                    <th>Tag</th>
+                    <th>Question</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="importPreviewBody">
+                  <tr>
+                    <td colspan="5">No preview yet.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="panel-actions">
+              <button id="confirmImportBtn" class="primary-btn" type="button">Confirm Import</button>
+              <button id="cancelImportPreviewBtn" class="ghost-btn" type="button">Cancel Preview</button>
+            </div>
+          </div>
           <p id="importStatus" class="status" aria-live="polite"></p>
+        </section>
+
+        <section class="panel">
+          <h3>Import Quality Queue</h3>
+          <div class="panel-actions">
+            <select id="importReviewStatusFilter">
+              <option value="open">Open</option>
+              <option value="">All</option>
+              <option value="resolved">Resolved</option>
+            </select>
+            <button id="refreshImportReviewBtn" class="ghost-btn" type="button">Refresh Queue</button>
+            <button id="resolveAllImportReviewBtn" class="ghost-btn" type="button">Resolve All Open</button>
+            <button id="exportImportReviewBtn" class="ghost-btn" type="button">Export Queue CSV</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Tag</th>
+                  <th>Question</th>
+                  <th>Reason</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="importReviewBody">
+                <tr>
+                  <td colspan="5">No import review items.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p id="importReviewStatus" class="status" aria-live="polite"></p>
+        </section>
+
+        <section class="panel">
+          <h3>Import Batch Audit</h3>
+          <div class="panel-actions">
+            <button id="refreshImportBatchesBtn" class="ghost-btn" type="button">Refresh Batches</button>
+            <input id="rollbackBatchIdInput" type="text" placeholder="Enter batch ID for rollback" />
+            <button id="rollbackBatchBtn" class="ghost-btn" type="button">Rollback Batch</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Batch ID</th>
+                  <th>Inserted</th>
+                  <th>Warn</th>
+                  <th>Fail</th>
+                  <th>Skipped</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody id="importBatchBody">
+                <tr>
+                  <td colspan="6">No import batches loaded.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p id="importBatchStatus" class="status" aria-live="polite"></p>
         </section>
 
         <section class="panel">

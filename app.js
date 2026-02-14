@@ -135,6 +135,16 @@ const state = {
   },
   sessionConsole: {
     all: []
+  },
+  importAdmin: {
+    reviewItems: [],
+    batches: []
+  },
+  importPreview: {
+    active: false,
+    rows: [],
+    summary: null,
+    importCards: []
   }
 };
 
@@ -221,6 +231,22 @@ const dom = {
   loadStarterBtn: document.getElementById("loadStarterBtn"),
   exportBtn: document.getElementById("exportBtn"),
   importStatus: document.getElementById("importStatus"),
+  importPreviewPanel: document.getElementById("importPreviewPanel"),
+  importPreviewSummary: document.getElementById("importPreviewSummary"),
+  importPreviewBody: document.getElementById("importPreviewBody"),
+  confirmImportBtn: document.getElementById("confirmImportBtn"),
+  cancelImportPreviewBtn: document.getElementById("cancelImportPreviewBtn"),
+  importReviewStatusFilter: document.getElementById("importReviewStatusFilter"),
+  refreshImportReviewBtn: document.getElementById("refreshImportReviewBtn"),
+  resolveAllImportReviewBtn: document.getElementById("resolveAllImportReviewBtn"),
+  exportImportReviewBtn: document.getElementById("exportImportReviewBtn"),
+  importReviewBody: document.getElementById("importReviewBody"),
+  importReviewStatus: document.getElementById("importReviewStatus"),
+  refreshImportBatchesBtn: document.getElementById("refreshImportBatchesBtn"),
+  rollbackBatchIdInput: document.getElementById("rollbackBatchIdInput"),
+  rollbackBatchBtn: document.getElementById("rollbackBatchBtn"),
+  importBatchBody: document.getElementById("importBatchBody"),
+  importBatchStatus: document.getElementById("importBatchStatus"),
 
   refreshSessionsBtn: document.getElementById("refreshSessionsBtn"),
   exportSessionsBtn: document.getElementById("exportSessionsBtn"),
@@ -305,6 +331,10 @@ function normalize(text) {
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]/g, "");
+}
+
+function questionCompositeKey(tag, question, answer) {
+  return `${normalize(tag)}|${normalize(question)}|${normalize(answer)}`;
 }
 
 function normalizeTagKey(tag) {
@@ -823,6 +853,7 @@ function updateRoleUI() {
   if (!canUseExam) dom.examPanel.classList.add("hidden");
   dom.importStatus.textContent = "";
   dom.sessionLoadStatus.textContent = "";
+  if (!isTrainer) clearImportPreview();
   if (!isTrainer) {
     state.adminPanel.verified = false;
     dom.adminTools.classList.add("hidden");
@@ -832,6 +863,15 @@ function updateRoleUI() {
   dom.flagQuestionBtn.classList.toggle("hidden", isTrainer);
   syncExamControlLock();
   renderResources();
+  if (isTrainer) {
+    loadImportReviewQueue();
+    loadImportBatches();
+  } else {
+    state.importAdmin.reviewItems = [];
+    state.importAdmin.batches = [];
+    renderImportReviewQueue();
+    renderImportBatches();
+  }
   updateTrialLockUI();
   updateTrialInfoBannerUI();
   updateUpgradeWallUI();
@@ -1816,20 +1856,220 @@ async function readFileAsImportCards(file) {
   return parseCsv(text);
 }
 
-async function importParsedCards(parsed) {
-  const sanitizedCards = parsed
-    .map(sanitizeQuestionCard)
-    .filter((r) => {
-      if (!r.question) return false;
-      if (r.type === "mcq") {
-        return Boolean(r.option_a && r.option_b && r.option_c && r.option_d && toMcqOptionKey(r.correct_option));
-      }
-      return Boolean(r.answer);
-    });
-  if (!sanitizedCards.length) {
-    setStatus(dom.importStatus, "No valid cards after cleaning import data.", "error");
+function importSeverity(status) {
+  if (status === "fail") return 4;
+  if (status === "skip") return 3;
+  if (status === "warn") return 2;
+  return 1;
+}
+
+function mergeImportStatus(a, b) {
+  return importSeverity(b) > importSeverity(a) ? b : a;
+}
+
+function renderImportPreview() {
+  const active = Boolean(state.importPreview.active);
+  dom.importPreviewPanel.classList.toggle("hidden", !active);
+  if (!active) {
+    dom.importPreviewSummary.textContent = "";
+    dom.importPreviewBody.innerHTML = '<tr><td colspan="5">No preview yet.</td></tr>';
+    dom.confirmImportBtn.disabled = true;
     return;
   }
+
+  const summary = state.importPreview.summary || { total: 0, pass: 0, warn: 0, skip: 0, fail: 0 };
+  dom.importPreviewSummary.textContent = `Total ${summary.total} rows: ${summary.pass} pass, ${summary.warn} warn, ${summary.skip} skip, ${summary.fail} fail.`;
+  dom.confirmImportBtn.disabled = !state.importPreview.importCards.length;
+
+  const rows = Array.isArray(state.importPreview.rows) ? state.importPreview.rows : [];
+  const topRows = rows.slice(0, 120);
+  if (!topRows.length) {
+    dom.importPreviewBody.innerHTML = '<tr><td colspan="5">No rows available.</td></tr>';
+    return;
+  }
+
+  dom.importPreviewBody.innerHTML = topRows
+    .map((row) => {
+      const status = String(row.status || "pass");
+      const reason = Array.isArray(row.reasons) && row.reasons.length ? row.reasons.join("; ") : "-";
+      const question = String(row.question || "").slice(0, 140);
+      return `<tr><td>${row.rowNumber}</td><td><span class="import-status-pill import-status-${status}">${status}</span></td><td>${row.tag || ""}</td><td>${question}</td><td>${reason}</td></tr>`;
+    })
+    .join("");
+}
+
+function clearImportPreview() {
+  state.importPreview.active = false;
+  state.importPreview.rows = [];
+  state.importPreview.summary = null;
+  state.importPreview.importCards = [];
+  renderImportPreview();
+}
+
+function buildClientImportPreview(parsed) {
+  const rows = [];
+  const exactSeen = new Set();
+  const nearSeen = new Set();
+  const allowedTags = new Set(CATEGORY_OPTIONS.filter((item) => item.key !== "ALL").map((item) => item.key));
+
+  parsed.forEach((raw, idx) => {
+    const row = sanitizeQuestionCard(raw);
+    const reasons = [];
+    let status = "pass";
+    const rowNumber = idx + 1;
+
+    if (!row.question) {
+      status = "fail";
+      reasons.push("Missing question");
+    }
+
+    if (row.type === "mcq") {
+      const correct = toMcqOptionKey(row.correct_option);
+      if (!(row.option_a && row.option_b && row.option_c && row.option_d)) {
+        status = "fail";
+        reasons.push("MCQ requires options A-D");
+      }
+      if (!correct) {
+        status = "fail";
+        reasons.push("MCQ correct_option must be A/B/C/D");
+      }
+      const options = [row.option_a, row.option_b, row.option_c, row.option_d].map((x) => normalize(x));
+      if (new Set(options).size < options.length) {
+        status = mergeImportStatus(status, "warn");
+        reasons.push("MCQ options look duplicated");
+      }
+    } else if (!row.answer) {
+      status = "fail";
+      reasons.push("Short answer missing");
+    }
+
+    const normalizedTag = normalizeTagKey(row.tag);
+    if (normalizedTag === "OTHER") {
+      status = mergeImportStatus(status, "warn");
+      reasons.push("Tag not in configured category list");
+    } else if (!allowedTags.has(normalizedTag)) {
+      status = mergeImportStatus(status, "warn");
+      reasons.push("Tag is not currently enabled");
+    }
+
+    if (String(row.question || "").length < 15) {
+      status = mergeImportStatus(status, "warn");
+      reasons.push("Question text is very short");
+    }
+
+    const exactKey = questionCompositeKey(row.tag, row.question, row.type === "mcq" ? JSON.stringify([row.option_a, row.option_b, row.option_c, row.option_d, row.correct_option]) : row.answer);
+    const nearKey = String(row.question || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+
+    if (exactSeen.has(exactKey)) {
+      status = mergeImportStatus(status, "skip");
+      reasons.push("Exact duplicate in file");
+    } else {
+      exactSeen.add(exactKey);
+    }
+
+    if (nearSeen.has(nearKey) && nearKey) {
+      status = mergeImportStatus(status, "warn");
+      reasons.push("Near duplicate in file");
+    } else if (nearKey) {
+      nearSeen.add(nearKey);
+    }
+
+    rows.push({
+      rowNumber,
+      status,
+      reasons,
+      tag: row.tag,
+      question: row.question,
+      sanitized: row
+    });
+  });
+
+  return rows;
+}
+
+async function prepareImportPreview(parsed) {
+  const clientRows = buildClientImportPreview(parsed);
+  if (!clientRows.length) {
+    setStatus(dom.importStatus, "No valid rows found in input.", "error");
+    clearImportPreview();
+    return;
+  }
+
+  const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
+  if (!trainerKey) {
+    setStatus(dom.importStatus, "Trainer key required for import preview.", "error");
+    clearImportPreview();
+    return;
+  }
+
+  let serverRows = [];
+  try {
+    const preview = await apiRequest("/api/questions/import/preview", "POST", {
+      trainerKey,
+      cards: clientRows.map((row) => encodeCardForCloud(row.sanitized))
+    });
+    serverRows = Array.isArray(preview.rows) ? preview.rows : [];
+  } catch (err) {
+    setStatus(dom.importStatus, `Import preview failed: ${err.message}`, "error");
+    clearImportPreview();
+    return;
+  }
+
+  const mergedRows = clientRows.map((row, idx) => {
+    const dbRow = serverRows[idx];
+    const reasons = [...row.reasons];
+    let status = row.status;
+    if (dbRow) {
+      status = mergeImportStatus(status, dbRow.status || "pass");
+      if (Array.isArray(dbRow.reasons)) reasons.push(...dbRow.reasons);
+    }
+    return {
+      rowNumber: row.rowNumber,
+      status,
+      reasons: Array.from(new Set(reasons.filter(Boolean))),
+      tag: row.tag,
+      question: row.question,
+      sanitized: row.sanitized
+    };
+  });
+
+  const importCards = mergedRows
+    .filter((row) => row.status === "pass" || row.status === "warn")
+    .map((row) => row.sanitized);
+  const summary = mergedRows.reduce(
+    (acc, row) => {
+      acc.total += 1;
+      if (row.status === "pass") acc.pass += 1;
+      else if (row.status === "warn") acc.warn += 1;
+      else if (row.status === "skip") acc.skip += 1;
+      else acc.fail += 1;
+      return acc;
+    },
+    { total: 0, pass: 0, warn: 0, skip: 0, fail: 0 }
+  );
+
+  state.importPreview.active = true;
+  state.importPreview.rows = mergedRows;
+  state.importPreview.summary = summary;
+  state.importPreview.importCards = importCards;
+  renderImportPreview();
+
+  if (!importCards.length) {
+    setStatus(dom.importStatus, "Import preview ready. No importable rows (all skipped or failed).", "error");
+    return;
+  }
+  setStatus(dom.importStatus, "Import preview ready. Review and click Confirm Import.", "success");
+}
+
+async function confirmImportFromPreview() {
+  if (!state.importPreview.active || !state.importPreview.importCards.length) {
+    setStatus(dom.importStatus, "No prepared import batch. Generate preview first.", "error");
+    return;
+  }
+
+  const cards = state.importPreview.importCards;
 
   if (state.role === "trainer") {
     const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
@@ -1839,13 +2079,42 @@ async function importParsedCards(parsed) {
     }
 
     try {
+      const reviewRows = (state.importPreview.rows || [])
+        .filter((row) => row.status === "warn")
+        .map((row) => ({
+          rowNumber: row.rowNumber,
+          tag: row.sanitized?.tag || row.tag,
+          question: row.sanitized?.question || row.question,
+          answer:
+            row.sanitized?.type === "mcq"
+              ? JSON.stringify([
+                  row.sanitized?.option_a || "",
+                  row.sanitized?.option_b || "",
+                  row.sanitized?.option_c || "",
+                  row.sanitized?.option_d || "",
+                  row.sanitized?.correct_option || ""
+                ])
+              : row.sanitized?.answer || "",
+          reasons: Array.isArray(row.reasons) ? row.reasons : []
+        }));
       const result = await apiRequest("/api/questions/import", "POST", {
         trainerKey,
-        cards: sanitizedCards.map(encodeCardForCloud)
+        cards: cards.map(encodeCardForCloud),
+        uploadedBy: state.userEmail || state.userName || "trainer",
+        reviewRows,
+        batchSummary: state.importPreview.summary || null,
+        sourceName: "Mentor Deck Manager"
       });
       state.trainerKey = trainerKey;
       await loadDeckFromCloud();
-      setStatus(dom.importStatus, `Cloud import complete: ${result.inserted} inserted, ${result.skipped} skipped.`, "success");
+      setStatus(
+        dom.importStatus,
+        `Cloud import complete: ${result.inserted} inserted, ${result.skipped} skipped. Batch: ${result.batchId || "-"}. Review queued: ${Number(result.reviewQueued || 0)}.`,
+        "success"
+      );
+      clearImportPreview();
+      await loadImportReviewQueue();
+      await loadImportBatches();
       renderCard();
       saveLocal();
       return;
@@ -1855,23 +2124,178 @@ async function importParsedCards(parsed) {
     }
   }
 
-  state.deck = hydrateCards(sanitizedCards);
+  state.deck = hydrateCards(cards);
   resetStudyOrder();
-  setStatus(dom.importStatus, `Imported ${sanitizedCards.length} cards locally.`, "success");
+  setStatus(dom.importStatus, `Imported ${cards.length} cards locally.`, "success");
+  clearImportPreview();
   renderCard();
   saveLocal();
+}
+
+function renderImportReviewQueue() {
+  const items = Array.isArray(state.importAdmin.reviewItems) ? state.importAdmin.reviewItems : [];
+  if (!items.length) {
+    dom.importReviewBody.innerHTML = '<tr><td colspan="5">No import review items.</td></tr>';
+    return;
+  }
+  dom.importReviewBody.innerHTML = items
+    .map((item) => {
+      const reasons = Array.isArray(item.reasons) && item.reasons.length ? item.reasons.join("; ") : "-";
+      const actionBtn =
+        String(item.status || "") === "open"
+          ? `<button class="ghost-btn" type="button" data-import-review-action="resolve" data-import-review-id="${item.id}">Resolve</button>`
+          : `<button class="ghost-btn" type="button" data-import-review-action="reopen" data-import-review-id="${item.id}">Reopen</button>`;
+      return `<tr><td>${item.status}</td><td>${item.tag || ""}</td><td>${String(item.question || "").slice(0, 120)}</td><td>${reasons}</td><td>${actionBtn}</td></tr>`;
+    })
+    .join("");
+}
+
+async function loadImportReviewQueue() {
+  if (state.role !== "trainer") return;
+  const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
+  if (!trainerKey) return;
+  const status = String(dom.importReviewStatusFilter.value || "");
+  const qs = new URLSearchParams({ trainerKey });
+  if (status) qs.set("status", status);
+  try {
+    const data = await apiRequest(`/api/import/review?${qs.toString()}`);
+    state.importAdmin.reviewItems = Array.isArray(data.items) ? data.items : [];
+    renderImportReviewQueue();
+    setStatus(dom.importReviewStatus, `Loaded ${state.importAdmin.reviewItems.length} review items.`, "success");
+  } catch (err) {
+    setStatus(dom.importReviewStatus, `Could not load import review queue: ${err.message}`, "error");
+  }
+}
+
+async function handleImportReviewAction(action, reviewId) {
+  if (state.role !== "trainer") return;
+  const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
+  if (!trainerKey) return;
+  try {
+    await apiRequest("/api/import/review/action", "POST", {
+      trainerKey,
+      action,
+      reviewId
+    });
+    await loadImportReviewQueue();
+  } catch (err) {
+    setStatus(dom.importReviewStatus, `Could not update import review item: ${err.message}`, "error");
+  }
+}
+
+function exportImportReviewQueueCsv() {
+  const items = Array.isArray(state.importAdmin.reviewItems) ? state.importAdmin.reviewItems : [];
+  if (!items.length) {
+    setStatus(dom.importReviewStatus, "No review rows to export.", "error");
+    return;
+  }
+  const header = "id,status,batch_id,tag,question,answer,reasons,source_row,created_at";
+  const rows = items.map((item) => {
+    const reasons = Array.isArray(item.reasons) ? item.reasons.join(" | ") : "";
+    const createdAt = item.createdAt ? new Date(item.createdAt).toISOString() : "";
+    const cols = [
+      item.id || "",
+      item.status || "",
+      item.batchId || "",
+      item.tag || "",
+      item.question || "",
+      item.answer || "",
+      reasons,
+      item.sourceRowNumber || "",
+      createdAt
+    ];
+    return cols.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(",");
+  });
+  const csv = [header, ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "import-review-queue.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+  setStatus(dom.importReviewStatus, "Import review queue exported.", "success");
+}
+
+async function resolveAllImportReviewItems() {
+  if (state.role !== "trainer") return;
+  const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
+  if (!trainerKey) {
+    setStatus(dom.importReviewStatus, "Trainer key required.", "error");
+    return;
+  }
+  try {
+    const result = await apiRequest("/api/import/review/resolve-all", "POST", {
+      trainerKey,
+      note: "Bulk resolved from trainer queue."
+    });
+    await loadImportReviewQueue();
+    setStatus(dom.importReviewStatus, `Resolved ${Number(result.updated || 0)} open items.`, "success");
+  } catch (err) {
+    setStatus(dom.importReviewStatus, `Could not resolve all open items: ${err.message}`, "error");
+  }
+}
+
+function renderImportBatches() {
+  const items = Array.isArray(state.importAdmin.batches) ? state.importAdmin.batches : [];
+  if (!items.length) {
+    dom.importBatchBody.innerHTML = '<tr><td colspan="6">No import batches loaded.</td></tr>';
+    return;
+  }
+  dom.importBatchBody.innerHTML = items
+    .map((item) => {
+      const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : "-";
+      return `<tr><td>${item.id}</td><td>${Number(item.insertedCount || 0)}</td><td>${Number(item.warnCount || 0)}</td><td>${Number(item.failCount || 0)}</td><td>${Number(item.skippedCount || 0)}</td><td>${createdAt}</td></tr>`;
+    })
+    .join("");
+}
+
+async function loadImportBatches() {
+  if (state.role !== "trainer") return;
+  const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
+  if (!trainerKey) return;
+  try {
+    const data = await apiRequest(`/api/import/batches?trainerKey=${encodeURIComponent(trainerKey)}&limit=100`);
+    state.importAdmin.batches = Array.isArray(data.batches) ? data.batches : [];
+    renderImportBatches();
+    setStatus(dom.importBatchStatus, `Loaded ${state.importAdmin.batches.length} batches.`, "success");
+  } catch (err) {
+    setStatus(dom.importBatchStatus, `Could not load import batches: ${err.message}`, "error");
+  }
+}
+
+async function rollbackImportBatch() {
+  if (state.role !== "trainer") return;
+  const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
+  const batchId = String(dom.rollbackBatchIdInput.value || "").trim();
+  if (!trainerKey || !batchId) {
+    setStatus(dom.importBatchStatus, "Trainer key and batch ID are required for rollback.", "error");
+    return;
+  }
+  try {
+    const result = await apiRequest("/api/import/batches/rollback", "POST", {
+      trainerKey,
+      batchId
+    });
+    setStatus(dom.importBatchStatus, `Rollback complete for ${result.batchId}. Questions disabled: ${result.affected}.`, "success");
+    await loadDeckFromCloud();
+    renderCard();
+    await loadImportBatches();
+  } catch (err) {
+    setStatus(dom.importBatchStatus, `Rollback failed: ${err.message}`, "error");
+  }
 }
 
 async function importCsv() {
   if (state.role !== "trainer") return;
 
-  const parsed = parseCsv(dom.csvInput.value).filter((r) => r.question);
+  const parsed = parseCsv(dom.csvInput.value);
   if (!parsed.length) {
     setStatus(dom.importStatus, "No valid cards. Use tag,type,question,... format or legacy tag,question,answer.", "error");
     return;
   }
 
-  await importParsedCards(parsed);
+  await prepareImportPreview(parsed);
 }
 
 async function importCsvFile() {
@@ -1884,13 +2308,13 @@ async function importCsvFile() {
   }
 
   try {
-    const parsed = (await readFileAsImportCards(file)).filter((r) => r.question);
+    const parsed = await readFileAsImportCards(file);
     if (!parsed.length) {
       setStatus(dom.importStatus, "File has no valid cards.", "error");
       return;
     }
     dom.csvInput.value = formatCardsForTextarea(parsed);
-    await importParsedCards(parsed);
+    await prepareImportPreview(parsed);
   } catch {
     setStatus(dom.importStatus, "Could not read file. Use CSV/TSV or Excel (.xlsx/.xls).", "error");
   }
@@ -1898,8 +2322,8 @@ async function importCsvFile() {
 
 async function loadStarterDeck() {
   if (state.role !== "trainer") return;
-  await importParsedCards(STARTER_DECK);
-  setStatus(dom.importStatus, "Starter deck synced to cloud.", "success");
+  await prepareImportPreview(STARTER_DECK);
+  setStatus(dom.importStatus, "Starter deck preview generated. Click Confirm Import.", "success");
 }
 
 function exportCsv() {
@@ -2953,6 +3377,22 @@ function bindEvents() {
 
   dom.importFileBtn.addEventListener("click", importCsvFile);
   dom.importBtn.addEventListener("click", importCsv);
+  dom.confirmImportBtn.addEventListener("click", confirmImportFromPreview);
+  dom.cancelImportPreviewBtn.addEventListener("click", () => {
+    clearImportPreview();
+    setStatus(dom.importStatus, "Import preview cleared.");
+  });
+  dom.refreshImportReviewBtn.addEventListener("click", loadImportReviewQueue);
+  dom.resolveAllImportReviewBtn.addEventListener("click", resolveAllImportReviewItems);
+  dom.exportImportReviewBtn.addEventListener("click", exportImportReviewQueueCsv);
+  dom.importReviewStatusFilter.addEventListener("change", loadImportReviewQueue);
+  dom.importReviewBody.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-import-review-action][data-import-review-id]");
+    if (!button) return;
+    handleImportReviewAction(button.dataset.importReviewAction, button.dataset.importReviewId);
+  });
+  dom.refreshImportBatchesBtn.addEventListener("click", loadImportBatches);
+  dom.rollbackBatchBtn.addEventListener("click", rollbackImportBatch);
   dom.loadStarterBtn.addEventListener("click", loadStarterDeck);
   dom.exportBtn.addEventListener("click", exportCsv);
   dom.refreshSessionsBtn.addEventListener("click", loadSessions);
@@ -3101,6 +3541,7 @@ async function init() {
     "Hello, I have completed the trial and would like to request full access to the complete training program."
   );
   setStatus(dom.upgradeStatus, "");
+  clearImportPreview();
 
   renderCategoryButtons();
   renderResources();
