@@ -315,7 +315,7 @@ function sanitizeUrl(url) {
 }
 
 function buildWhatsappLink(message) {
-  const fullMessage = `${String(message || "").trim()}\n\n- ${BRAND_PRODUCT}\n${BRAND_PARENT}`;
+  const fullMessage = `${String(message || "").trim()}\n\n- ${BRAND_PRODUCT}`;
   const text = encodeURIComponent(fullMessage);
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`;
 }
@@ -2424,17 +2424,26 @@ function exportPdfReport() {
   const threshold = Math.min(100, Math.max(1, Number(state.exam.passThreshold || state.examConfig.passThreshold || 80)));
   const examResult = score >= threshold ? "PASS" : "FAIL";
 
-  let y = 18;
-  doc.setFontSize(16);
+  // Branded header ribbon
+  doc.setFillColor(15, 118, 110);
+  doc.rect(0, 0, 210, 30, "F");
+  doc.setFillColor(29, 78, 216);
+  doc.rect(0, 30, 210, 6, "F");
+
+  let y = 13;
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(15);
   doc.text(BRAND_PRODUCT, 14, y);
-  y += 8;
-  doc.setFontSize(12);
-  doc.text(BRAND_TAGLINE, 14, y);
-  y += 8;
-  doc.setFontSize(10);
-  doc.text(`${BRAND_PARENT} | ${BRAND_PARENT_TAGLINE}`, 14, y);
   y += 7;
-  doc.setFontSize(11);
+  doc.setFontSize(10);
+  doc.text(BRAND_TAGLINE, 14, y);
+  y += 6;
+  doc.setFontSize(9);
+  doc.text(`${BRAND_PARENT} | ${BRAND_PARENT_TAGLINE}`, 14, y);
+
+  y = 44;
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(12);
   doc.text("Completion Report", 14, y);
   y += 7;
   doc.setFontSize(10);
@@ -2447,8 +2456,12 @@ function exportPdfReport() {
   doc.text(`Session Started: ${started}`, 14, y);
   y += 6;
   doc.text(`Report Generated: ${generated}`, 14, y);
-  y += 8;
+  y += 9;
 
+  // Score summary box
+  doc.setFillColor(237, 247, 245);
+  doc.setDrawColor(160, 205, 194);
+  doc.roundedRect(14, y - 2, 182, 34, 3, 3, "FD");
   doc.text(`Attempted: ${attempted}`, 14, y);
   y += 6;
   doc.text(`Correct: ${correct}`, 14, y);
@@ -2458,11 +2471,13 @@ function exportPdfReport() {
   doc.text(`Score: ${score}%`, 14, y);
   y += 6;
   doc.text(`Exam Threshold: ${threshold}% | Result: ${examResult}`, 14, y);
-  y += 8;
+  y += 10;
 
   doc.setFontSize(11);
+  doc.setTextColor(29, 78, 216);
   doc.text("Category Breakdown", 14, y);
   y += 6;
+  doc.setTextColor(15, 23, 42);
   doc.setFontSize(9);
 
   const stats = state.session.categoryStats || {};
@@ -2489,7 +2504,8 @@ function exportPdfReport() {
     y = 18;
   }
   doc.setFontSize(8);
-  doc.text(`${BRAND_NAME} | ${CONTACT_PHONE_RAW}`, 14, y);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`${BRAND_PRODUCT} | ${CONTACT_PHONE_RAW}`, 14, y);
 
   const fileName = `coding_report_${(state.userName || "user").replace(/[^a-z0-9]+/gi, "_").toLowerCase()}_${Date.now()}.pdf`;
   doc.save(fileName);

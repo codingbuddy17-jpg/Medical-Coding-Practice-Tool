@@ -67,6 +67,9 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  padding: 0.15rem 0.1rem 0.35rem;
+  border-bottom: 1px solid #dbe6f2;
+  margin-bottom: 0.45rem;
 }
 
 .eyebrow {
@@ -87,22 +90,52 @@ h1 {
   display: flex;
   align-items: center;
   gap: 0.65rem;
+  min-height: 92px;
 }
 
 .brand-logo {
-  width: 118px;
-  height: 56px;
+  width: 176px;
+  height: 84px;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #ffffff;
-  border: 1px solid #dbe6f2;
-  padding: 0.2rem 0.25rem;
+  border: 1px solid #b9cde4;
+  padding: 0.22rem 0.28rem;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
 }
 
 .brand-intro {
   margin-top: 0.6rem;
-  border: 1px solid #bfd3e7;
-  background: linear-gradient(160deg, #f8fbff, #f4fffc);
+  border: 1px solid #a8c3de;
+  background: linear-gradient(155deg, #eaf3ff, #ecfffa 62%, #ffffff);
+  box-shadow: 0 10px 24px rgba(29, 78, 216, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.brand-intro::after {
+  content: "";
+  position: absolute;
+  right: -24px;
+  top: -26px;
+  width: 140px;
+  height: 140px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(29, 78, 216, 0.18) 0%, rgba(29, 78, 216, 0) 72%);
+}
+
+.brand-intro h2 {
+  color: #0b3d91;
+  font-size: 1.02rem;
+  margin-bottom: 0.2rem;
+  letter-spacing: 0.01em;
+}
+
+.brand-intro .status {
+  color: #0f2742;
+  font-size: 0.83rem;
+  max-width: 920px;
+  line-height: 1.45;
 }
 
 h2,
@@ -565,8 +598,8 @@ code {
   }
 
   .brand-logo {
-    width: 102px;
-    height: 50px;
+    width: 146px;
+    height: 68px;
   }
 
   .dashboard {
