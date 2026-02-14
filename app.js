@@ -530,7 +530,18 @@ function encodeCardForCloud(card) {
     };
   }
 
-  const options = Array.isArray(card.options) ? card.options.map((x) => String(x || "").trim()).slice(0, 4) : [];
+  let options = [];
+  if (Array.isArray(card.options) && card.options.length > 0) {
+    options = card.options.map((x) => String(x || "").trim()).slice(0, 4);
+  } else {
+    // Fallback for flat import structure
+    const optA = String(card.option_a || card.optionA || "").trim();
+    const optB = String(card.option_b || card.optionB || "").trim();
+    const optC = String(card.option_c || card.optionC || "").trim();
+    const optD = String(card.option_d || card.optionD || "").trim();
+    options = [optA, optB, optC, optD].filter(Boolean);
+  }
+
   const correctOption = toMcqOptionKey(card.correctOption);
   const payload = {
     options,
@@ -2096,12 +2107,12 @@ async function confirmImportFromPreview() {
           answer:
             row.sanitized?.type === "mcq"
               ? JSON.stringify([
-                  row.sanitized?.option_a || "",
-                  row.sanitized?.option_b || "",
-                  row.sanitized?.option_c || "",
-                  row.sanitized?.option_d || "",
-                  row.sanitized?.correct_option || ""
-                ])
+                row.sanitized?.option_a || "",
+                row.sanitized?.option_b || "",
+                row.sanitized?.option_c || "",
+                row.sanitized?.option_d || "",
+                row.sanitized?.correct_option || ""
+              ])
               : row.sanitized?.answer || "",
           reasons: Array.isArray(row.reasons) ? row.reasons : []
         }));
@@ -3078,8 +3089,7 @@ async function submitCounselingForm(event) {
   });
   setStatus(dom.upgradeStatus, "Request submitted. Redirecting to WhatsApp for follow-up.", "success");
   openWhatsAppCta(
-    `Hello, I would like a free counseling session. Name: ${name}, Email: ${email}, Phone: ${phone}, Requirement: ${
-      message || "Please guide me with full access and next batch details."
+    `Hello, I would like a free counseling session. Name: ${name}, Email: ${email}, Phone: ${phone}, Requirement: ${message || "Please guide me with full access and next batch details."
     }`,
     "cta_counseling_whatsapp_followup"
   );
@@ -3097,8 +3107,7 @@ function renderCohortUI() {
   dom.cohortTableBody.innerHTML = cohorts
     .map(
       (cohort) =>
-        `<tr><td>${cohort.name}</td><td>${cohort.accessCode}</td><td>${cohort.questionLimit}</td><td>${
-          cohort.isActive ? "Yes" : "No"
+        `<tr><td>${cohort.name}</td><td>${cohort.accessCode}</td><td>${cohort.questionLimit}</td><td>${cohort.isActive ? "Yes" : "No"
         }</td><td>${cohort.memberCount}${cohort.expiresAt ? ` (Exp: ${toDateInputValue(cohort.expiresAt)})` : ""}</td></tr>`
     )
     .join("");
