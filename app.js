@@ -460,7 +460,11 @@ function updateTrialInfoBannerUI() {
 
 function updatePreSessionLandingUI() {
   const show = !state.session.isActive;
-  dom.preSessionLanding.classList.toggle("landing-hidden", !show);
+  if (show) {
+    dom.preSessionLanding.classList.remove("hidden", "landing-hidden");
+  } else {
+    dom.preSessionLanding.classList.add("landing-hidden");
+  }
   dom.preSessionLanding.setAttribute("aria-hidden", show ? "false" : "true");
 }
 
