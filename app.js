@@ -2,6 +2,11 @@ const STORAGE_KEY = "medcode_flashcards_role_v4";
 const MCQ_PREFIX = "__MCQ__:";
 const CARD_PREFIX = "__CARD__:";
 const DEFAULT_RATIONALE_TEXT = "Rationale not available.";
+const BRAND_NAME = "PracticeBuddy Lab by CodingBuddy360";
+const BRAND_PRODUCT = "PracticeBuddy Lab";
+const BRAND_PARENT = "CodingBuddy360";
+const BRAND_PARENT_TAGLINE = "360° From Learning to Leadership in Medical Coding";
+const BRAND_TAGLINE = "The Coding Competency, Practice & Certification Engine";
 const CONTACT_PHONE_RAW = "+91 8309661352";
 const CONTACT_PHONE_DIAL = "918309661352";
 const WHATSAPP_NUMBER = "918309661352";
@@ -105,7 +110,7 @@ const state = {
   },
   accessConfig: {
     trialQuestionLimit: 20,
-    contactMessage: "Contact Admin for full access. Contact or WhatsApp at +91 8309661352."
+    contactMessage: "For full access, contact PracticeBuddy Lab by CodingBuddy360 on WhatsApp at +91 8309661352."
   },
   adminPanel: {
     verified: false,
@@ -310,7 +315,8 @@ function sanitizeUrl(url) {
 }
 
 function buildWhatsappLink(message) {
-  const text = encodeURIComponent(String(message || "").trim());
+  const fullMessage = `${String(message || "").trim()}\n\n- ${BRAND_PRODUCT}\n${BRAND_PARENT}`;
+  const text = encodeURIComponent(fullMessage);
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`;
 }
 
@@ -362,7 +368,7 @@ function hasSessionLimitReached() {
 }
 
 function trialUpgradeMessage() {
-  return state.accessConfig.contactMessage || "Contact Admin for full access.";
+  return state.accessConfig.contactMessage || `For full access, contact ${BRAND_NAME}.`;
 }
 
 function updateTrialLockUI() {
@@ -1136,7 +1142,7 @@ function startExam() {
   }
 
   if (hasSessionLimitReached()) {
-    setStatus(dom.examStatus, "Trial limit reached. Contact Admin for full access.", "error");
+    setStatus(dom.examStatus, `Trial limit reached. ${trialUpgradeMessage()}`, "error");
     return;
   }
 
@@ -1297,7 +1303,7 @@ async function loadPublicAccessConfig() {
     const data = await apiRequest("/api/access/config");
     state.accessConfig.trialQuestionLimit = Math.max(1, Number(data.trialQuestionLimit || 20));
     state.accessConfig.contactMessage =
-      String(data.contactMessage || "").trim() || "Contact Admin for full access. Contact or WhatsApp at +91 8309661352.";
+      String(data.contactMessage || "").trim() || `For full access, contact ${BRAND_NAME} on WhatsApp at +91 8309661352.`;
   } catch {
     state.accessConfig.trialQuestionLimit = 20;
   }
@@ -1341,7 +1347,7 @@ async function startSession() {
       const verification = await apiRequest("/api/access/verify", "POST", { code: traineeCode, email: userEmail });
       if (!verification.valid) {
         let msg = "Invalid trainee access code.";
-        if (verification.reason === "trainee_access_inactive_or_expired") msg = "Trainee access is inactive or expired. Contact admin.";
+        if (verification.reason === "trainee_access_inactive_or_expired") msg = "Learner access is inactive or expired. Contact admin.";
         if (verification.reason === "not_enrolled_in_cohort") msg = "This email is not enrolled in the selected cohort access.";
         else if (verification.reason === "member_inactive_or_expired") msg = "Your cohort access is inactive or expired. Contact trainer.";
         else if (verification.reason === "cohort_inactive_or_expired") msg = "This cohort access code is inactive or expired.";
@@ -2390,7 +2396,7 @@ function shareTrendByEmail() {
     trendLines || "No trend data.",
     ``,
     `Regards,`,
-    `Medical Coding Virtual Practice Tool`
+    `${BRAND_PRODUCT} | ${BRAND_PARENT}`
   ].join("\n");
 
   const mailto = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -2420,11 +2426,17 @@ function exportPdfReport() {
 
   let y = 18;
   doc.setFontSize(16);
-  doc.text("Medical Coding Virtual Practice Tool", 14, y);
+  doc.text(BRAND_PRODUCT, 14, y);
   y += 8;
   doc.setFontSize(12);
-  doc.text("Completion Report", 14, y);
+  doc.text(BRAND_TAGLINE, 14, y);
   y += 8;
+  doc.setFontSize(10);
+  doc.text(`${BRAND_PARENT} | ${BRAND_PARENT_TAGLINE}`, 14, y);
+  y += 7;
+  doc.setFontSize(11);
+  doc.text("Completion Report", 14, y);
+  y += 7;
   doc.setFontSize(10);
   doc.text(`Name: ${state.userName}`, 14, y);
   y += 6;
@@ -2471,6 +2483,13 @@ function exportPdfReport() {
     doc.text(line, 14, y);
     y += 5;
   });
+  y += 4;
+  if (y > 280) {
+    doc.addPage();
+    y = 18;
+  }
+  doc.setFontSize(8);
+  doc.text(`${BRAND_NAME} | ${CONTACT_PHONE_RAW}`, 14, y);
 
   const fileName = `coding_report_${(state.userName || "user").replace(/[^a-z0-9]+/gi, "_").toLowerCase()}_${Date.now()}.pdf`;
   doc.save(fileName);

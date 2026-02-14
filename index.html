@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MedCode Flashcards</title>
+    <title>PracticeBuddy Lab | CodingBuddy360</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
@@ -15,9 +15,14 @@
 
     <main class="app">
       <header class="topbar">
-        <div>
-          <p class="eyebrow">Medical Coding Virtual Practice Tool</p>
-          <h1>Practice Flashcards</h1>
+        <div class="brand-block">
+          <img class="brand-logo" src="logo.png" alt="CodingBuddy360 logo" />
+          <div>
+            <p class="eyebrow">CodingBuddy360</p>
+            <h1>PracticeBuddy Lab</h1>
+            <p class="status">The Coding Competency, Practice & Certification Engine</p>
+            <p class="status">360° From Learning to Leadership in Medical Coding</p>
+          </div>
         </div>
         <div class="panel-actions">
           <button id="exportReportBtn" class="ghost-btn" type="button">Export PDF Report</button>
@@ -25,12 +30,17 @@
         </div>
       </header>
 
+      <section class="panel brand-intro" id="brandIntro">
+        <h2>A CodingBuddy360 Product</h2>
+        <p class="status">Enterprise-style coding practice environment built for classroom performance, certification outcomes, and placement readiness.</p>
+      </section>
+
       <section class="auth panel" id="authPanel">
         <h2>Start Session</h2>
         <div class="auth-grid">
           <label>
             Name
-            <input id="userName" type="text" placeholder="Trainee name" />
+            <input id="userName" type="text" placeholder="Learner name" />
           </label>
           <label>
             Email
@@ -43,17 +53,17 @@
           <label>
             Role
             <select id="roleSelect">
-              <option value="trial">Trial User</option>
-              <option value="trainee">Trainee</option>
-              <option value="trainer">Trainer</option>
+              <option value="trial">Trial Access</option>
+              <option value="trainee">Learner Access</option>
+              <option value="trainer">Mentor Console</option>
             </select>
           </label>
           <label id="traineeCodeWrap" class="hidden">
-            Trainee Access Code
+            Learner Access Code
             <input id="traineeCode" type="password" placeholder="Enter access code" />
           </label>
           <label id="trainerKeyWrap" class="hidden">
-            Trainer Key
+            Mentor Key
             <input id="trainerKey" type="password" placeholder="Enter trainer key" />
           </label>
         </div>
@@ -252,7 +262,7 @@
 
       <section class="panel-row" id="trainerZone">
         <section class="panel">
-          <h3>Trainer Deck Manager</h3>
+          <h3>Mentor Deck Manager</h3>
           <p>CSV/XLSX columns: <code>tag,type,question,answer,rationale,option_a,option_b,option_c,option_d,correct_option</code>.</p>
           <label>
             Upload CSV File
@@ -273,7 +283,7 @@
         </section>
 
         <section class="panel">
-          <h3>Trainer Session Console</h3>
+          <h3>Mentor Session Console</h3>
           <div class="panel-actions">
             <button id="refreshSessionsBtn" class="ghost-btn" type="button">Refresh Sessions</button>
           </div>
@@ -282,7 +292,7 @@
               <thead>
                 <tr>
                   <th>User</th>
-                  <th>Role</th>
+                  <th>Access Type</th>
                   <th>Correct</th>
                   <th>Wrong</th>
                   <th>Score</th>

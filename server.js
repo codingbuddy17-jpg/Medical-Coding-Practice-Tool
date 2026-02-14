@@ -391,7 +391,7 @@ function getPublicAccessConfig() {
   const config = readAccessConfig();
   return {
     trialQuestionLimit: Math.max(1, Number(config.trialQuestionLimit || 20)),
-    contactMessage: "Contact Admin for full access. Contact or WhatsApp at +91 8309661352."
+    contactMessage: "For full access, contact PracticeBuddy Lab by CodingBuddy360 on WhatsApp at +91 8309661352."
   };
 }
 
@@ -1630,7 +1630,7 @@ const server = http.createServer(async (req, res) => {
         const used = await hasPriorTrialUsage({ email: userEmail, phone: userPhone });
         if (used) {
           return json(res, 403, {
-            error: "Trial already used with this email or phone. Contact Admin for full access."
+            error: "Trial already used with this email or phone. For full access, contact PracticeBuddy Lab by CodingBuddy360."
           });
         }
       }
