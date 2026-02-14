@@ -91,12 +91,12 @@ h1 {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  min-height: 120px;
+  min-height: 96px;
 }
 
 .brand-logo {
-  width: 430px;
-  height: 170px;
+  width: 320px;
+  height: 126px;
   object-fit: contain;
   object-position: center center;
   border-radius: 0;
@@ -104,6 +104,11 @@ h1 {
   border: none;
   padding: 0;
   box-shadow: none;
+  flex-shrink: 0;
+}
+
+.brand-block > div {
+  min-width: 0;
 }
 
 .brand-intro {
@@ -684,13 +689,32 @@ code {
   }
 
   .topbar {
-    flex-direction: column;
+    flex-wrap: wrap;
     align-items: flex-start;
+    gap: 0.55rem;
+  }
+
+  .brand-block {
+    width: 100%;
+    align-items: flex-start;
+    gap: 0.45rem;
+    min-height: 0;
   }
 
   .brand-logo {
-    width: 320px;
-    height: 126px;
+    width: 146px;
+    height: 58px;
+    margin-top: 0.1rem;
+  }
+
+  .brand-block > div .status {
+    font-size: 0.74rem;
+    line-height: 1.35;
+    margin: 0.1rem 0 0;
+  }
+
+  .topbar .panel-actions {
+    width: 100%;
   }
 
   .dashboard {
