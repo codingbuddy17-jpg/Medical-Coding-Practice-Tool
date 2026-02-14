@@ -380,6 +380,59 @@ button {
   margin-top: 0.65rem;
 }
 
+.upgrade-wall {
+  grid-column: 1 / -1;
+  border: 1px solid #8fcbbd;
+  background: linear-gradient(160deg, #ecfbf6, #fffdf8);
+  box-shadow: 0 10px 24px rgba(15, 118, 110, 0.1);
+}
+
+.upgrade-wall h3 {
+  color: #0d5f57;
+}
+
+.upgrade-wall .status {
+  font-size: 0.82rem;
+}
+
+.cta-emphasis {
+  background: linear-gradient(145deg, #0f766e, #115e59);
+  border: 1px solid #0f766e;
+  color: #fff;
+  font-weight: 600;
+}
+
+.cta-emphasis:hover {
+  filter: brightness(1.05);
+}
+
+.cta-secondary {
+  border-color: #9bcfc2;
+  background: #f8fffc;
+  color: #0f5f56;
+  font-weight: 600;
+}
+
+.floating-whatsapp {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 10;
+  text-decoration: none;
+  background: linear-gradient(145deg, #128c7e, #0f766e);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.58rem 0.95rem;
+  border: 1px solid #0f766e;
+  box-shadow: 0 10px 24px rgba(18, 140, 126, 0.25);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.floating-whatsapp:hover {
+  background: #0f766e;
+}
+
 .panel-actions {
   margin-top: 0.45rem;
   display: flex;

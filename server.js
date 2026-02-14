@@ -28,6 +28,7 @@ const ACCESS_FILE = path.join(DATA_DIR, "access-config.json");
 const COHORTS_FILE = path.join(DATA_DIR, "cohorts.json");
 const EXAMS_FILE = path.join(DATA_DIR, "exam-blueprints.json");
 const FLAGS_FILE = path.join(DATA_DIR, "question-flags.json");
+const CTA_FILE = path.join(DATA_DIR, "cta-events.json");
 
 const DEFAULT_EXAM_TEMPLATES = [
   {
@@ -86,6 +87,7 @@ function ensureDataStore() {
     );
   }
   if (!fs.existsSync(FLAGS_FILE)) fs.writeFileSync(FLAGS_FILE, JSON.stringify({ flags: [] }, null, 2));
+  if (!fs.existsSync(CTA_FILE)) fs.writeFileSync(CTA_FILE, JSON.stringify({ events: [] }, null, 2));
 }
 
 function readSessions() {
@@ -206,6 +208,22 @@ function readFlags() {
 function writeFlags(flags) {
   ensureDataStore();
   fs.writeFileSync(FLAGS_FILE, JSON.stringify({ flags }, null, 2));
+}
+
+function readCtaEvents() {
+  ensureDataStore();
+  const raw = fs.readFileSync(CTA_FILE, "utf8");
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.events) ? parsed.events : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCtaEvents(events) {
+  ensureDataStore();
+  fs.writeFileSync(CTA_FILE, JSON.stringify({ events }, null, 2));
 }
 
 function sanitizeTemplate(input) {
@@ -1510,6 +1528,42 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       return json(res, 400, { error: err.message });
     }
+  }
+
+  if (url.pathname === "/api/cta/event" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const type = String(body.type || "").trim();
+      if (!type) return json(res, 400, { error: "Event type is required" });
+
+      const events = readCtaEvents();
+      const event = {
+        id: `cta_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        type,
+        sessionId: String(body.sessionId || ""),
+        role: String(body.role || ""),
+        userName: String(body.userName || ""),
+        userEmail: normalizeEmail(body.userEmail || ""),
+        userPhone: normalizePhone(body.userPhone || ""),
+        metadata: body.metadata && typeof body.metadata === "object" ? body.metadata : {},
+        at: Date.now()
+      };
+      events.unshift(event);
+      if (events.length > 50000) events.length = 50000;
+      writeCtaEvents(events);
+      return json(res, 201, { ok: true, id: event.id });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/cta/events" && req.method === "GET") {
+    const trainerKey = url.searchParams.get("trainerKey");
+    const access = readAccessConfig();
+    if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+    const limit = Math.max(1, Math.min(5000, Number(url.searchParams.get("limit") || 500)));
+    const events = readCtaEvents().slice(0, limit);
+    return json(res, 200, { events });
   }
 
   if (url.pathname === "/api/session/start" && req.method === "POST") {

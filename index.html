@@ -181,6 +181,43 @@
               <p id="trialLockNotice" class="status hidden"></p>
             </div>
           </section>
+
+          <section id="upgradeWall" class="panel upgrade-wall hidden">
+            <h3>Upgrade To Full Practice Access</h3>
+            <p class="status">
+              Your trial practice limit is complete. Enroll in our guided training program for full question bank access, structured exam preparation, and mentor-led support.
+            </p>
+            <div class="panel-actions">
+              <button id="unlockAccessBtn" class="primary-btn cta-emphasis" type="button">Request Full Access</button>
+              <button id="whatsappUpgradeBtn" class="ghost-btn cta-secondary" type="button">Chat On WhatsApp</button>
+              <button id="callUpgradeBtn" class="ghost-btn cta-secondary" type="button">Call Program Advisor</button>
+              <button id="demoClassBtn" class="ghost-btn cta-secondary" type="button">Attend Free Live Demo Class</button>
+              <button id="brochureBtn" class="ghost-btn cta-secondary" type="button">Download Program Brochure</button>
+              <button id="syllabusBtn" class="ghost-btn cta-secondary" type="button">View Syllabus PDF</button>
+            </div>
+            <form id="counselingForm" class="auth-grid">
+              <label>
+                Name
+                <input id="counselName" type="text" placeholder="Your name" />
+              </label>
+              <label>
+                Email
+                <input id="counselEmail" type="email" placeholder="name@email.com" />
+              </label>
+              <label>
+                Phone
+                <input id="counselPhone" type="text" placeholder="+91 xxxxxxxxxx" />
+              </label>
+              <label>
+                Message
+                <input id="counselMessage" type="text" placeholder="I need guidance on batch selection and full access." />
+              </label>
+              <div class="panel-actions">
+                <button id="bookCounselingBtn" class="primary-btn cta-emphasis" type="submit">Book Free Counseling Session</button>
+              </div>
+            </form>
+            <p id="upgradeStatus" class="status"></p>
+          </section>
         </article>
       </section>
 
@@ -209,7 +246,7 @@
       <section class="panel-row" id="trainerZone">
         <section class="panel">
           <h3>Trainer Deck Manager</h3>
-          <p>CSV/XLSX columns: <code>tag,type,question,answer,option_a,option_b,option_c,option_d,correct_option</code>.</p>
+          <p>CSV/XLSX columns: <code>tag,type,question,answer,rationale,option_a,option_b,option_c,option_d,correct_option</code>.</p>
           <label>
             Upload CSV File
             <input
@@ -495,7 +532,9 @@
           </div>
         </section>
       </section>
-    </main>
+  </main>
+
+    <a id="floatingWhatsappBtn" class="floating-whatsapp" href="#" aria-label="WhatsApp us">Chat For Full Access</a>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>

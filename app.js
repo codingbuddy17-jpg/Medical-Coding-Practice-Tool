@@ -1,5 +1,12 @@
 const STORAGE_KEY = "medcode_flashcards_role_v4";
 const MCQ_PREFIX = "__MCQ__:";
+const CARD_PREFIX = "__CARD__:";
+const DEFAULT_RATIONALE_TEXT = "Rationale not available.";
+const CONTACT_PHONE_RAW = "+91 8309661352";
+const CONTACT_PHONE_DIAL = "918309661352";
+const WHATSAPP_NUMBER = "918309661352";
+const BROCHURE_URL = "";
+const SYLLABUS_URL = "";
 
 const CATEGORY_OPTIONS = [
   { key: "ALL", label: "All Topics" },
@@ -172,6 +179,20 @@ const dom = {
   feedback: document.getElementById("feedback"),
   rationalePlaceholder: document.getElementById("rationalePlaceholder"),
   trialLockNotice: document.getElementById("trialLockNotice"),
+  upgradeWall: document.getElementById("upgradeWall"),
+  upgradeStatus: document.getElementById("upgradeStatus"),
+  unlockAccessBtn: document.getElementById("unlockAccessBtn"),
+  whatsappUpgradeBtn: document.getElementById("whatsappUpgradeBtn"),
+  callUpgradeBtn: document.getElementById("callUpgradeBtn"),
+  demoClassBtn: document.getElementById("demoClassBtn"),
+  brochureBtn: document.getElementById("brochureBtn"),
+  syllabusBtn: document.getElementById("syllabusBtn"),
+  counselingForm: document.getElementById("counselingForm"),
+  counselName: document.getElementById("counselName"),
+  counselEmail: document.getElementById("counselEmail"),
+  counselPhone: document.getElementById("counselPhone"),
+  counselMessage: document.getElementById("counselMessage"),
+  floatingWhatsappBtn: document.getElementById("floatingWhatsappBtn"),
 
   categoryScoreBody: document.getElementById("categoryScoreBody"),
 
@@ -279,6 +300,27 @@ function sanitizeUrl(url) {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
+function buildWhatsappLink(message) {
+  const text = encodeURIComponent(String(message || "").trim());
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`;
+}
+
+async function trackCtaEvent(type, metadata = {}) {
+  try {
+    await apiRequest("/api/cta/event", "POST", {
+      type,
+      sessionId: state.session.id || "",
+      role: state.role || "",
+      userName: state.userName || "",
+      userEmail: state.userEmail || "",
+      userPhone: state.userPhone || "",
+      metadata
+    });
+  } catch {
+    // silently ignore tracking failures
+  }
+}
+
 function isTrialUser() {
   return state.role === "trial";
 }
@@ -318,6 +360,19 @@ function updateTrialLockUI() {
   dom.trialLockNotice.textContent = "";
 }
 
+function updateUpgradeWallUI() {
+  const show = state.role !== "trainer" && hasSessionLimitReached();
+  dom.upgradeWall.classList.toggle("hidden", !show);
+  if (!show) return;
+
+  const defaultName = state.userName || "";
+  const defaultEmail = state.userEmail || "";
+  const defaultPhone = state.userPhone || "";
+  if (!dom.counselName.value) dom.counselName.value = defaultName;
+  if (!dom.counselEmail.value) dom.counselEmail.value = defaultEmail;
+  if (!dom.counselPhone.value) dom.counselPhone.value = defaultPhone;
+}
+
 function toMcqOptionKey(value) {
   const raw = String(value || "").trim().toUpperCase();
   if (["A", "B", "C", "D"].includes(raw)) return raw;
@@ -336,7 +391,25 @@ function decodeEmbeddedCard(rawAnswer) {
     return {
       type: "mcq",
       options: options.slice(0, 4),
-      correctOption
+      correctOption,
+      rationale: String(parsed.rationale || "").trim()
+    };
+  } catch {
+    return null;
+  }
+}
+
+function decodePackedShortCard(rawAnswer) {
+  const value = String(rawAnswer || "");
+  if (!value.startsWith(CARD_PREFIX)) return null;
+  try {
+    const parsed = JSON.parse(value.slice(CARD_PREFIX.length));
+    const type = String(parsed.type || "short").toLowerCase();
+    if (type !== "short") return null;
+    return {
+      type: "short",
+      answer: String(parsed.answer || "").trim(),
+      rationale: String(parsed.rationale || "").trim()
     };
   } catch {
     return null;
@@ -345,11 +418,20 @@ function decodeEmbeddedCard(rawAnswer) {
 
 function encodeCardForCloud(card) {
   const type = String(card.type || "").toLowerCase();
+  const rationale = String(card.rationale || "").trim();
   if (type !== "mcq") {
+    const answer = String(card.answer || "").trim();
+    if (rationale) {
+      return {
+        tag: String(card.tag || "General").trim(),
+        question: String(card.question || "").trim(),
+        answer: `${CARD_PREFIX}${JSON.stringify({ type: "short", answer, rationale })}`
+      };
+    }
     return {
       tag: String(card.tag || "General").trim(),
       question: String(card.question || "").trim(),
-      answer: String(card.answer || "").trim()
+      answer
     };
   }
 
@@ -357,7 +439,8 @@ function encodeCardForCloud(card) {
   const correctOption = toMcqOptionKey(card.correctOption);
   const payload = {
     options,
-    correctOption
+    correctOption,
+    rationale
   };
   return {
     tag: String(card.tag || "General").trim(),
@@ -368,6 +451,7 @@ function encodeCardForCloud(card) {
 
 function hydrateCards(cards) {
   return cards.map((card, index) => {
+    const packedShort = decodePackedShortCard(card.answer);
     const embedded = decodeEmbeddedCard(card.answer);
     const explicitType = String(card.type || "").toLowerCase();
     const isMcq = explicitType === "mcq" || Boolean(embedded);
@@ -378,15 +462,19 @@ function hydrateCards(cards) {
     const explicitOptions = [optionA, optionB, optionC, optionD].filter(Boolean);
     const options = embedded?.options || explicitOptions;
     const correctOption = embedded?.correctOption || toMcqOptionKey(card.correct_option || card.correctOption);
+    const explicitRationale = String(card.rationale || "").trim();
+    const rationale = explicitRationale || embedded?.rationale || packedShort?.rationale || DEFAULT_RATIONALE_TEXT;
+    const shortAnswer = packedShort?.answer || String(card.answer || "").trim();
 
     return {
       id: card.id || `${normalizeTagKey(card.tag)}_${index}_${uid("card")}`,
       tag: (card.tag || "General").trim(),
       question: String(card.question || "").trim(),
       type: isMcq ? "mcq" : "short",
-      answer: isMcq ? "" : String(card.answer || "").trim(),
+      answer: isMcq ? "" : shortAnswer,
       options: isMcq ? options.slice(0, 4) : [],
-      correctOption: isMcq ? correctOption : ""
+      correctOption: isMcq ? correctOption : "",
+      rationale
     };
   });
 }
@@ -683,6 +771,7 @@ function updateRoleUI() {
   syncExamControlLock();
   renderResources();
   updateTrialLockUI();
+  updateUpgradeWallUI();
 }
 
 function updateMetrics() {
@@ -737,9 +826,11 @@ function renderCard() {
     dom.mcqOptions.classList.add("hidden");
     dom.userAnswer.classList.remove("hidden");
     setStatus(dom.feedback, "");
+    setStatus(dom.rationalePlaceholder, DEFAULT_RATIONALE_TEXT);
     setAwaitingNext(false);
     dom.flagQuestionBtn.disabled = true;
     updateTrialLockUI();
+    updateUpgradeWallUI();
     dom.categoryStatus.textContent = state.role === "trainer" ? `Showing 0 cards for ${state.selectedTag}.` : "";
     return;
   }
@@ -758,6 +849,7 @@ function renderCard() {
     setAwaitingNext(false);
     dom.flagQuestionBtn.disabled = true;
     updateTrialLockUI();
+    updateUpgradeWallUI();
     dom.categoryStatus.textContent = state.role === "trainer" ? "Question limit reached for current access." : "";
     return;
   }
@@ -785,7 +877,7 @@ function renderCard() {
   }
 
   setStatus(dom.feedback, "");
-  setStatus(dom.rationalePlaceholder, "Rationale section reserved for future explanation details.");
+  setStatus(dom.rationalePlaceholder, String(card.rationale || "").trim() || DEFAULT_RATIONALE_TEXT);
   setAwaitingNext(false);
   updateTrialLockUI();
 
@@ -797,6 +889,7 @@ function renderCard() {
 
   if (card.type !== "mcq") dom.userAnswer.focus();
   dom.flagQuestionBtn.disabled = !state.session.isActive || hasSessionLimitReached();
+  updateUpgradeWallUI();
 }
 
 function setSelectedTag(tag) {
@@ -1472,6 +1565,7 @@ function sanitizeQuestionCard(card) {
     type,
     question: cleanImportText(card.question || ""),
     answer: cleanImportText(card.answer || ""),
+    rationale: cleanImportText(card.rationale || ""),
     option_a: cleanOption(card.option_a || card.optionA || ""),
     option_b: cleanOption(card.option_b || card.optionB || ""),
     option_c: cleanOption(card.option_c || card.optionC || ""),
@@ -1568,6 +1662,7 @@ function parseRowsMatrix(rows) {
     const type = (getByName(row, ["type"], 1) || (hasNamedHeader ? "short" : "")).toLowerCase();
     const question = getByName(row, ["question"], hasNamedHeader ? -1 : 1);
     const answer = getByName(row, ["answer"], hasNamedHeader ? -1 : 2);
+    const rationale = getByName(row, ["rationale", "explanation"], -1);
     const optionA = getByName(row, ["option_a", "optiona", "a"], -1);
     const optionB = getByName(row, ["option_b", "optionb", "b"], -1);
     const optionC = getByName(row, ["option_c", "optionc", "c"], -1);
@@ -1579,6 +1674,7 @@ function parseRowsMatrix(rows) {
       type: type === "mcq" ? "mcq" : "short",
       question,
       answer,
+      rationale,
       option_a: optionA,
       option_b: optionB,
       option_c: optionC,
@@ -1589,7 +1685,7 @@ function parseRowsMatrix(rows) {
 }
 
 function formatCardsForTextarea(cards) {
-  const header = "tag,type,question,answer,option_a,option_b,option_c,option_d,correct_option";
+  const header = "tag,type,question,answer,rationale,option_a,option_b,option_c,option_d,correct_option";
   const rows = cards.map((r) => {
     const type = String(r.type || "short").toLowerCase() === "mcq" ? "mcq" : "short";
     const cols = [
@@ -1597,6 +1693,7 @@ function formatCardsForTextarea(cards) {
       type,
       r.question || "",
       type === "mcq" ? "" : r.answer || "",
+      r.rationale || "",
       r.option_a || "",
       r.option_b || "",
       r.option_c || "",
@@ -1723,13 +1820,14 @@ function exportCsv() {
     return;
   }
 
-  const header = "tag,type,question,answer,option_a,option_b,option_c,option_d,correct_option";
+  const header = "tag,type,question,answer,rationale,option_a,option_b,option_c,option_d,correct_option";
   const rows = state.deck.map((card) =>
     [
       card.tag,
       card.type || "short",
       card.question,
       card.type === "mcq" ? "" : card.answer,
+      card.rationale || "",
       card.type === "mcq" ? card.options?.[0] || "" : "",
       card.type === "mcq" ? card.options?.[1] || "" : "",
       card.type === "mcq" ? card.options?.[2] || "" : "",
@@ -2322,6 +2420,63 @@ function exportPdfReport() {
   doc.save(fileName);
 }
 
+function openWhatsAppCta(message, type) {
+  const url = buildWhatsappLink(message);
+  trackCtaEvent(type, { channel: "whatsapp", message });
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function openPhoneCta() {
+  trackCtaEvent("cta_call_click", { phone: CONTACT_PHONE_RAW });
+  window.location.href = `tel:+${CONTACT_PHONE_DIAL}`;
+}
+
+function openBrochureCta() {
+  trackCtaEvent("cta_brochure_click", { brochureUrl: BROCHURE_URL || "whatsapp_request" });
+  if (BROCHURE_URL) {
+    window.open(BROCHURE_URL, "_blank", "noopener,noreferrer");
+    return;
+  }
+  openWhatsAppCta("Hello, please share the latest program brochure and fee details.", "cta_brochure_whatsapp_request");
+}
+
+function openSyllabusCta() {
+  trackCtaEvent("cta_syllabus_click", { syllabusUrl: SYLLABUS_URL || "whatsapp_request" });
+  if (SYLLABUS_URL) {
+    window.open(SYLLABUS_URL, "_blank", "noopener,noreferrer");
+    return;
+  }
+  openWhatsAppCta("Hello, please share the detailed syllabus PDF for your training program.", "cta_syllabus_whatsapp_request");
+}
+
+async function submitCounselingForm(event) {
+  event.preventDefault();
+  const name = dom.counselName.value.trim();
+  const email = dom.counselEmail.value.trim();
+  const phone = dom.counselPhone.value.trim();
+  const message = dom.counselMessage.value.trim();
+
+  if (!name || !email || !phone) {
+    setStatus(dom.upgradeStatus, "Please enter name, email, and phone.", "error");
+    return;
+  }
+
+  await trackCtaEvent("cta_counseling_request", {
+    name,
+    email,
+    phone,
+    message,
+    source: "upgrade_wall"
+  });
+  setStatus(dom.upgradeStatus, "Request submitted. Redirecting to WhatsApp for follow-up.", "success");
+  openWhatsAppCta(
+    `Hello, I would like a free counseling session. Name: ${name}, Email: ${email}, Phone: ${phone}, Requirement: ${
+      message || "Please guide me with full access and next batch details."
+    }`,
+    "cta_counseling_whatsapp_followup"
+  );
+}
+
 function renderCohortUI() {
   const cohorts = Array.isArray(state.adminPanel.cohorts) ? state.adminPanel.cohorts : [];
   if (!cohorts.length) {
@@ -2630,6 +2785,35 @@ function bindEvents() {
   dom.loadDrillRecommendationsBtn.addEventListener("click", loadDrillRecommendations);
   dom.shareTrendEmailBtn.addEventListener("click", shareTrendByEmail);
   dom.exportReportBtn.addEventListener("click", exportPdfReport);
+  dom.unlockAccessBtn.addEventListener("click", () => {
+    openWhatsAppCta(
+      "Hello, I have completed the trial and would like to request full access to the complete training program.",
+      "cta_unlock_full_access_click"
+    );
+  });
+  dom.whatsappUpgradeBtn.addEventListener("click", () => {
+    openWhatsAppCta(
+      "Hello, I have completed the trial and would like to request full access to the complete training program.",
+      "cta_whatsapp_click"
+    );
+  });
+  dom.callUpgradeBtn.addEventListener("click", openPhoneCta);
+  dom.demoClassBtn.addEventListener("click", () => {
+    openWhatsAppCta(
+      "Hello, I would like to attend the free live demo class. Please share available slots and registration details.",
+      "cta_demo_class_click"
+    );
+  });
+  dom.brochureBtn.addEventListener("click", openBrochureCta);
+  dom.syllabusBtn.addEventListener("click", openSyllabusCta);
+  dom.counselingForm.addEventListener("submit", submitCounselingForm);
+  dom.floatingWhatsappBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    openWhatsAppCta(
+      "Hello, I have completed the trial and would like to request full access to the complete training program.",
+      "cta_floating_whatsapp_click"
+    );
+  });
 
   dom.csvFileInput.addEventListener("change", async () => {
     const file = dom.csvFileInput.files?.[0];
@@ -2682,6 +2866,10 @@ async function init() {
   dom.examDuration.value = String(state.examConfig.durationMinutes);
   dom.examPassThreshold.value = String(state.examConfig.passThreshold || 80);
   dom.examStrictTiming.checked = state.examConfig.strictTiming !== false;
+  dom.floatingWhatsappBtn.href = buildWhatsappLink(
+    "Hello, I have completed the trial and would like to request full access to the complete training program."
+  );
+  setStatus(dom.upgradeStatus, "");
 
   renderCategoryButtons();
   renderResources();
