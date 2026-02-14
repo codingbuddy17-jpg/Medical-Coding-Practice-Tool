@@ -200,6 +200,67 @@ function calcScore(correct, attempted) {
   return attempted ? Math.round((correct / attempted) * 100) : 0;
 }
 
+function normalizeEmail(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function normalizePhone(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+async function hasPriorTrialUsage({ email, phone }) {
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedPhone = normalizePhone(phone);
+  const rawPhone = String(phone || "").trim();
+  if (!normalizedEmail && !normalizedPhone) return false;
+
+  if (!USE_SUPABASE) {
+    const sessions = readSessions();
+    return sessions.some((session) => {
+      if (String(session.role || "") !== "trial") return false;
+      const sessionEmail = normalizeEmail(session.userEmail);
+      const sessionPhone = normalizePhone(session.userPhone);
+      if (normalizedEmail && sessionEmail && sessionEmail === normalizedEmail) return true;
+      if (normalizedPhone && sessionPhone && sessionPhone === normalizedPhone) return true;
+      return false;
+    });
+  }
+
+  if (normalizedEmail) {
+    const emailRes = await supabase
+      .from("sessions")
+      .select("session_id", { head: true, count: "exact" })
+      .eq("role", "trial")
+      .eq("user_email", normalizedEmail);
+    if (emailRes.error) throw emailRes.error;
+    if (Number(emailRes.count || 0) > 0) return true;
+  }
+
+  if (normalizedPhone) {
+    const phoneRes = await supabase
+      .from("sessions")
+      .select("session_id", { head: true, count: "exact" })
+      .eq("role", "trial")
+      .eq("user_phone", normalizedPhone);
+    if (phoneRes.error) throw phoneRes.error;
+    if (Number(phoneRes.count || 0) > 0) return true;
+  }
+
+  if (rawPhone && rawPhone !== normalizedPhone) {
+    const phoneRawRes = await supabase
+      .from("sessions")
+      .select("session_id", { head: true, count: "exact" })
+      .eq("role", "trial")
+      .eq("user_phone", rawPhone);
+    if (phoneRawRes.error) throw phoneRawRes.error;
+    if (Number(phoneRawRes.count || 0) > 0) return true;
+  }
+
+  return false;
+}
+
 function isAdminAuthorized(key) {
   const value = String(key || "");
   const config = readAccessConfig();
@@ -339,8 +400,8 @@ async function upsertUserAndEntitlement({ userName, userEmail, userPhone, role }
 
   const userPayload = {
     name: userName || "anonymous",
-    email: userEmail,
-    phone: userPhone || "",
+    email: normalizeEmail(userEmail),
+    phone: normalizePhone(userPhone),
     role: roleValue
   };
 
@@ -348,7 +409,7 @@ async function upsertUserAndEntitlement({ userName, userEmail, userPhone, role }
   if (userError) throw userError;
 
   const entPayload = {
-    email: userEmail,
+    email: normalizeEmail(userEmail),
     access_type: roleValue,
     question_limit: questionLimit
   };
@@ -358,6 +419,9 @@ async function upsertUserAndEntitlement({ userName, userEmail, userPhone, role }
 }
 
 async function storageStartSession({ sessionId, userName, userEmail, userPhone, role }) {
+  const normalizedEmail = normalizeEmail(userEmail);
+  const normalizedPhone = normalizePhone(userPhone);
+
   if (!USE_SUPABASE) {
     const sessions = readSessions();
     if (findSessionIndex(sessions, sessionId) >= 0) return { id: sessionId, reused: true };
@@ -365,8 +429,8 @@ async function storageStartSession({ sessionId, userName, userEmail, userPhone, 
     sessions.unshift({
       id: sessionId,
       userName,
-      userEmail,
-      userPhone,
+      userEmail: normalizedEmail,
+      userPhone: normalizedPhone,
       role,
       startedAt: Date.now(),
       endedAt: null,
@@ -391,8 +455,8 @@ async function storageStartSession({ sessionId, userName, userEmail, userPhone, 
   const payload = {
     session_id: sessionId,
     user_name: userName,
-    user_email: userEmail,
-    user_phone: userPhone,
+    user_email: normalizedEmail,
+    user_phone: normalizedPhone,
     role,
     started_at: toIso(Date.now()),
     correct: 0,
@@ -862,12 +926,25 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === "/api/session/start" && req.method === "POST") {
     try {
       const body = await parseBody(req);
+      const role = String(body.role || "trainee");
+      const userEmail = String(body.userEmail || "");
+      const userPhone = String(body.userPhone || "");
+
+      if (role === "trial") {
+        const used = await hasPriorTrialUsage({ email: userEmail, phone: userPhone });
+        if (used) {
+          return json(res, 403, {
+            error: "Trial already used with this email or phone. Contact Admin for full access."
+          });
+        }
+      }
+
       const result = await storageStartSession({
         sessionId: String(body.sessionId || `session_${Math.random().toString(36).slice(2, 10)}`),
         userName: String(body.userName || "anonymous"),
-        userEmail: String(body.userEmail || ""),
-        userPhone: String(body.userPhone || ""),
-        role: String(body.role || "trainee")
+        userEmail,
+        userPhone,
+        role
       });
 
       return json(res, result.reused ? 200 : 201, result);

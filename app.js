@@ -957,7 +957,12 @@ async function apiRequest(path, method = "GET", payload = null) {
   const response = await fetch(path, options);
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `HTTP ${response.status}`);
+    try {
+      const parsed = JSON.parse(text);
+      throw new Error(parsed.error || text || `HTTP ${response.status}`);
+    } catch {
+      throw new Error(text || `HTTP ${response.status}`);
+    }
   }
   return response.json();
 }
@@ -1088,8 +1093,11 @@ async function startSession() {
     state.session.id = session.id || state.session.id;
     const cohortInfo = state.session.cohortName ? ` Cohort: ${state.session.cohortName}.` : "";
     setStatus(dom.sessionStatus, `Session started for ${userName}.${cohortInfo}`, "success");
-  } catch {
-    setStatus(dom.sessionStatus, "Session started locally (backend unavailable).", "error");
+  } catch (err) {
+    state.session.isActive = false;
+    state.session.id = null;
+    setStatus(dom.sessionStatus, `Session start blocked: ${err.message}`, "error");
+    return;
   }
 
   updateRoleUI();
