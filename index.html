@@ -16,7 +16,7 @@
     <main class="app">
       <header class="topbar">
         <div class="brand-block">
-          <img class="brand-logo" src="logo.png" alt="CodingBuddy360 logo" />
+          <img class="brand-logo" src="CB360.png" alt="CodingBuddy360 logo" />
           <div>
             <p class="eyebrow">CodingBuddy360</p>
             <h1>PracticeBuddy Lab</h1>
@@ -33,6 +33,29 @@
       <section class="panel brand-intro" id="brandIntro">
         <h2>A CodingBuddy360 Product</h2>
         <p class="status">Enterprise-style coding practice environment built for classroom performance, certification outcomes, and placement readiness.</p>
+      </section>
+
+      <section id="preSessionLanding" class="panel landing-panel">
+        <h2>PracticeBuddy Lab Dashboard</h2>
+        <p class="status">A high-performance environment for coding practice, mock exam preparation, and measurable learner improvement.</p>
+        <div class="landing-grid">
+          <article class="landing-tile">
+            <h3>Structured Practice</h3>
+            <p class="status">Tag-based short and MCQ drills with instant validation and rationale-ready flow.</p>
+          </article>
+          <article class="landing-tile">
+            <h3>Mock Exam Readiness</h3>
+            <p class="status">Blueprint-driven exam practice with timed rules, pass thresholds, and cohort assignment.</p>
+          </article>
+          <article class="landing-tile">
+            <h3>Performance Intelligence</h3>
+            <p class="status">Learner and cohort analytics, weak-topic insights, and mentor action controls.</p>
+          </article>
+        </div>
+        <div class="panel-actions">
+          <button id="landingStartTrialBtn" class="primary-btn" type="button">Start Trial</button>
+          <button id="landingFullAccessBtn" class="ghost-btn cta-secondary" type="button">Request Full Access</button>
+        </div>
       </section>
 
       <section class="auth panel" id="authPanel">
@@ -285,7 +308,15 @@
         <section class="panel">
           <h3>Mentor Session Console</h3>
           <div class="panel-actions">
+            <input id="sessionSearchInput" type="text" placeholder="Search learner" />
+            <select id="sessionRoleFilter">
+              <option value="">All Access Types</option>
+              <option value="trial">Trial Access</option>
+              <option value="trainee">Learner Access</option>
+              <option value="trainer">Mentor Console</option>
+            </select>
             <button id="refreshSessionsBtn" class="ghost-btn" type="button">Refresh Sessions</button>
+            <button id="exportSessionsBtn" class="ghost-btn" type="button">Export Sessions CSV</button>
           </div>
           <div class="table-wrap">
             <table>
@@ -293,6 +324,7 @@
                 <tr>
                   <th>User</th>
                   <th>Access Type</th>
+                  <th>Attempted</th>
                   <th>Correct</th>
                   <th>Wrong</th>
                   <th>Score</th>
@@ -301,7 +333,7 @@
               </thead>
               <tbody id="sessionTableBody">
                 <tr>
-                  <td colspan="6">No sessions loaded.</td>
+                  <td colspan="7">No sessions loaded.</td>
                 </tr>
               </tbody>
             </table>
@@ -538,6 +570,24 @@
             <button id="shareTrendEmailBtn" class="ghost-btn" type="button">Share Trend by Email</button>
           </div>
           <p id="analyticsStatus" class="status"></p>
+          <section class="dashboard analytics-summary">
+            <div class="metric">
+              <span class="metric-label">Analyzed Attempts</span>
+              <strong id="analyticsAttempted">0</strong>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Correct</span>
+              <strong id="analyticsCorrect">0</strong>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Wrong</span>
+              <strong id="analyticsWrong">0</strong>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Overall Score</span>
+              <strong id="analyticsScore">0%</strong>
+            </div>
+          </section>
 
           <p class="status"><strong>Recommended Tags:</strong> <span id="analyticsRecommendedTags">--</span></p>
 

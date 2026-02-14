@@ -130,6 +130,9 @@ const state = {
   },
   reviewQueue: {
     items: []
+  },
+  sessionConsole: {
+    all: []
   }
 };
 
@@ -188,6 +191,9 @@ const dom = {
   trialLockNotice: document.getElementById("trialLockNotice"),
   trialInfoBanner: document.getElementById("trialInfoBanner"),
   trialInfoWhatsappBtn: document.getElementById("trialInfoWhatsappBtn"),
+  preSessionLanding: document.getElementById("preSessionLanding"),
+  landingStartTrialBtn: document.getElementById("landingStartTrialBtn"),
+  landingFullAccessBtn: document.getElementById("landingFullAccessBtn"),
   upgradeWall: document.getElementById("upgradeWall"),
   upgradeStatus: document.getElementById("upgradeStatus"),
   unlockAccessBtn: document.getElementById("unlockAccessBtn"),
@@ -215,6 +221,9 @@ const dom = {
   importStatus: document.getElementById("importStatus"),
 
   refreshSessionsBtn: document.getElementById("refreshSessionsBtn"),
+  exportSessionsBtn: document.getElementById("exportSessionsBtn"),
+  sessionSearchInput: document.getElementById("sessionSearchInput"),
+  sessionRoleFilter: document.getElementById("sessionRoleFilter"),
   sessionTableBody: document.getElementById("sessionTableBody"),
   sessionLoadStatus: document.getElementById("sessionLoadStatus"),
   flagStatusFilter: document.getElementById("flagStatusFilter"),
@@ -270,6 +279,10 @@ const dom = {
   loadDrillRecommendationsBtn: document.getElementById("loadDrillRecommendationsBtn"),
   shareTrendEmailBtn: document.getElementById("shareTrendEmailBtn"),
   analyticsStatus: document.getElementById("analyticsStatus"),
+  analyticsAttempted: document.getElementById("analyticsAttempted"),
+  analyticsCorrect: document.getElementById("analyticsCorrect"),
+  analyticsWrong: document.getElementById("analyticsWrong"),
+  analyticsScore: document.getElementById("analyticsScore"),
   analyticsRecommendedTags: document.getElementById("analyticsRecommendedTags"),
   analyticsTagBody: document.getElementById("analyticsTagBody"),
   analyticsTrendBody: document.getElementById("analyticsTrendBody")
@@ -408,6 +421,12 @@ function updateUpgradeWallUI() {
 function updateTrialInfoBannerUI() {
   const show = state.role === "trial" && state.session.isActive && !hasSessionLimitReached();
   dom.trialInfoBanner.classList.toggle("hidden", !show);
+}
+
+function updatePreSessionLandingUI() {
+  const show = !state.session.isActive;
+  dom.preSessionLanding.classList.toggle("landing-hidden", !show);
+  dom.preSessionLanding.setAttribute("aria-hidden", show ? "false" : "true");
 }
 
 function toMcqOptionKey(value) {
@@ -811,6 +830,7 @@ function updateRoleUI() {
   updateTrialLockUI();
   updateTrialInfoBannerUI();
   updateUpgradeWallUI();
+  updatePreSessionLandingUI();
 }
 
 function updateSessionIdentityLock() {
@@ -1422,6 +1442,7 @@ async function startSession() {
     state.session.isActive = false;
     state.session.id = null;
     updateSessionIdentityLock();
+    updatePreSessionLandingUI();
     setStatus(dom.sessionStatus, `Session start blocked: ${err.message}`, "error");
     return;
   }
@@ -1466,6 +1487,7 @@ async function endSession() {
 
   state.session.isActive = false;
   updateSessionIdentityLock();
+  updatePreSessionLandingUI();
   setStatus(dom.sessionStatus, `Session ended. Score: ${summary.score}%`, "success");
 }
 
@@ -1957,29 +1979,82 @@ async function loadSessions() {
   }
   try {
     const data = await apiRequest(`/api/sessions?trainerKey=${encodeURIComponent(trainerKey)}`);
-    const sessions = data.sessions || [];
-
-    if (!sessions.length) {
-      dom.sessionTableBody.innerHTML = '<tr><td colspan="6">No sessions found.</td></tr>';
-      setStatus(dom.sessionLoadStatus, "No sessions available.");
-      return;
-    }
-
-    dom.sessionTableBody.innerHTML = sessions
-      .map((s) => {
-        const attempted = s.summary?.attempted || 0;
-        const correct = s.summary?.correct || 0;
-        const wrong = s.summary?.wrong || 0;
-        const score = attempted ? Math.round((correct / attempted) * 100) : 0;
-        const started = new Date(s.startedAt).toLocaleString();
-        return `<tr><td>${s.userName}</td><td>${s.role}</td><td>${correct}</td><td>${wrong}</td><td>${score}%</td><td>${started}</td></tr>`;
-      })
-      .join("");
-
-    setStatus(dom.sessionLoadStatus, `Loaded ${sessions.length} sessions.`, "success");
+    state.sessionConsole.all = Array.isArray(data.sessions) ? data.sessions : [];
+    renderSessionConsoleTable();
+    setStatus(dom.sessionLoadStatus, `Loaded ${state.sessionConsole.all.length} sessions.`, "success");
   } catch (err) {
     setStatus(dom.sessionLoadStatus, `Could not load sessions: ${err.message}`, "error");
   }
+}
+
+function toAccessTypeLabel(role) {
+  if (role === "trial") return "Trial Access";
+  if (role === "trainee") return "Learner Access";
+  if (role === "trainer") return "Mentor Console";
+  return role || "-";
+}
+
+function filteredSessionsForConsole() {
+  const search = String(dom.sessionSearchInput.value || "").trim().toLowerCase();
+  const role = String(dom.sessionRoleFilter.value || "");
+  return (state.sessionConsole.all || []).filter((s) => {
+    if (role && String(s.role || "") !== role) return false;
+    if (search) {
+      const name = String(s.userName || "").toLowerCase();
+      if (!name.includes(search)) return false;
+    }
+    return true;
+  });
+}
+
+function renderSessionConsoleTable() {
+  const sessions = filteredSessionsForConsole();
+  if (!sessions.length) {
+    dom.sessionTableBody.innerHTML = '<tr><td colspan="7">No sessions found for current filter.</td></tr>';
+    return;
+  }
+
+  dom.sessionTableBody.innerHTML = sessions
+    .map((s) => {
+      const attempted = s.summary?.attempted || 0;
+      const correct = s.summary?.correct || 0;
+      const wrong = s.summary?.wrong || 0;
+      const score = attempted ? Math.round((correct / attempted) * 100) : 0;
+      const started = new Date(s.startedAt).toLocaleString();
+      return `<tr><td>${s.userName}</td><td>${toAccessTypeLabel(s.role)}</td><td>${attempted}</td><td>${correct}</td><td>${wrong}</td><td>${score}%</td><td>${started}</td></tr>`;
+    })
+    .join("");
+}
+
+function exportSessionsCsv() {
+  if (state.role !== "trainer") return;
+  const sessions = filteredSessionsForConsole();
+  if (!sessions.length) {
+    setStatus(dom.sessionLoadStatus, "No session rows to export.", "error");
+    return;
+  }
+
+  const header = "user,access_type,attempted,correct,wrong,score,started";
+  const rows = sessions.map((s) => {
+    const attempted = s.summary?.attempted || 0;
+    const correct = s.summary?.correct || 0;
+    const wrong = s.summary?.wrong || 0;
+    const score = attempted ? Math.round((correct / attempted) * 100) : 0;
+    const started = new Date(s.startedAt).toISOString();
+    return [s.userName || "", toAccessTypeLabel(s.role), attempted, correct, wrong, `${score}%`, started]
+      .map((v) => `"${String(v).replaceAll('"', '""')}"`)
+      .join(",");
+  });
+
+  const csv = [header, ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "mentor-session-console.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+  setStatus(dom.sessionLoadStatus, "Session CSV exported.", "success");
 }
 
 async function flagCurrentQuestion() {
@@ -2125,6 +2200,11 @@ async function handleFlagQueueAction(action, flagId) {
 function renderAnalyticsTables(analytics) {
   const byTag = Array.isArray(analytics?.byTag) ? analytics.byTag : [];
   const trend = Array.isArray(analytics?.trend) ? analytics.trend : [];
+  const summary = analytics?.summary || {};
+  dom.analyticsAttempted.textContent = String(summary.attempted || 0);
+  dom.analyticsCorrect.textContent = String(summary.correct || 0);
+  dom.analyticsWrong.textContent = String(summary.wrong || 0);
+  dom.analyticsScore.textContent = `${Number(summary.score || 0)}%`;
 
   if (!byTag.length) {
     dom.analyticsTagBody.innerHTML = '<tr><td colspan="5">No tag analytics for selected filter.</td></tr>';
@@ -2871,6 +2951,9 @@ function bindEvents() {
   dom.loadStarterBtn.addEventListener("click", loadStarterDeck);
   dom.exportBtn.addEventListener("click", exportCsv);
   dom.refreshSessionsBtn.addEventListener("click", loadSessions);
+  dom.exportSessionsBtn.addEventListener("click", exportSessionsCsv);
+  dom.sessionSearchInput.addEventListener("input", renderSessionConsoleTable);
+  dom.sessionRoleFilter.addEventListener("change", renderSessionConsoleTable);
   dom.refreshFlagsBtn.addEventListener("click", loadFlagQueue);
   dom.flagStatusFilter.addEventListener("change", loadFlagQueue);
   dom.flagQueueBody.addEventListener("click", (event) => {
@@ -2922,6 +3005,20 @@ function bindEvents() {
     openWhatsAppCta(
       "Hello, I am using the trial version and would like to upgrade to full access.",
       "cta_trial_banner_whatsapp_click"
+    );
+  });
+  dom.landingStartTrialBtn.addEventListener("click", () => {
+    dom.roleSelect.value = "trial";
+    state.role = "trial";
+    updateRoleUI();
+    saveLocal();
+    trackCtaEvent("landing_start_trial_click");
+    dom.userName.focus();
+  });
+  dom.landingFullAccessBtn.addEventListener("click", () => {
+    openWhatsAppCta(
+      "Hello, I would like to unlock full access to PracticeBuddy Lab for complete training and assessments.",
+      "cta_landing_full_access_click"
     );
   });
   dom.examTrialContactBtn.addEventListener("click", () => {
@@ -3012,6 +3109,7 @@ async function init() {
   setStatus(dom.examStatus, "Exam mode inactive.");
   updateExamStatusUI();
   updateTrialInfoBannerUI();
+  updatePreSessionLandingUI();
   await loadAnalyticsCohorts();
   await loadBlueprintTemplates();
   await loadAssignedBlueprintForSession();
