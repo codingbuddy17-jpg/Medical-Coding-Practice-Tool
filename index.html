@@ -189,7 +189,7 @@
       <section class="panel-row" id="trainerZone">
         <section class="panel">
           <h3>Trainer Deck Manager</h3>
-          <p>CSV columns: <code>tag,question,answer</code>. Multiple valid answers: separate with <code>|</code>.</p>
+          <p>CSV/XLSX columns: <code>tag,type,question,answer,option_a,option_b,option_c,option_d,correct_option</code>.</p>
           <label>
             Upload CSV File
             <input
@@ -233,6 +233,114 @@
             </table>
           </div>
           <p id="sessionLoadStatus" class="status" aria-live="polite"></p>
+        </section>
+
+        <section class="panel">
+          <h3>Admin Access Control</h3>
+          <div class="auth-grid">
+            <label>
+              Admin Key
+              <input id="adminKeyInput" type="password" placeholder="Enter admin key" />
+            </label>
+            <div class="panel-actions">
+              <button id="verifyAdminBtn" class="ghost-btn" type="button">Verify Admin</button>
+              <button id="loadAdminDataBtn" class="ghost-btn" type="button">Load Admin Data</button>
+            </div>
+          </div>
+          <p id="adminStatus" class="status" aria-live="polite"></p>
+
+          <div id="adminTools" class="hidden">
+            <h4>Global Access Settings</h4>
+            <div class="auth-grid">
+              <label>
+                Trainee Access Code
+                <input id="adminTraineeCode" type="text" placeholder="Set trainee code" />
+              </label>
+              <label>
+                Trainer Key
+                <input id="adminTrainerKey" type="text" placeholder="Set trainer key" />
+              </label>
+              <label>
+                Trial Question Limit
+                <input id="adminTrialLimit" type="number" min="1" step="1" placeholder="20" />
+              </label>
+            </div>
+            <div class="panel-actions">
+              <button id="saveAccessConfigBtn" class="primary-btn" type="button">Save Access Settings</button>
+            </div>
+            <p id="accessConfigStatus" class="status"></p>
+
+            <h4>Cohort / Class Management</h4>
+            <div class="auth-grid">
+              <label>
+                Cohort Name
+                <input id="cohortNameInput" type="text" placeholder="Batch A - CPC Jan" />
+              </label>
+              <label>
+                Cohort Access Code
+                <input id="cohortCodeInput" type="text" placeholder="CPCJAN2026" />
+              </label>
+              <label>
+                Cohort Question Limit
+                <input id="cohortLimitInput" type="number" min="1" step="1" placeholder="1000" />
+              </label>
+              <label>
+                Active
+                <select id="cohortActiveInput">
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </label>
+            </div>
+            <div class="panel-actions">
+              <button id="createCohortBtn" class="primary-btn" type="button">Create Cohort</button>
+              <button id="updateCohortBtn" class="ghost-btn" type="button">Update Selected Cohort</button>
+              <button id="refreshCohortsBtn" class="ghost-btn" type="button">Refresh Cohorts</button>
+            </div>
+            <p id="cohortStatus" class="status"></p>
+
+            <label>
+              Existing Cohorts
+              <select id="cohortSelect"></select>
+            </label>
+            <div class="auth-grid">
+              <label>
+                Member Name
+                <input id="memberNameInput" type="text" placeholder="Optional name" />
+              </label>
+              <label>
+                Member Email
+                <input id="memberEmailInput" type="email" placeholder="trainee@email.com" />
+              </label>
+              <label>
+                Member Phone
+                <input id="memberPhoneInput" type="text" placeholder="+91 xxxxxxxxxx" />
+              </label>
+            </div>
+            <div class="panel-actions">
+              <button id="enrollMemberBtn" class="ghost-btn" type="button">Enroll / Update Member</button>
+            </div>
+            <p id="enrollStatus" class="status"></p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cohort</th>
+                    <th>Access Code</th>
+                    <th>Limit</th>
+                    <th>Active</th>
+                    <th>Members</th>
+                  </tr>
+                </thead>
+                <tbody id="cohortTableBody">
+                  <tr>
+                    <td colspan="5">No cohorts loaded.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </section>
       </section>
     </main>

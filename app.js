@@ -1,5 +1,4 @@
 const STORAGE_KEY = "medcode_flashcards_role_v4";
-const TRIAL_QUESTION_LIMIT = 20;
 const MCQ_PREFIX = "__MCQ__:";
 
 const CATEGORY_OPTIONS = [
@@ -52,6 +51,7 @@ const state = {
   userEmail: "",
   userPhone: "",
   trainerKey: "",
+  adminKey: "",
   selectedTag: "ALL",
   weakDrillEnabled: false,
   examConfig: {
@@ -64,6 +64,9 @@ const state = {
   session: {
     id: null,
     startedAt: null,
+    questionLimit: 20,
+    cohortId: null,
+    cohortName: "",
     correct: 0,
     wrong: 0,
     attempted: 0,
@@ -86,6 +89,14 @@ const state = {
   studyOrder: {
     queues: {},
     cursors: {}
+  },
+  accessConfig: {
+    trialQuestionLimit: 20,
+    contactMessage: "Contact Admin for full access. Contact or WhatsApp at +91 8309661352."
+  },
+  adminPanel: {
+    verified: false,
+    cohorts: []
   }
 };
 
@@ -150,7 +161,33 @@ const dom = {
 
   refreshSessionsBtn: document.getElementById("refreshSessionsBtn"),
   sessionTableBody: document.getElementById("sessionTableBody"),
-  sessionLoadStatus: document.getElementById("sessionLoadStatus")
+  sessionLoadStatus: document.getElementById("sessionLoadStatus"),
+
+  adminKeyInput: document.getElementById("adminKeyInput"),
+  verifyAdminBtn: document.getElementById("verifyAdminBtn"),
+  loadAdminDataBtn: document.getElementById("loadAdminDataBtn"),
+  adminStatus: document.getElementById("adminStatus"),
+  adminTools: document.getElementById("adminTools"),
+  adminTraineeCode: document.getElementById("adminTraineeCode"),
+  adminTrainerKey: document.getElementById("adminTrainerKey"),
+  adminTrialLimit: document.getElementById("adminTrialLimit"),
+  saveAccessConfigBtn: document.getElementById("saveAccessConfigBtn"),
+  accessConfigStatus: document.getElementById("accessConfigStatus"),
+  cohortNameInput: document.getElementById("cohortNameInput"),
+  cohortCodeInput: document.getElementById("cohortCodeInput"),
+  cohortLimitInput: document.getElementById("cohortLimitInput"),
+  cohortActiveInput: document.getElementById("cohortActiveInput"),
+  createCohortBtn: document.getElementById("createCohortBtn"),
+  updateCohortBtn: document.getElementById("updateCohortBtn"),
+  refreshCohortsBtn: document.getElementById("refreshCohortsBtn"),
+  cohortStatus: document.getElementById("cohortStatus"),
+  cohortSelect: document.getElementById("cohortSelect"),
+  memberNameInput: document.getElementById("memberNameInput"),
+  memberEmailInput: document.getElementById("memberEmailInput"),
+  memberPhoneInput: document.getElementById("memberPhoneInput"),
+  enrollMemberBtn: document.getElementById("enrollMemberBtn"),
+  enrollStatus: document.getElementById("enrollStatus"),
+  cohortTableBody: document.getElementById("cohortTableBody")
 };
 
 function uid(prefix = "id") {
@@ -196,16 +233,22 @@ function isTrialUser() {
   return state.role === "trial";
 }
 
-function hasTrialLimitReached() {
-  return isTrialUser() && state.session.attempted >= TRIAL_QUESTION_LIMIT;
+function activeSessionLimit() {
+  const limit = Number(state.session.questionLimit || 0);
+  if (limit > 0 && Number.isFinite(limit)) return limit;
+  return isTrialUser() ? Number(state.accessConfig.trialQuestionLimit || 20) : 1000000;
+}
+
+function hasSessionLimitReached() {
+  return state.session.attempted >= activeSessionLimit();
 }
 
 function trialUpgradeMessage() {
-  return "Contact Admin for full access. Contact or WhatsApp at +91 8309661352.";
+  return state.accessConfig.contactMessage || "Contact Admin for full access.";
 }
 
 function updateTrialLockUI() {
-  if (hasTrialLimitReached()) {
+  if (hasSessionLimitReached()) {
     dom.userAnswer.disabled = true;
     dom.checkBtn.disabled = true;
     dom.nextBtn.disabled = true;
@@ -213,7 +256,7 @@ function updateTrialLockUI() {
       btn.disabled = true;
     });
     dom.trialLockNotice.classList.remove("hidden");
-    dom.trialLockNotice.textContent = `Trial complete (20 questions). ${trialUpgradeMessage()}`;
+    dom.trialLockNotice.textContent = `Practice limit reached (${activeSessionLimit()} questions). ${trialUpgradeMessage()}`;
     return;
   }
 
@@ -578,6 +621,11 @@ function updateRoleUI() {
   if (!canUseExam) dom.examPanel.classList.add("hidden");
   dom.importStatus.textContent = "";
   dom.sessionLoadStatus.textContent = "";
+  if (!isTrainer) {
+    state.adminPanel.verified = false;
+    dom.adminTools.classList.add("hidden");
+    setStatus(dom.adminStatus, "");
+  }
   renderResources();
   updateTrialLockUI();
 }
@@ -608,7 +656,7 @@ function updateExamStatusUI() {
 
 function setAwaitingNext(value) {
   state.awaitingNext = value;
-  dom.checkBtn.disabled = value || hasTrialLimitReached();
+  dom.checkBtn.disabled = value || hasSessionLimitReached();
   dom.nextBtn.disabled = !value;
 }
 
@@ -634,10 +682,10 @@ function renderCard() {
     return;
   }
 
-  if (hasTrialLimitReached()) {
+  if (hasSessionLimitReached()) {
     dom.cardTag.textContent = "Trial Complete";
     dom.cardPrompt.textContent =
-      "You have completed your 20-question trial. Contact Admin for full access. Contact or WhatsApp at +91 8309661352.";
+      `You have completed your current limit of ${activeSessionLimit()} questions. ${trialUpgradeMessage()}`;
     dom.userAnswer.value = "";
     state.selectedMcqOption = "";
     dom.mcqOptions.innerHTML = "";
@@ -647,7 +695,7 @@ function renderCard() {
     setStatus(dom.rationalePlaceholder, "Unlock full access to continue practicing all questions.");
     setAwaitingNext(false);
     updateTrialLockUI();
-    dom.categoryStatus.textContent = "Trial locked. Upgrade required for full question bank access.";
+    dom.categoryStatus.textContent = "Question limit reached for current access.";
     return;
   }
 
@@ -669,7 +717,7 @@ function renderCard() {
         return `<button type="button" class="mcq-option" data-option-key="${key}">${key}) ${opt}</button>`;
       })
       .join("");
-    dom.checkBtn.disabled = hasTrialLimitReached();
+    dom.checkBtn.disabled = hasSessionLimitReached();
     dom.nextBtn.disabled = true;
   }
 
@@ -784,7 +832,7 @@ function startExam() {
     return;
   }
 
-  if (hasTrialLimitReached()) {
+  if (hasSessionLimitReached()) {
     setStatus(dom.examStatus, "Trial limit reached. Contact Admin for full access.", "error");
     return;
   }
@@ -927,6 +975,17 @@ async function loadDeckFromCloud() {
   }
 }
 
+async function loadPublicAccessConfig() {
+  try {
+    const data = await apiRequest("/api/access/config");
+    state.accessConfig.trialQuestionLimit = Math.max(1, Number(data.trialQuestionLimit || 20));
+    state.accessConfig.contactMessage =
+      String(data.contactMessage || "").trim() || "Contact Admin for full access. Contact or WhatsApp at +91 8309661352.";
+  } catch {
+    state.accessConfig.trialQuestionLimit = 20;
+  }
+}
+
 function resetSessionTracking() {
   state.session.correct = 0;
   state.session.wrong = 0;
@@ -943,6 +1002,12 @@ async function startSession() {
   const role = dom.roleSelect.value;
   const traineeCode = dom.traineeCode.value.trim();
   const trainerKey = dom.trainerKey.value.trim();
+  let verifiedAccess = {
+    accessType: role,
+    questionLimit: role === "trial" ? Number(state.accessConfig.trialQuestionLimit || 20) : 1000000,
+    cohortId: null,
+    cohortName: ""
+  };
 
   if (!userName) {
     setStatus(dom.sessionStatus, "Enter a user name to start.", "error");
@@ -961,6 +1026,12 @@ async function startSession() {
         setStatus(dom.sessionStatus, "Invalid trainee access code.", "error");
         return;
       }
+      verifiedAccess = {
+        accessType: verification.accessType || "trainee",
+        questionLimit: Math.max(1, Number(verification.questionLimit || 1000000)),
+        cohortId: verification.cohortId || null,
+        cohortName: verification.cohortName || ""
+      };
     } catch {
       setStatus(dom.sessionStatus, "Could not verify trainee access code. Try again.", "error");
       return;
@@ -997,6 +1068,12 @@ async function startSession() {
   state.session.id = uid("session");
   state.session.startedAt = Date.now();
   state.session.isActive = true;
+  state.session.questionLimit = Math.max(
+    1,
+    Number(role === "trial" ? state.accessConfig.trialQuestionLimit : verifiedAccess.questionLimit || 1000000)
+  );
+  state.session.cohortId = verifiedAccess.cohortId;
+  state.session.cohortName = verifiedAccess.cohortName;
   state.awaitingNext = false;
   resetSessionTracking();
 
@@ -1009,7 +1086,8 @@ async function startSession() {
       role
     });
     state.session.id = session.id || state.session.id;
-    setStatus(dom.sessionStatus, `Session started for ${userName}.`, "success");
+    const cohortInfo = state.session.cohortName ? ` Cohort: ${state.session.cohortName}.` : "";
+    setStatus(dom.sessionStatus, `Session started for ${userName}.${cohortInfo}`, "success");
   } catch {
     setStatus(dom.sessionStatus, "Session started locally (backend unavailable).", "error");
   }
@@ -1018,6 +1096,7 @@ async function startSession() {
   updateMetrics();
   setStatus(dom.examStatus, "Exam mode inactive.");
   updateExamStatusUI();
+  renderCohortUI();
   await loadDeckFromCloud();
   renderCard();
   saveLocal();
@@ -1065,9 +1144,9 @@ async function validateCurrentAnswer() {
     return;
   }
 
-  if (hasTrialLimitReached()) {
+  if (hasSessionLimitReached()) {
     updateTrialLockUI();
-    setStatus(dom.feedback, "Trial complete. Contact Admin for full access.", "error");
+    setStatus(dom.feedback, `Question limit reached. ${trialUpgradeMessage()}`, "error");
     return;
   }
 
@@ -1133,7 +1212,7 @@ function nextQuestion() {
     return;
   }
 
-  if (hasTrialLimitReached()) {
+  if (hasSessionLimitReached()) {
     setAwaitingNext(false);
     renderCard();
     return;
@@ -1559,6 +1638,207 @@ async function loadSessions() {
   }
 }
 
+function renderCohortUI() {
+  const cohorts = Array.isArray(state.adminPanel.cohorts) ? state.adminPanel.cohorts : [];
+  if (!cohorts.length) {
+    dom.cohortSelect.innerHTML = '<option value="">No cohorts available</option>';
+    dom.cohortTableBody.innerHTML = '<tr><td colspan="5">No cohorts loaded.</td></tr>';
+    return;
+  }
+
+  dom.cohortSelect.innerHTML = cohorts.map((cohort) => `<option value="${cohort.id}">${cohort.name}</option>`).join("");
+  dom.cohortTableBody.innerHTML = cohorts
+    .map(
+      (cohort) =>
+        `<tr><td>${cohort.name}</td><td>${cohort.accessCode}</td><td>${cohort.questionLimit}</td><td>${
+          cohort.isActive ? "Yes" : "No"
+        }</td><td>${cohort.memberCount}</td></tr>`
+    )
+    .join("");
+  syncCohortFormFromSelection();
+}
+
+function syncCohortFormFromSelection() {
+  const selectedId = dom.cohortSelect.value;
+  const cohort = (state.adminPanel.cohorts || []).find((item) => item.id === selectedId);
+  if (!cohort) return;
+  dom.cohortNameInput.value = cohort.name || "";
+  dom.cohortCodeInput.value = cohort.accessCode || "";
+  dom.cohortLimitInput.value = String(cohort.questionLimit || 1000000);
+  dom.cohortActiveInput.value = cohort.isActive ? "true" : "false";
+}
+
+async function verifyAdmin() {
+  if (state.role !== "trainer") return;
+  const adminKey = dom.adminKeyInput.value.trim();
+  if (!adminKey) {
+    setStatus(dom.adminStatus, "Enter admin key.", "error");
+    return;
+  }
+  try {
+    const data = await apiRequest("/api/admin/verify", "POST", { adminKey });
+    if (!data.valid) {
+      state.adminPanel.verified = false;
+      dom.adminTools.classList.add("hidden");
+      setStatus(dom.adminStatus, "Invalid admin key.", "error");
+      return;
+    }
+    state.adminPanel.verified = true;
+    state.adminKey = adminKey;
+    dom.adminTools.classList.remove("hidden");
+    setStatus(dom.adminStatus, "Admin verified.", "success");
+  } catch (err) {
+    setStatus(dom.adminStatus, `Admin verification failed: ${err.message}`, "error");
+  }
+}
+
+async function loadAdminData() {
+  if (!state.adminPanel.verified || !state.adminKey) {
+    setStatus(dom.adminStatus, "Verify admin key first.", "error");
+    return;
+  }
+  try {
+    const [configRes, cohortRes] = await Promise.all([
+      apiRequest(`/api/admin/access-config?adminKey=${encodeURIComponent(state.adminKey)}`),
+      apiRequest(`/api/admin/cohorts?adminKey=${encodeURIComponent(state.adminKey)}`)
+    ]);
+
+    dom.adminTraineeCode.value = String(configRes.traineeAccessCode || "");
+    dom.adminTrainerKey.value = String(configRes.trainerKey || "");
+    dom.adminTrialLimit.value = String(configRes.trialQuestionLimit || state.accessConfig.trialQuestionLimit || 20);
+    state.adminPanel.cohorts = Array.isArray(cohortRes.cohorts) ? cohortRes.cohorts : [];
+    renderCohortUI();
+    setStatus(dom.adminStatus, "Admin data loaded.", "success");
+  } catch (err) {
+    setStatus(dom.adminStatus, `Could not load admin data: ${err.message}`, "error");
+  }
+}
+
+async function saveAccessConfig() {
+  if (!state.adminPanel.verified || !state.adminKey) {
+    setStatus(dom.accessConfigStatus, "Verify admin key first.", "error");
+    return;
+  }
+
+  const traineeAccessCode = dom.adminTraineeCode.value.trim();
+  const trainerKey = dom.adminTrainerKey.value.trim();
+  const trialQuestionLimit = Math.max(1, Number(dom.adminTrialLimit.value || state.accessConfig.trialQuestionLimit || 20));
+
+  try {
+    await apiRequest("/api/admin/access-config", "POST", {
+      adminKey: state.adminKey,
+      traineeAccessCode,
+      trainerKey,
+      trialQuestionLimit
+    });
+    await loadPublicAccessConfig();
+    setStatus(dom.accessConfigStatus, "Access settings saved.", "success");
+  } catch (err) {
+    setStatus(dom.accessConfigStatus, `Could not save settings: ${err.message}`, "error");
+  }
+}
+
+async function createCohortFromForm() {
+  if (!state.adminPanel.verified || !state.adminKey) {
+    setStatus(dom.cohortStatus, "Verify admin key first.", "error");
+    return;
+  }
+
+  const name = dom.cohortNameInput.value.trim();
+  const accessCode = dom.cohortCodeInput.value.trim();
+  const questionLimit = Math.max(1, Number(dom.cohortLimitInput.value || 1000000));
+  if (!name || !accessCode) {
+    setStatus(dom.cohortStatus, "Cohort name and access code are required.", "error");
+    return;
+  }
+
+  try {
+    await apiRequest("/api/admin/cohorts", "POST", {
+      adminKey: state.adminKey,
+      name,
+      accessCode,
+      questionLimit,
+      isActive: dom.cohortActiveInput.value !== "false"
+    });
+    dom.cohortNameInput.value = "";
+    dom.cohortCodeInput.value = "";
+    dom.cohortLimitInput.value = "";
+    await loadAdminData();
+    setStatus(dom.cohortStatus, "Cohort created.", "success");
+  } catch (err) {
+    setStatus(dom.cohortStatus, `Could not create cohort: ${err.message}`, "error");
+  }
+}
+
+async function updateSelectedCohortFromForm() {
+  if (!state.adminPanel.verified || !state.adminKey) {
+    setStatus(dom.cohortStatus, "Verify admin key first.", "error");
+    return;
+  }
+  const cohortId = dom.cohortSelect.value;
+  if (!cohortId) {
+    setStatus(dom.cohortStatus, "Select a cohort to update.", "error");
+    return;
+  }
+
+  const name = dom.cohortNameInput.value.trim();
+  const accessCode = dom.cohortCodeInput.value.trim();
+  const questionLimit = Math.max(1, Number(dom.cohortLimitInput.value || 1000000));
+  const isActive = dom.cohortActiveInput.value !== "false";
+  if (!name || !accessCode) {
+    setStatus(dom.cohortStatus, "Cohort name and access code are required.", "error");
+    return;
+  }
+
+  try {
+    await apiRequest("/api/admin/cohorts", "POST", {
+      adminKey: state.adminKey,
+      cohortId,
+      name,
+      accessCode,
+      questionLimit,
+      isActive
+    });
+    await loadAdminData();
+    setStatus(dom.cohortStatus, "Cohort updated.", "success");
+  } catch (err) {
+    setStatus(dom.cohortStatus, `Could not update cohort: ${err.message}`, "error");
+  }
+}
+
+async function enrollSelectedCohortMember() {
+  if (!state.adminPanel.verified || !state.adminKey) {
+    setStatus(dom.enrollStatus, "Verify admin key first.", "error");
+    return;
+  }
+  const cohortId = dom.cohortSelect.value;
+  const email = dom.memberEmailInput.value.trim();
+  const name = dom.memberNameInput.value.trim();
+  const phone = dom.memberPhoneInput.value.trim();
+
+  if (!cohortId || !email) {
+    setStatus(dom.enrollStatus, "Select cohort and enter member email.", "error");
+    return;
+  }
+
+  try {
+    await apiRequest("/api/admin/cohorts/enroll", "POST", {
+      adminKey: state.adminKey,
+      cohortId,
+      email,
+      name,
+      phone
+    });
+    dom.memberNameInput.value = "";
+    dom.memberEmailInput.value = "";
+    dom.memberPhoneInput.value = "";
+    await loadAdminData();
+    setStatus(dom.enrollStatus, "Member enrolled/updated.", "success");
+  } catch (err) {
+    setStatus(dom.enrollStatus, `Could not enroll member: ${err.message}`, "error");
+  }
+}
+
 function bindEvents() {
   dom.roleSelect.addEventListener("change", () => {
     state.role = dom.roleSelect.value;
@@ -1580,7 +1860,7 @@ function bindEvents() {
   dom.mcqOptions.addEventListener("click", (event) => {
     const optionBtn = event.target.closest("button[data-option-key]");
     if (!optionBtn) return;
-    if (state.awaitingNext || hasTrialLimitReached()) return;
+    if (state.awaitingNext || hasSessionLimitReached()) return;
     state.selectedMcqOption = optionBtn.dataset.optionKey || "";
     dom.mcqOptions.querySelectorAll("button[data-option-key]").forEach((btn) => {
       btn.classList.toggle("selected", btn === optionBtn);
@@ -1626,6 +1906,14 @@ function bindEvents() {
   dom.loadStarterBtn.addEventListener("click", loadStarterDeck);
   dom.exportBtn.addEventListener("click", exportCsv);
   dom.refreshSessionsBtn.addEventListener("click", loadSessions);
+  dom.verifyAdminBtn.addEventListener("click", verifyAdmin);
+  dom.loadAdminDataBtn.addEventListener("click", loadAdminData);
+  dom.saveAccessConfigBtn.addEventListener("click", saveAccessConfig);
+  dom.createCohortBtn.addEventListener("click", createCohortFromForm);
+  dom.updateCohortBtn.addEventListener("click", updateSelectedCohortFromForm);
+  dom.refreshCohortsBtn.addEventListener("click", loadAdminData);
+  dom.enrollMemberBtn.addEventListener("click", enrollSelectedCohortMember);
+  dom.cohortSelect.addEventListener("change", syncCohortFormFromSelection);
 
   dom.csvFileInput.addEventListener("change", async () => {
     const file = dom.csvFileInput.files?.[0];
@@ -1665,12 +1953,14 @@ function bindEvents() {
 
 async function init() {
   loadLocal();
+  await loadPublicAccessConfig();
   dom.userName.value = state.userName;
   dom.userEmail.value = state.userEmail;
   dom.userPhone.value = state.userPhone;
   dom.roleSelect.value = state.role;
   dom.traineeCode.value = "";
   dom.trainerKey.value = "";
+  dom.adminKeyInput.value = "";
   dom.weakDrillToggle.checked = state.weakDrillEnabled;
   dom.examQuestionCount.value = String(state.examConfig.questionCount);
   dom.examDuration.value = String(state.examConfig.durationMinutes);

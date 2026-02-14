@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 4173;
 const HOST = process.env.HOST || "0.0.0.0";
 const TRAINER_KEY = process.env.TRAINER_KEY || "";
 const TRAINEE_ACCESS_CODE = process.env.TRAINEE_ACCESS_CODE || "";
+const ADMIN_KEY = process.env.ADMIN_KEY || "";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -23,11 +24,29 @@ const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
 const SESSION_FILE = path.join(DATA_DIR, "sessions.json");
 const QUESTIONS_FILE = path.join(DATA_DIR, "questions.json");
+const ACCESS_FILE = path.join(DATA_DIR, "access-config.json");
+const COHORTS_FILE = path.join(DATA_DIR, "cohorts.json");
 
 function ensureDataStore() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(SESSION_FILE)) fs.writeFileSync(SESSION_FILE, JSON.stringify({ sessions: [] }, null, 2));
   if (!fs.existsSync(QUESTIONS_FILE)) fs.writeFileSync(QUESTIONS_FILE, JSON.stringify({ questions: [] }, null, 2));
+  if (!fs.existsSync(ACCESS_FILE)) {
+    fs.writeFileSync(
+      ACCESS_FILE,
+      JSON.stringify(
+        {
+          trainerKey: TRAINER_KEY,
+          traineeAccessCode: TRAINEE_ACCESS_CODE,
+          trialQuestionLimit: 20,
+          updatedAt: Date.now()
+        },
+        null,
+        2
+      )
+    );
+  }
+  if (!fs.existsSync(COHORTS_FILE)) fs.writeFileSync(COHORTS_FILE, JSON.stringify({ cohorts: [] }, null, 2));
 }
 
 function readSessions() {
@@ -60,6 +79,55 @@ function readQuestions() {
 function writeQuestions(questions) {
   ensureDataStore();
   fs.writeFileSync(QUESTIONS_FILE, JSON.stringify({ questions }, null, 2));
+}
+
+function readAccessConfig() {
+  ensureDataStore();
+  const raw = fs.readFileSync(ACCESS_FILE, "utf8");
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      trainerKey: String(parsed.trainerKey || TRAINER_KEY || ""),
+      traineeAccessCode: String(parsed.traineeAccessCode || TRAINEE_ACCESS_CODE || ""),
+      trialQuestionLimit: Number(parsed.trialQuestionLimit || 20),
+      updatedAt: Number(parsed.updatedAt || Date.now())
+    };
+  } catch {
+    return {
+      trainerKey: TRAINER_KEY,
+      traineeAccessCode: TRAINEE_ACCESS_CODE,
+      trialQuestionLimit: 20,
+      updatedAt: Date.now()
+    };
+  }
+}
+
+function writeAccessConfig(config) {
+  ensureDataStore();
+  const payload = {
+    trainerKey: String(config.trainerKey || ""),
+    traineeAccessCode: String(config.traineeAccessCode || ""),
+    trialQuestionLimit: Math.max(1, Number(config.trialQuestionLimit || 20)),
+    updatedAt: Date.now()
+  };
+  fs.writeFileSync(ACCESS_FILE, JSON.stringify(payload, null, 2));
+  return payload;
+}
+
+function readCohorts() {
+  ensureDataStore();
+  const raw = fs.readFileSync(COHORTS_FILE, "utf8");
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.cohorts) ? parsed.cohorts : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCohorts(cohorts) {
+  ensureDataStore();
+  fs.writeFileSync(COHORTS_FILE, JSON.stringify({ cohorts }, null, 2));
 }
 
 function json(res, status, payload) {
@@ -132,11 +200,142 @@ function calcScore(correct, attempted) {
   return attempted ? Math.round((correct / attempted) * 100) : 0;
 }
 
+function isAdminAuthorized(key) {
+  const value = String(key || "");
+  const config = readAccessConfig();
+  const validAdmin = Boolean(ADMIN_KEY) && value === ADMIN_KEY;
+  const validTrainer = Boolean(config.trainerKey) && value === config.trainerKey;
+  return validAdmin || validTrainer;
+}
+
+function getPublicAccessConfig() {
+  const config = readAccessConfig();
+  return {
+    trialQuestionLimit: Math.max(1, Number(config.trialQuestionLimit || 20)),
+    contactMessage: "Contact Admin for full access. Contact or WhatsApp at +91 8309661352."
+  };
+}
+
+function sanitizeCohortName(name) {
+  return String(name || "").trim().slice(0, 120);
+}
+
+function sanitizeAccessCode(code) {
+  return String(code || "")
+    .trim()
+    .slice(0, 120);
+}
+
+function listCohortsSummary() {
+  return readCohorts().map((cohort) => ({
+    id: cohort.id,
+    name: cohort.name,
+    accessCode: cohort.accessCode,
+    isActive: Boolean(cohort.isActive),
+    questionLimit: Number(cohort.questionLimit || 1000000),
+    memberCount: Array.isArray(cohort.members) ? cohort.members.length : 0,
+    createdAt: Number(cohort.createdAt || Date.now()),
+    updatedAt: Number(cohort.updatedAt || Date.now())
+  }));
+}
+
+function createCohort({ name, accessCode, questionLimit, isActive }) {
+  const cleanName = sanitizeCohortName(name);
+  const cleanCode = sanitizeAccessCode(accessCode);
+  const limit = Math.max(1, Number(questionLimit || 1000000));
+  if (!cleanName) throw new Error("Cohort name is required");
+  if (!cleanCode) throw new Error("Cohort access code is required");
+
+  const cohorts = readCohorts();
+  const exists = cohorts.some((c) => String(c.accessCode || "").toLowerCase() === cleanCode.toLowerCase());
+  if (exists) throw new Error("Cohort access code already exists");
+
+  const now = Date.now();
+  const newCohort = {
+    id: `cohort_${now}_${Math.random().toString(36).slice(2, 8)}`,
+    name: cleanName,
+    accessCode: cleanCode,
+    questionLimit: limit,
+    isActive: isActive !== false,
+    members: [],
+    createdAt: now,
+    updatedAt: now
+  };
+  cohorts.unshift(newCohort);
+  writeCohorts(cohorts);
+  return newCohort;
+}
+
+function updateCohort({ cohortId, name, accessCode, questionLimit, isActive }) {
+  const cohorts = readCohorts();
+  const idx = cohorts.findIndex((c) => c.id === cohortId);
+  if (idx < 0) throw new Error("Cohort not found");
+
+  if (name !== undefined) {
+    const cleanName = sanitizeCohortName(name);
+    if (!cleanName) throw new Error("Cohort name cannot be empty");
+    cohorts[idx].name = cleanName;
+  }
+
+  if (accessCode !== undefined) {
+    const cleanCode = sanitizeAccessCode(accessCode);
+    if (!cleanCode) throw new Error("Access code cannot be empty");
+    const duplicate = cohorts.some((c, cidx) => cidx !== idx && String(c.accessCode || "").toLowerCase() === cleanCode.toLowerCase());
+    if (duplicate) throw new Error("Cohort access code already exists");
+    cohorts[idx].accessCode = cleanCode;
+  }
+
+  if (questionLimit !== undefined) cohorts[idx].questionLimit = Math.max(1, Number(questionLimit || 1000000));
+  if (isActive !== undefined) cohorts[idx].isActive = Boolean(isActive);
+  cohorts[idx].updatedAt = Date.now();
+  writeCohorts(cohorts);
+  return cohorts[idx];
+}
+
+function enrollCohortMember({ cohortId, email, name, phone }) {
+  const cohorts = readCohorts();
+  const idx = cohorts.findIndex((c) => c.id === cohortId);
+  if (idx < 0) throw new Error("Cohort not found");
+  const normalizedEmail = String(email || "")
+    .trim()
+    .toLowerCase();
+  if (!normalizedEmail) throw new Error("Member email is required");
+
+  const members = Array.isArray(cohorts[idx].members) ? cohorts[idx].members : [];
+  const existingIdx = members.findIndex((m) => String(m.email || "").toLowerCase() === normalizedEmail);
+  const payload = {
+    email: normalizedEmail,
+    name: String(name || "").trim(),
+    phone: String(phone || "").trim(),
+    updatedAt: Date.now()
+  };
+
+  if (existingIdx >= 0) {
+    members[existingIdx] = { ...members[existingIdx], ...payload };
+  } else {
+    members.push({ ...payload, createdAt: Date.now() });
+  }
+
+  cohorts[idx].members = members;
+  cohorts[idx].updatedAt = Date.now();
+  writeCohorts(cohorts);
+  return cohorts[idx];
+}
+
+function findCohortByAccessCode(code) {
+  const normalized = String(code || "")
+    .trim()
+    .toLowerCase();
+  if (!normalized) return null;
+  return readCohorts().find((c) => Boolean(c.isActive) && String(c.accessCode || "").trim().toLowerCase() === normalized) || null;
+}
+
 async function upsertUserAndEntitlement({ userName, userEmail, userPhone, role }) {
   if (!USE_SUPABASE || !userEmail) return;
 
   const roleValue = role === "trainer" ? "trainer" : role === "trainee" ? "trainee" : "trial";
-  const questionLimit = roleValue === "trial" ? 20 : 1000000;
+  const access = readAccessConfig();
+  const questionLimit = roleValue === "trial" ? Math.max(1, Number(access.trialQuestionLimit || 20)) : 1000000;
 
   const userPayload = {
     name: userName || "anonymous",
@@ -479,11 +678,37 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true, storage: USE_SUPABASE ? "supabase" : "file", timestamp: Date.now() });
   }
 
+  if (url.pathname === "/api/access/config" && req.method === "GET") {
+    return json(res, 200, getPublicAccessConfig());
+  }
+
   if (url.pathname === "/api/access/verify" && req.method === "POST") {
     try {
       const body = await parseBody(req);
       const code = String(body.code || "");
-      return json(res, 200, { valid: Boolean(TRAINEE_ACCESS_CODE) && code === TRAINEE_ACCESS_CODE });
+      const access = readAccessConfig();
+      if (Boolean(access.traineeAccessCode) && code === access.traineeAccessCode) {
+        return json(res, 200, {
+          valid: true,
+          accessType: "trainee",
+          questionLimit: 1000000,
+          cohortId: null,
+          cohortName: null
+        });
+      }
+
+      const cohort = findCohortByAccessCode(code);
+      if (cohort) {
+        return json(res, 200, {
+          valid: true,
+          accessType: "cohort",
+          questionLimit: Math.max(1, Number(cohort.questionLimit || 1000000)),
+          cohortId: cohort.id,
+          cohortName: cohort.name
+        });
+      }
+
+      return json(res, 200, { valid: false });
     } catch (err) {
       return json(res, 400, { error: err.message });
     }
@@ -493,10 +718,115 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await parseBody(req);
       const key = String(body.trainerKey || "");
-      return json(res, 200, { valid: Boolean(TRAINER_KEY) && key === TRAINER_KEY });
+      const access = readAccessConfig();
+      return json(res, 200, { valid: Boolean(access.trainerKey) && key === access.trainerKey });
     } catch (err) {
       return json(res, 400, { error: err.message });
     }
+  }
+
+  if (url.pathname === "/api/admin/verify" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const key = String(body.adminKey || "");
+      return json(res, 200, { valid: isAdminAuthorized(key) });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/admin/access-config" && req.method === "GET") {
+    const key = url.searchParams.get("adminKey");
+    if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
+    const config = readAccessConfig();
+    return json(res, 200, {
+      trainerKey: config.trainerKey || "",
+      traineeAccessCode: config.traineeAccessCode || "",
+      trialQuestionLimit: Math.max(1, Number(config.trialQuestionLimit || 20)),
+      updatedAt: config.updatedAt
+    });
+  }
+
+  if (url.pathname === "/api/admin/access-config" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const key = String(body.adminKey || "");
+      if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
+
+      const existing = readAccessConfig();
+      const next = writeAccessConfig({
+        trainerKey: body.trainerKey !== undefined ? String(body.trainerKey || "").trim() : existing.trainerKey,
+        traineeAccessCode:
+          body.traineeAccessCode !== undefined ? String(body.traineeAccessCode || "").trim() : existing.traineeAccessCode,
+        trialQuestionLimit:
+          body.trialQuestionLimit !== undefined ? Math.max(1, Number(body.trialQuestionLimit || 20)) : existing.trialQuestionLimit
+      });
+      return json(res, 200, next);
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/admin/cohorts" && req.method === "GET") {
+    const key = url.searchParams.get("adminKey");
+    if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
+    return json(res, 200, { cohorts: listCohortsSummary() });
+  }
+
+  if (url.pathname === "/api/admin/cohorts" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const key = String(body.adminKey || "");
+      if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
+
+      if (body.cohortId) {
+        const updated = updateCohort({
+          cohortId: String(body.cohortId),
+          name: body.name,
+          accessCode: body.accessCode,
+          questionLimit: body.questionLimit,
+          isActive: body.isActive
+        });
+        return json(res, 200, { cohort: updated });
+      }
+
+      const created = createCohort({
+        name: body.name,
+        accessCode: body.accessCode,
+        questionLimit: body.questionLimit,
+        isActive: body.isActive
+      });
+      return json(res, 201, { cohort: created });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/admin/cohorts/enroll" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const key = String(body.adminKey || "");
+      if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
+
+      const updated = enrollCohortMember({
+        cohortId: String(body.cohortId || ""),
+        email: body.email,
+        name: body.name,
+        phone: body.phone
+      });
+      return json(res, 200, { cohort: updated });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/admin/cohorts/members" && req.method === "GET") {
+    const key = url.searchParams.get("adminKey");
+    if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
+    const cohortId = String(url.searchParams.get("cohortId") || "");
+    const cohort = readCohorts().find((c) => c.id === cohortId);
+    if (!cohort) return json(res, 404, { error: "Cohort not found" });
+    return json(res, 200, { members: Array.isArray(cohort.members) ? cohort.members : [] });
   }
 
   if (url.pathname === "/api/questions" && req.method === "GET") {
@@ -513,7 +843,8 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await parseBody(req);
       const trainerKey = String(body.trainerKey || "");
-      if (!TRAINER_KEY || trainerKey !== TRAINER_KEY) {
+      const access = readAccessConfig();
+      if (!access.trainerKey || trainerKey !== access.trainerKey) {
         return json(res, 403, { error: "Forbidden" });
       }
 
@@ -591,7 +922,8 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === "/api/sessions" && req.method === "GET") {
     const key = url.searchParams.get("trainerKey");
-    if (!TRAINER_KEY || key !== TRAINER_KEY) return json(res, 403, { error: "Forbidden" });
+    const access = readAccessConfig();
+    if (!access.trainerKey || key !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
 
     try {
       const sessions = await storageListSessions();
