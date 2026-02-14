@@ -488,6 +488,19 @@ function updatePreSessionLandingUI() {
 function toMcqOptionKey(value) {
   const raw = String(value || "").trim().toUpperCase();
   if (["A", "B", "C", "D"].includes(raw)) return raw;
+
+  // Handle "A)", "A.", "(A)", "Option A"
+  const match = raw.match(/^(\(?[A-D])(?=[\)\.\s]|$)/);
+  if (match) {
+    return match[1].replace(/[\(\)]/g, "");
+  }
+
+  // Handle "Option A"
+  if (raw.startsWith("OPTION ")) {
+    const char = raw.split(" ")[1];
+    if (["A", "B", "C", "D"].includes(char)) return char;
+  }
+
   return "";
 }
 
