@@ -573,9 +573,6 @@ function hydrateCards(cards) {
 function saveLocal() {
   const payload = {
     role: state.role,
-    userName: state.userName,
-    userEmail: state.userEmail,
-    userPhone: state.userPhone,
     deck: state.deck,
     resources: state.resources,
     selectedTag: state.selectedTag,
@@ -596,9 +593,9 @@ function loadLocal() {
   try {
     const parsed = JSON.parse(raw);
     state.role = parsed.role || "trial";
-    state.userName = parsed.userName || "";
-    state.userEmail = parsed.userEmail || "";
-    state.userPhone = parsed.userPhone || "";
+    state.userName = "";
+    state.userEmail = "";
+    state.userPhone = "";
     state.deck = Array.isArray(parsed.deck) && parsed.deck.length > 0 ? hydrateCards(parsed.deck) : hydrateCards(STARTER_DECK);
     state.resources = Array.isArray(parsed.resources) && parsed.resources.length > 0 ? parsed.resources : [...DEFAULT_RESOURCES];
     state.selectedTag = CATEGORY_OPTIONS.some((item) => item.key === parsed.selectedTag) ? parsed.selectedTag : "ALL";
@@ -3525,6 +3522,7 @@ function bindEvents() {
 
 async function init() {
   loadLocal();
+  state.session.isActive = false;
   await loadPublicAccessConfig();
   dom.userName.value = state.userName;
   dom.userEmail.value = state.userEmail;
