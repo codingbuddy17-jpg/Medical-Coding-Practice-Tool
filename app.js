@@ -263,10 +263,79 @@ function splitAnswers(raw) {
     .filter(Boolean);
 }
 
+function normalizePlainText(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeCodeText(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/\bmodifier\b/g, "")
+    .replace(/\bcode\b/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function looksLikeCode(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return false;
+  const compact = raw.replace(/\s+/g, "");
+  const hasDigit = /\d/.test(compact);
+  const shortish = compact.length <= 12;
+  const codeCharsOnly = /^[a-zA-Z0-9.\-]+$/.test(compact);
+  return hasDigit && shortish && codeCharsOnly;
+}
+
+function levenshteinDistance(a, b) {
+  const left = String(a || "");
+  const right = String(b || "");
+  const m = left.length;
+  const n = right.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i += 1) dp[i][0] = i;
+  for (let j = 0; j <= n; j += 1) dp[0][j] = j;
+
+  for (let i = 1; i <= m; i += 1) {
+    for (let j = 1; j <= n; j += 1) {
+      const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+    }
+  }
+  return dp[m][n];
+}
+
+function isTextMatchFlexible(userInput, option) {
+  const user = normalizePlainText(userInput);
+  const ans = normalizePlainText(option);
+  if (!user || !ans) return false;
+  if (user === ans) return true;
+
+  // Allow containment for longer phrases.
+  const minLen = Math.min(user.length, ans.length);
+  if (minLen >= 7 && (user.includes(ans) || ans.includes(user))) return true;
+
+  // Typo tolerance for textual answers only.
+  const distance = levenshteinDistance(user, ans);
+  const maxLen = Math.max(user.length, ans.length);
+  if (maxLen <= 8) return distance <= 1;
+  if (maxLen <= 16) return distance <= 2;
+  return distance / maxLen <= 0.12;
+}
+
 function checkAnswer(userInput, expectedAnswer) {
   const answers = splitAnswers(expectedAnswer);
-  const userNorm = normalize(userInput);
-  const matched = answers.some((option) => userNorm === normalize(option));
+  const matched = answers.some((option) => {
+    if (looksLikeCode(userInput) || looksLikeCode(option)) {
+      return normalizeCodeText(userInput) === normalizeCodeText(option);
+    }
+    return isTextMatchFlexible(userInput, option);
+  });
 
   return {
     isCorrect: matched,
