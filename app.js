@@ -156,6 +156,8 @@ const dom = {
   examStrictTiming: document.getElementById("examStrictTiming"),
   toggleExamPanelBtn: document.getElementById("toggleExamPanelBtn"),
   examPanel: document.getElementById("examPanel"),
+  examTrialContactWrap: document.getElementById("examTrialContactWrap"),
+  examTrialContactBtn: document.getElementById("examTrialContactBtn"),
   startExamBtn: document.getElementById("startExamBtn"),
   stopExamBtn: document.getElementById("stopExamBtn"),
   examStatus: document.getElementById("examStatus"),
@@ -774,6 +776,7 @@ function updateRoleUI() {
     dom.adminTools.classList.add("hidden");
     setStatus(dom.adminStatus, "");
   }
+  dom.examTrialContactWrap.classList.add("hidden");
   dom.flagQuestionBtn.classList.toggle("hidden", isTrainer);
   syncExamControlLock();
   renderResources();
@@ -2749,14 +2752,12 @@ function bindEvents() {
 
   dom.toggleExamPanelBtn.addEventListener("click", () => {
     if (isTrialUser()) {
-      setStatus(dom.examStatus, "Timed exams are included in full access. Redirecting to WhatsApp...", "error");
-      openWhatsAppCta(
-        "Hello, I am on trial mode and would like full access including timed exam features.",
-        "cta_timed_exam_trial_click"
-      );
+      setStatus(dom.examStatus, "Mock Exam Practice Mode is available for trainees only. Please contact us to upgrade your access.", "error");
+      dom.examTrialContactWrap.classList.remove("hidden");
       dom.examPanel.classList.add("hidden");
       return;
     }
+    dom.examTrialContactWrap.classList.add("hidden");
     dom.examPanel.classList.toggle("hidden");
   });
 
@@ -2826,6 +2827,12 @@ function bindEvents() {
     openWhatsAppCta(
       "Hello, I am using the trial version and would like to upgrade to full access.",
       "cta_trial_banner_whatsapp_click"
+    );
+  });
+  dom.examTrialContactBtn.addEventListener("click", () => {
+    openWhatsAppCta(
+      "Hello, I am on trial mode and would like trainee access to enable Mock Exam Practice Mode.",
+      "cta_timed_exam_trial_click"
     );
   });
   dom.floatingWhatsappBtn.addEventListener("click", (event) => {
