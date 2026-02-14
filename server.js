@@ -130,6 +130,8 @@ function readAccessConfig() {
     return {
       trainerKey: String(parsed.trainerKey || TRAINER_KEY || ""),
       traineeAccessCode: String(parsed.traineeAccessCode || TRAINEE_ACCESS_CODE || ""),
+      traineeAccessActive: parsed.traineeAccessActive !== false,
+      traineeAccessExpiresAt: parsed.traineeAccessExpiresAt ? Number(parsed.traineeAccessExpiresAt) : null,
       trialQuestionLimit: Number(parsed.trialQuestionLimit || 20),
       updatedAt: Number(parsed.updatedAt || Date.now())
     };
@@ -137,6 +139,8 @@ function readAccessConfig() {
     return {
       trainerKey: TRAINER_KEY,
       traineeAccessCode: TRAINEE_ACCESS_CODE,
+      traineeAccessActive: true,
+      traineeAccessExpiresAt: null,
       trialQuestionLimit: 20,
       updatedAt: Date.now()
     };
@@ -148,6 +152,8 @@ function writeAccessConfig(config) {
   const payload = {
     trainerKey: String(config.trainerKey || ""),
     traineeAccessCode: String(config.traineeAccessCode || ""),
+    traineeAccessActive: config.traineeAccessActive !== false,
+    traineeAccessExpiresAt: config.traineeAccessExpiresAt ? Number(config.traineeAccessExpiresAt) : null,
     trialQuestionLimit: Math.max(1, Number(config.trialQuestionLimit || 20)),
     updatedAt: Date.now()
   };
@@ -399,12 +405,25 @@ function sanitizeAccessCode(code) {
     .slice(0, 120);
 }
 
+function normalizeExpiryTs(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
+function isExpired(expiryTs) {
+  const ts = Number(expiryTs || 0);
+  return ts > 0 && Date.now() > ts;
+}
+
 function listCohortsSummary() {
   return readCohorts().map((cohort) => ({
     id: cohort.id,
     name: cohort.name,
     accessCode: cohort.accessCode,
     isActive: Boolean(cohort.isActive),
+    expiresAt: cohort.expiresAt ? Number(cohort.expiresAt) : null,
     questionLimit: Number(cohort.questionLimit || 1000000),
     memberCount: Array.isArray(cohort.members) ? cohort.members.length : 0,
     createdAt: Number(cohort.createdAt || Date.now()),
@@ -412,7 +431,7 @@ function listCohortsSummary() {
   }));
 }
 
-function createCohort({ name, accessCode, questionLimit, isActive }) {
+function createCohort({ name, accessCode, questionLimit, isActive, expiresAt }) {
   const cleanName = sanitizeCohortName(name);
   const cleanCode = sanitizeAccessCode(accessCode);
   const limit = Math.max(1, Number(questionLimit || 1000000));
@@ -430,6 +449,7 @@ function createCohort({ name, accessCode, questionLimit, isActive }) {
     accessCode: cleanCode,
     questionLimit: limit,
     isActive: isActive !== false,
+    expiresAt: normalizeExpiryTs(expiresAt),
     members: [],
     createdAt: now,
     updatedAt: now
@@ -439,7 +459,7 @@ function createCohort({ name, accessCode, questionLimit, isActive }) {
   return newCohort;
 }
 
-function updateCohort({ cohortId, name, accessCode, questionLimit, isActive }) {
+function updateCohort({ cohortId, name, accessCode, questionLimit, isActive, expiresAt }) {
   const cohorts = readCohorts();
   const idx = cohorts.findIndex((c) => c.id === cohortId);
   if (idx < 0) throw new Error("Cohort not found");
@@ -460,12 +480,15 @@ function updateCohort({ cohortId, name, accessCode, questionLimit, isActive }) {
 
   if (questionLimit !== undefined) cohorts[idx].questionLimit = Math.max(1, Number(questionLimit || 1000000));
   if (isActive !== undefined) cohorts[idx].isActive = Boolean(isActive);
+  if (expiresAt !== undefined) {
+    cohorts[idx].expiresAt = normalizeExpiryTs(expiresAt);
+  }
   cohorts[idx].updatedAt = Date.now();
   writeCohorts(cohorts);
   return cohorts[idx];
 }
 
-function enrollCohortMember({ cohortId, email, name, phone }) {
+function enrollCohortMember({ cohortId, email, name, phone, isActive, expiresAt }) {
   const cohorts = readCohorts();
   const idx = cohorts.findIndex((c) => c.id === cohortId);
   if (idx < 0) throw new Error("Cohort not found");
@@ -480,6 +503,8 @@ function enrollCohortMember({ cohortId, email, name, phone }) {
     email: normalizedEmail,
     name: String(name || "").trim(),
     phone: String(phone || "").trim(),
+    isActive: isActive !== false,
+    expiresAt: normalizeExpiryTs(expiresAt),
     updatedAt: Date.now()
   };
 
@@ -1048,8 +1073,12 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await parseBody(req);
       const code = String(body.code || "");
+      const email = normalizeEmail(body.email || "");
       const access = readAccessConfig();
       if (Boolean(access.traineeAccessCode) && code === access.traineeAccessCode) {
+        if (access.traineeAccessActive === false || isExpired(access.traineeAccessExpiresAt)) {
+          return json(res, 200, { valid: false, reason: "trainee_access_inactive_or_expired" });
+        }
         return json(res, 200, {
           valid: true,
           accessType: "trainee",
@@ -1061,6 +1090,20 @@ const server = http.createServer(async (req, res) => {
 
       const cohort = findCohortByAccessCode(code);
       if (cohort) {
+        if (cohort.isActive === false || isExpired(cohort.expiresAt)) {
+          return json(res, 200, { valid: false, reason: "cohort_inactive_or_expired" });
+        }
+        if (!email) {
+          return json(res, 200, { valid: false, reason: "email_required_for_cohort" });
+        }
+
+        const members = Array.isArray(cohort.members) ? cohort.members : [];
+        const member = members.find((m) => normalizeEmail(m.email) === email);
+        if (!member) return json(res, 200, { valid: false, reason: "not_enrolled_in_cohort" });
+        if (member.isActive === false || isExpired(member.expiresAt)) {
+          return json(res, 200, { valid: false, reason: "member_inactive_or_expired" });
+        }
+
         return json(res, 200, {
           valid: true,
           accessType: "cohort",
@@ -1104,6 +1147,8 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, {
       trainerKey: config.trainerKey || "",
       traineeAccessCode: config.traineeAccessCode || "",
+      traineeAccessActive: config.traineeAccessActive !== false,
+      traineeAccessExpiresAt: config.traineeAccessExpiresAt ? Number(config.traineeAccessExpiresAt) : null,
       trialQuestionLimit: Math.max(1, Number(config.trialQuestionLimit || 20)),
       updatedAt: config.updatedAt
     });
@@ -1120,6 +1165,10 @@ const server = http.createServer(async (req, res) => {
         trainerKey: body.trainerKey !== undefined ? String(body.trainerKey || "").trim() : existing.trainerKey,
         traineeAccessCode:
           body.traineeAccessCode !== undefined ? String(body.traineeAccessCode || "").trim() : existing.traineeAccessCode,
+        traineeAccessActive:
+          body.traineeAccessActive !== undefined ? Boolean(body.traineeAccessActive) : existing.traineeAccessActive,
+        traineeAccessExpiresAt:
+          body.traineeAccessExpiresAt !== undefined ? normalizeExpiryTs(body.traineeAccessExpiresAt) : existing.traineeAccessExpiresAt,
         trialQuestionLimit:
           body.trialQuestionLimit !== undefined ? Math.max(1, Number(body.trialQuestionLimit || 20)) : existing.trialQuestionLimit
       });
@@ -1147,7 +1196,8 @@ const server = http.createServer(async (req, res) => {
           name: body.name,
           accessCode: body.accessCode,
           questionLimit: body.questionLimit,
-          isActive: body.isActive
+          isActive: body.isActive,
+          expiresAt: body.expiresAt
         });
         return json(res, 200, { cohort: updated });
       }
@@ -1156,7 +1206,8 @@ const server = http.createServer(async (req, res) => {
         name: body.name,
         accessCode: body.accessCode,
         questionLimit: body.questionLimit,
-        isActive: body.isActive
+        isActive: body.isActive,
+        expiresAt: body.expiresAt
       });
       return json(res, 201, { cohort: created });
     } catch (err) {
@@ -1174,7 +1225,9 @@ const server = http.createServer(async (req, res) => {
         cohortId: String(body.cohortId || ""),
         email: body.email,
         name: body.name,
-        phone: body.phone
+        phone: body.phone,
+        isActive: body.isActive,
+        expiresAt: body.expiresAt
       });
       return json(res, 200, { cohort: updated });
     } catch (err) {

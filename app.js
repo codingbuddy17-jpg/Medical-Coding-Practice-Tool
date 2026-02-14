@@ -225,12 +225,15 @@ const dom = {
   adminTraineeCode: document.getElementById("adminTraineeCode"),
   adminTrainerKey: document.getElementById("adminTrainerKey"),
   adminTrialLimit: document.getElementById("adminTrialLimit"),
+  adminTraineeActive: document.getElementById("adminTraineeActive"),
+  adminTraineeExpiry: document.getElementById("adminTraineeExpiry"),
   saveAccessConfigBtn: document.getElementById("saveAccessConfigBtn"),
   accessConfigStatus: document.getElementById("accessConfigStatus"),
   cohortNameInput: document.getElementById("cohortNameInput"),
   cohortCodeInput: document.getElementById("cohortCodeInput"),
   cohortLimitInput: document.getElementById("cohortLimitInput"),
   cohortActiveInput: document.getElementById("cohortActiveInput"),
+  cohortExpiryInput: document.getElementById("cohortExpiryInput"),
   createCohortBtn: document.getElementById("createCohortBtn"),
   updateCohortBtn: document.getElementById("updateCohortBtn"),
   refreshCohortsBtn: document.getElementById("refreshCohortsBtn"),
@@ -239,6 +242,8 @@ const dom = {
   memberNameInput: document.getElementById("memberNameInput"),
   memberEmailInput: document.getElementById("memberEmailInput"),
   memberPhoneInput: document.getElementById("memberPhoneInput"),
+  memberActiveInput: document.getElementById("memberActiveInput"),
+  memberExpiryInput: document.getElementById("memberExpiryInput"),
   enrollMemberBtn: document.getElementById("enrollMemberBtn"),
   enrollStatus: document.getElementById("enrollStatus"),
   cohortTableBody: document.getElementById("cohortTableBody"),
@@ -307,6 +312,23 @@ function sanitizeUrl(url) {
 function buildWhatsappLink(message) {
   const text = encodeURIComponent(String(message || "").trim());
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`;
+}
+
+function toEpochFromDateInput(value) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  const ts = Date.parse(`${text}T23:59:59`);
+  return Number.isFinite(ts) ? ts : null;
+}
+
+function toDateInputValue(epochMs) {
+  const ts = Number(epochMs || 0);
+  if (!ts || !Number.isFinite(ts)) return "";
+  const d = new Date(ts);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 async function trackCtaEvent(type, metadata = {}) {
@@ -783,6 +805,17 @@ function updateRoleUI() {
   updateTrialLockUI();
   updateTrialInfoBannerUI();
   updateUpgradeWallUI();
+}
+
+function updateSessionIdentityLock() {
+  const locked = Boolean(state.session.isActive);
+  dom.userName.disabled = locked;
+  dom.userEmail.disabled = locked;
+  dom.userPhone.disabled = locked;
+  dom.roleSelect.disabled = locked;
+  dom.traineeCode.disabled = locked;
+  dom.trainerKey.disabled = locked;
+  dom.startBtn.disabled = locked;
 }
 
 function updateMetrics() {
@@ -1305,9 +1338,15 @@ async function startSession() {
 
   if (role === "trainee") {
     try {
-      const verification = await apiRequest("/api/access/verify", "POST", { code: traineeCode });
+      const verification = await apiRequest("/api/access/verify", "POST", { code: traineeCode, email: userEmail });
       if (!verification.valid) {
-        setStatus(dom.sessionStatus, "Invalid trainee access code.", "error");
+        let msg = "Invalid trainee access code.";
+        if (verification.reason === "trainee_access_inactive_or_expired") msg = "Trainee access is inactive or expired. Contact admin.";
+        if (verification.reason === "not_enrolled_in_cohort") msg = "This email is not enrolled in the selected cohort access.";
+        else if (verification.reason === "member_inactive_or_expired") msg = "Your cohort access is inactive or expired. Contact trainer.";
+        else if (verification.reason === "cohort_inactive_or_expired") msg = "This cohort access code is inactive or expired.";
+        else if (verification.reason === "email_required_for_cohort") msg = "Email is required for cohort access verification.";
+        setStatus(dom.sessionStatus, msg, "error");
         return;
       }
       verifiedAccess = {
@@ -1360,6 +1399,7 @@ async function startSession() {
   state.session.cohortName = verifiedAccess.cohortName;
   state.awaitingNext = false;
   resetSessionTracking();
+  updateSessionIdentityLock();
 
   try {
     const session = await apiRequest("/api/session/start", "POST", {
@@ -1375,6 +1415,7 @@ async function startSession() {
   } catch (err) {
     state.session.isActive = false;
     state.session.id = null;
+    updateSessionIdentityLock();
     setStatus(dom.sessionStatus, `Session start blocked: ${err.message}`, "error");
     return;
   }
@@ -1418,6 +1459,7 @@ async function endSession() {
   }
 
   state.session.isActive = false;
+  updateSessionIdentityLock();
   setStatus(dom.sessionStatus, `Session ended. Score: ${summary.score}%`, "success");
 }
 
@@ -2505,7 +2547,7 @@ function renderCohortUI() {
       (cohort) =>
         `<tr><td>${cohort.name}</td><td>${cohort.accessCode}</td><td>${cohort.questionLimit}</td><td>${
           cohort.isActive ? "Yes" : "No"
-        }</td><td>${cohort.memberCount}</td></tr>`
+        }</td><td>${cohort.memberCount}${cohort.expiresAt ? ` (Exp: ${toDateInputValue(cohort.expiresAt)})` : ""}</td></tr>`
     )
     .join("");
   syncCohortFormFromSelection();
@@ -2519,6 +2561,7 @@ function syncCohortFormFromSelection() {
   dom.cohortCodeInput.value = cohort.accessCode || "";
   dom.cohortLimitInput.value = String(cohort.questionLimit || 1000000);
   dom.cohortActiveInput.value = cohort.isActive ? "true" : "false";
+  dom.cohortExpiryInput.value = toDateInputValue(cohort.expiresAt);
 }
 
 async function verifyAdmin() {
@@ -2559,6 +2602,8 @@ async function loadAdminData() {
     dom.adminTraineeCode.value = String(configRes.traineeAccessCode || "");
     dom.adminTrainerKey.value = String(configRes.trainerKey || "");
     dom.adminTrialLimit.value = String(configRes.trialQuestionLimit || state.accessConfig.trialQuestionLimit || 20);
+    dom.adminTraineeActive.value = configRes.traineeAccessActive === false ? "false" : "true";
+    dom.adminTraineeExpiry.value = toDateInputValue(configRes.traineeAccessExpiresAt);
     state.adminPanel.cohorts = Array.isArray(cohortRes.cohorts) ? cohortRes.cohorts : [];
     renderCohortUI();
     renderAnalyticsCohorts(state.adminPanel.cohorts);
@@ -2578,12 +2623,16 @@ async function saveAccessConfig() {
   const traineeAccessCode = dom.adminTraineeCode.value.trim();
   const trainerKey = dom.adminTrainerKey.value.trim();
   const trialQuestionLimit = Math.max(1, Number(dom.adminTrialLimit.value || state.accessConfig.trialQuestionLimit || 20));
+  const traineeAccessActive = dom.adminTraineeActive.value !== "false";
+  const traineeAccessExpiresAt = toEpochFromDateInput(dom.adminTraineeExpiry.value);
 
   try {
     await apiRequest("/api/admin/access-config", "POST", {
       adminKey: state.adminKey,
       traineeAccessCode,
       trainerKey,
+      traineeAccessActive,
+      traineeAccessExpiresAt,
       trialQuestionLimit
     });
     await loadPublicAccessConfig();
@@ -2602,6 +2651,7 @@ async function createCohortFromForm() {
   const name = dom.cohortNameInput.value.trim();
   const accessCode = dom.cohortCodeInput.value.trim();
   const questionLimit = Math.max(1, Number(dom.cohortLimitInput.value || 1000000));
+  const expiresAt = toEpochFromDateInput(dom.cohortExpiryInput.value);
   if (!name || !accessCode) {
     setStatus(dom.cohortStatus, "Cohort name and access code are required.", "error");
     return;
@@ -2613,11 +2663,13 @@ async function createCohortFromForm() {
       name,
       accessCode,
       questionLimit,
-      isActive: dom.cohortActiveInput.value !== "false"
+      isActive: dom.cohortActiveInput.value !== "false",
+      expiresAt
     });
     dom.cohortNameInput.value = "";
     dom.cohortCodeInput.value = "";
     dom.cohortLimitInput.value = "";
+    dom.cohortExpiryInput.value = "";
     await loadAdminData();
     setStatus(dom.cohortStatus, "Cohort created.", "success");
   } catch (err) {
@@ -2640,6 +2692,7 @@ async function updateSelectedCohortFromForm() {
   const accessCode = dom.cohortCodeInput.value.trim();
   const questionLimit = Math.max(1, Number(dom.cohortLimitInput.value || 1000000));
   const isActive = dom.cohortActiveInput.value !== "false";
+  const expiresAt = toEpochFromDateInput(dom.cohortExpiryInput.value);
   if (!name || !accessCode) {
     setStatus(dom.cohortStatus, "Cohort name and access code are required.", "error");
     return;
@@ -2652,7 +2705,8 @@ async function updateSelectedCohortFromForm() {
       name,
       accessCode,
       questionLimit,
-      isActive
+      isActive,
+      expiresAt
     });
     await loadAdminData();
     setStatus(dom.cohortStatus, "Cohort updated.", "success");
@@ -2670,6 +2724,8 @@ async function enrollSelectedCohortMember() {
   const email = dom.memberEmailInput.value.trim();
   const name = dom.memberNameInput.value.trim();
   const phone = dom.memberPhoneInput.value.trim();
+  const isActive = dom.memberActiveInput.value !== "false";
+  const expiresAt = toEpochFromDateInput(dom.memberExpiryInput.value);
 
   if (!cohortId || !email) {
     setStatus(dom.enrollStatus, "Select cohort and enter member email.", "error");
@@ -2682,11 +2738,15 @@ async function enrollSelectedCohortMember() {
       cohortId,
       email,
       name,
-      phone
+      phone,
+      isActive,
+      expiresAt
     });
     dom.memberNameInput.value = "";
     dom.memberEmailInput.value = "";
     dom.memberPhoneInput.value = "";
+    dom.memberExpiryInput.value = "";
+    dom.memberActiveInput.value = "true";
     await loadAdminData();
     setStatus(dom.enrollStatus, "Member enrolled/updated.", "success");
   } catch (err) {
@@ -2889,6 +2949,12 @@ async function init() {
   dom.traineeCode.value = "";
   dom.trainerKey.value = "";
   dom.adminKeyInput.value = "";
+  dom.adminTraineeActive.value = "true";
+  dom.adminTraineeExpiry.value = "";
+  dom.cohortActiveInput.value = "true";
+  dom.cohortExpiryInput.value = "";
+  dom.memberActiveInput.value = "true";
+  dom.memberExpiryInput.value = "";
   dom.weakDrillToggle.checked = state.weakDrillEnabled;
   dom.examQuestionCount.value = String(state.examConfig.questionCount);
   dom.examDuration.value = String(state.examConfig.durationMinutes);
@@ -2905,6 +2971,7 @@ async function init() {
   setRecommendedTags([]);
   renderBlueprintSelectors();
   updateRoleUI();
+  updateSessionIdentityLock();
   updateMetrics();
   renderCategoryScorecards();
   setStatus(dom.examStatus, "Exam mode inactive.");

@@ -333,7 +333,8 @@
         </section>
 
         <section class="panel">
-          <h3>Admin Access Control</h3>
+          <h3>Access Management</h3>
+          <p class="status">Use this single section to manage trainer keys, trainee access, cohort controls, and access lifecycle.</p>
           <div class="auth-grid">
             <label>
               Admin Key
@@ -360,6 +361,17 @@
               <label>
                 Trial Question Limit
                 <input id="adminTrialLimit" type="number" min="1" step="1" placeholder="20" />
+              </label>
+              <label>
+                Trainee Access Active
+                <select id="adminTraineeActive">
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </label>
+              <label>
+                Trainee Access Expiry
+                <input id="adminTraineeExpiry" type="date" />
               </label>
             </div>
             <div class="panel-actions">
@@ -388,6 +400,10 @@
                   <option value="false">No</option>
                 </select>
               </label>
+              <label>
+                Cohort Expiry
+                <input id="cohortExpiryInput" type="date" />
+              </label>
             </div>
             <div class="panel-actions">
               <button id="createCohortBtn" class="primary-btn" type="button">Create Cohort</button>
@@ -412,6 +428,17 @@
               <label>
                 Member Phone
                 <input id="memberPhoneInput" type="text" placeholder="+91 xxxxxxxxxx" />
+              </label>
+              <label>
+                Member Active
+                <select id="memberActiveInput">
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </label>
+              <label>
+                Member Expiry
+                <input id="memberExpiryInput" type="date" />
               </label>
             </div>
             <div class="panel-actions">
