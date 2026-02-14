@@ -181,6 +181,7 @@ const dom = {
   resourceUrl: document.getElementById("resourceUrl"),
   addResourceBtn: document.getElementById("addResourceBtn"),
   resourceStatus: document.getElementById("resourceStatus"),
+  trialInfoWhatsappBtn: document.getElementById("trialInfoWhatsappBtn"),
 
   cardTag: document.getElementById("cardTag"),
   cardPrompt: document.getElementById("cardPrompt"),
@@ -262,6 +263,7 @@ const dom = {
   adminTraineeActive: document.getElementById("adminTraineeActive"),
   adminTraineeExpiry: document.getElementById("adminTraineeExpiry"),
   saveAccessConfigBtn: document.getElementById("saveAccessConfigBtn"),
+  clearCacheBtn: document.getElementById("clearCacheBtn"),
   accessConfigStatus: document.getElementById("accessConfigStatus"),
   cohortNameInput: document.getElementById("cohortNameInput"),
   cohortCodeInput: document.getElementById("cohortCodeInput"),
