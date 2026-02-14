@@ -2,7 +2,7 @@ const STORAGE_KEY = "medcode_flashcards_role_v4";
 const MCQ_PREFIX = "__MCQ__:";
 
 const CATEGORY_OPTIONS = [
-  { key: "ALL", label: "All Tags" },
+  { key: "ALL", label: "All Topics" },
   { key: "ICD-10-CM", label: "ICD 10 CM" },
   { key: "ICD-10-PCS", label: "ICD 10 PCS" },
   { key: "CPT", label: "CPT" },
@@ -115,6 +115,9 @@ const state = {
   blueprints: {
     templates: [],
     assigned: null
+  },
+  reviewQueue: {
+    items: []
   }
 };
 
@@ -165,6 +168,7 @@ const dom = {
   userAnswer: document.getElementById("userAnswer"),
   checkBtn: document.getElementById("checkBtn"),
   nextBtn: document.getElementById("nextBtn"),
+  flagQuestionBtn: document.getElementById("flagQuestionBtn"),
   feedback: document.getElementById("feedback"),
   rationalePlaceholder: document.getElementById("rationalePlaceholder"),
   trialLockNotice: document.getElementById("trialLockNotice"),
@@ -183,6 +187,10 @@ const dom = {
   refreshSessionsBtn: document.getElementById("refreshSessionsBtn"),
   sessionTableBody: document.getElementById("sessionTableBody"),
   sessionLoadStatus: document.getElementById("sessionLoadStatus"),
+  flagStatusFilter: document.getElementById("flagStatusFilter"),
+  refreshFlagsBtn: document.getElementById("refreshFlagsBtn"),
+  flagQueueBody: document.getElementById("flagQueueBody"),
+  flagQueueStatus: document.getElementById("flagQueueStatus"),
 
   adminKeyInput: document.getElementById("adminKeyInput"),
   verifyAdminBtn: document.getElementById("verifyAdminBtn"),
@@ -671,6 +679,7 @@ function updateRoleUI() {
     dom.adminTools.classList.add("hidden");
     setStatus(dom.adminStatus, "");
   }
+  dom.flagQuestionBtn.classList.toggle("hidden", isTrainer);
   syncExamControlLock();
   renderResources();
   updateTrialLockUI();
@@ -729,8 +738,9 @@ function renderCard() {
     dom.userAnswer.classList.remove("hidden");
     setStatus(dom.feedback, "");
     setAwaitingNext(false);
+    dom.flagQuestionBtn.disabled = true;
     updateTrialLockUI();
-    dom.categoryStatus.textContent = `Showing 0 cards for ${state.selectedTag}.`;
+    dom.categoryStatus.textContent = state.role === "trainer" ? `Showing 0 cards for ${state.selectedTag}.` : "";
     return;
   }
 
@@ -746,8 +756,9 @@ function renderCard() {
     setStatus(dom.feedback, "");
     setStatus(dom.rationalePlaceholder, "Unlock full access to continue practicing all questions.");
     setAwaitingNext(false);
+    dom.flagQuestionBtn.disabled = true;
     updateTrialLockUI();
-    dom.categoryStatus.textContent = "Question limit reached for current access.";
+    dom.categoryStatus.textContent = state.role === "trainer" ? "Question limit reached for current access." : "";
     return;
   }
 
@@ -781,10 +792,11 @@ function renderCard() {
   if (state.exam.inProgress) {
     dom.categoryStatus.textContent = `Exam mode: ${state.exam.answered}/${state.exam.queueIds.length} answered.`;
   } else {
-    dom.categoryStatus.textContent = `Showing ${cards.length} cards for ${state.selectedTag}.`;
+    dom.categoryStatus.textContent = state.role === "trainer" ? `Showing ${cards.length} cards for ${state.selectedTag}.` : "";
   }
 
   if (card.type !== "mcq") dom.userAnswer.focus();
+  dom.flagQuestionBtn.disabled = !state.session.isActive || hasSessionLimitReached();
 }
 
 function setSelectedTag(tag) {
@@ -1268,6 +1280,7 @@ async function startSession() {
   await loadAnalyticsCohorts();
   await loadBlueprintTemplates();
   await loadAssignedBlueprintForSession();
+  if (state.role === "trainer") await loadFlagQueue();
   await loadDeckFromCloud();
   renderCard();
   saveLocal();
@@ -1806,6 +1819,146 @@ async function loadSessions() {
     setStatus(dom.sessionLoadStatus, `Loaded ${sessions.length} sessions.`, "success");
   } catch (err) {
     setStatus(dom.sessionLoadStatus, `Could not load sessions: ${err.message}`, "error");
+  }
+}
+
+async function flagCurrentQuestion() {
+  if (state.role === "trainer") return;
+  if (!state.session.isActive) {
+    setStatus(dom.feedback, "Start a session first.", "error");
+    return;
+  }
+  const card = currentCard();
+  if (!card) {
+    setStatus(dom.feedback, "No current question to flag.", "error");
+    return;
+  }
+
+  const reason = window.prompt("Briefly describe the issue with this question (optional):", "") || "";
+  try {
+    await apiRequest("/api/questions/flag", "POST", {
+      sessionId: state.session.id,
+      role: state.role,
+      userName: state.userName,
+      userEmail: state.userEmail,
+      questionId: card.id,
+      cardTag: card.tag,
+      question: card.question,
+      expectedAnswer: card.type === "mcq" ? card.correctOption : card.answer,
+      reason
+    });
+    setStatus(dom.feedback, "Question flagged for trainer review.", "success");
+  } catch (err) {
+    setStatus(dom.feedback, `Could not flag question: ${err.message}`, "error");
+  }
+}
+
+function renderFlagQueue(flags) {
+  const items = Array.isArray(flags) ? flags : [];
+  if (!items.length) {
+    dom.flagQueueBody.innerHTML = '<tr><td colspan="6">No flagged questions for selected filter.</td></tr>';
+    return;
+  }
+
+  dom.flagQueueBody.innerHTML = items
+    .map((item) => {
+      const by = item.raisedBy?.userName || item.raisedBy?.userEmail || "anonymous";
+      const role = item.raisedBy?.role || "-";
+      const question = String(item.question || "");
+      const safeQuestion = question.length > 80 ? `${question.slice(0, 80)}...` : question;
+      const reason = String(item.reason || "");
+      const safeReason = reason.length > 60 ? `${reason.slice(0, 60)}...` : reason;
+      const canAct = item.status === "open";
+      const actions = canAct
+        ? `<button type="button" class="ghost-btn" data-flag-action="resolve" data-flag-id="${item.id}">Resolve</button>
+           <button type="button" class="ghost-btn" data-flag-action="replace" data-flag-id="${item.id}">Replace</button>`
+        : "-";
+      return `<tr>
+        <td>${item.cardTag || "-"}</td>
+        <td title="${question.replaceAll('"', "&quot;")}">${safeQuestion}</td>
+        <td>${by} (${role})</td>
+        <td title="${reason.replaceAll('"', "&quot;")}">${safeReason || "-"}</td>
+        <td>${item.status || "-"}</td>
+        <td>${actions}</td>
+      </tr>`;
+    })
+    .join("");
+}
+
+async function loadFlagQueue() {
+  if (state.role !== "trainer") return;
+  const trainerKey = state.trainerKey;
+  if (!trainerKey) {
+    setStatus(dom.flagQueueStatus, "Trainer key missing.", "error");
+    return;
+  }
+  const status = String(dom.flagStatusFilter.value || "");
+  const qs = new URLSearchParams({ trainerKey });
+  if (status) qs.set("status", status);
+  try {
+    const data = await apiRequest(`/api/questions/flags?${qs.toString()}`);
+    state.reviewQueue.items = Array.isArray(data.flags) ? data.flags : [];
+    renderFlagQueue(state.reviewQueue.items);
+    setStatus(dom.flagQueueStatus, `Loaded ${state.reviewQueue.items.length} flagged items.`, "success");
+  } catch (err) {
+    setStatus(dom.flagQueueStatus, `Could not load review queue: ${err.message}`, "error");
+  }
+}
+
+function getFlagById(flagId) {
+  return (state.reviewQueue.items || []).find((item) => item.id === flagId) || null;
+}
+
+async function handleFlagQueueAction(action, flagId) {
+  if (state.role !== "trainer") return;
+  const trainerKey = state.trainerKey;
+  if (!trainerKey) {
+    setStatus(dom.flagQueueStatus, "Trainer key missing.", "error");
+    return;
+  }
+  const flag = getFlagById(flagId);
+  if (!flag) {
+    setStatus(dom.flagQueueStatus, "Flag not found in queue.", "error");
+    return;
+  }
+
+  if (action === "resolve") {
+    try {
+      await apiRequest("/api/questions/flags/action", "POST", {
+        trainerKey,
+        flagId,
+        action: "resolve"
+      });
+      await loadFlagQueue();
+      setStatus(dom.flagQueueStatus, "Flag marked as resolved.", "success");
+    } catch (err) {
+      setStatus(dom.flagQueueStatus, `Resolve failed: ${err.message}`, "error");
+    }
+    return;
+  }
+
+  if (action === "replace") {
+    const newQuestion = window.prompt("Enter replacement question:", flag.question || "");
+    if (!newQuestion) return;
+    const newAnswer = window.prompt("Enter replacement answer:", flag.expectedAnswer || "");
+    if (!newAnswer) return;
+    const newTag = window.prompt("Enter tag for replacement (optional):", flag.cardTag || "") || flag.cardTag || "General";
+    try {
+      await apiRequest("/api/questions/flags/action", "POST", {
+        trainerKey,
+        flagId,
+        action: "replace",
+        newTag,
+        newQuestion,
+        newAnswer
+      });
+      await loadFlagQueue();
+      await loadDeckFromCloud();
+      renderCard();
+      setStatus(dom.flagQueueStatus, "Question replaced and flag closed.", "success");
+    } catch (err) {
+      setStatus(dom.flagQueueStatus, `Replace failed: ${err.message}`, "error");
+    }
   }
 }
 
@@ -2383,6 +2536,7 @@ function bindEvents() {
   dom.endSessionBtn.addEventListener("click", endSession);
   dom.checkBtn.addEventListener("click", validateCurrentAnswer);
   dom.nextBtn.addEventListener("click", nextQuestion);
+  dom.flagQuestionBtn.addEventListener("click", flagCurrentQuestion);
 
   dom.categoryButtons.addEventListener("click", (event) => {
     const btn = event.target.closest("button[data-tag]");
@@ -2451,6 +2605,15 @@ function bindEvents() {
   dom.loadStarterBtn.addEventListener("click", loadStarterDeck);
   dom.exportBtn.addEventListener("click", exportCsv);
   dom.refreshSessionsBtn.addEventListener("click", loadSessions);
+  dom.refreshFlagsBtn.addEventListener("click", loadFlagQueue);
+  dom.flagStatusFilter.addEventListener("change", loadFlagQueue);
+  dom.flagQueueBody.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-flag-action][data-flag-id]");
+    if (!button) return;
+    const action = button.dataset.flagAction;
+    const flagId = button.dataset.flagId;
+    handleFlagQueueAction(action, flagId);
+  });
   dom.verifyAdminBtn.addEventListener("click", verifyAdmin);
   dom.loadAdminDataBtn.addEventListener("click", loadAdminData);
   dom.saveAccessConfigBtn.addEventListener("click", saveAccessConfig);

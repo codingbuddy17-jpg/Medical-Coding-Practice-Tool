@@ -171,6 +171,9 @@
               <button id="checkBtn" class="primary-btn" type="button">Check</button>
               <button id="nextBtn" class="ghost-btn" type="button">Next</button>
             </div>
+            <div class="panel-actions">
+              <button id="flagQuestionBtn" class="ghost-btn" type="button">Flag This Question</button>
+            </div>
             <div id="mcqOptions" class="mcq-options hidden" aria-live="polite"></div>
             <p id="feedback" class="status" aria-live="polite"></p>
             <div class="rationale-box">
@@ -250,6 +253,39 @@
             </table>
           </div>
           <p id="sessionLoadStatus" class="status" aria-live="polite"></p>
+        </section>
+
+        <section class="panel">
+          <h3>Question Review Queue</h3>
+          <div class="panel-actions">
+            <select id="flagStatusFilter">
+              <option value="open">Open</option>
+              <option value="">All</option>
+              <option value="resolved">Resolved</option>
+              <option value="replaced">Replaced</option>
+            </select>
+            <button id="refreshFlagsBtn" class="ghost-btn" type="button">Refresh Queue</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tag</th>
+                  <th>Question</th>
+                  <th>Raised By</th>
+                  <th>Reason</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="flagQueueBody">
+                <tr>
+                  <td colspan="6">No flagged questions loaded.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p id="flagQueueStatus" class="status"></p>
         </section>
 
         <section class="panel">

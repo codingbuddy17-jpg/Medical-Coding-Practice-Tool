@@ -27,6 +27,7 @@ const QUESTIONS_FILE = path.join(DATA_DIR, "questions.json");
 const ACCESS_FILE = path.join(DATA_DIR, "access-config.json");
 const COHORTS_FILE = path.join(DATA_DIR, "cohorts.json");
 const EXAMS_FILE = path.join(DATA_DIR, "exam-blueprints.json");
+const FLAGS_FILE = path.join(DATA_DIR, "question-flags.json");
 
 const DEFAULT_EXAM_TEMPLATES = [
   {
@@ -84,6 +85,7 @@ function ensureDataStore() {
       JSON.stringify({ templates: DEFAULT_EXAM_TEMPLATES, assignments: [] }, null, 2)
     );
   }
+  if (!fs.existsSync(FLAGS_FILE)) fs.writeFileSync(FLAGS_FILE, JSON.stringify({ flags: [] }, null, 2));
 }
 
 function readSessions() {
@@ -188,6 +190,22 @@ function writeExamStore(store) {
   };
   fs.writeFileSync(EXAMS_FILE, JSON.stringify(payload, null, 2));
   return payload;
+}
+
+function readFlags() {
+  ensureDataStore();
+  const raw = fs.readFileSync(FLAGS_FILE, "utf8");
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.flags) ? parsed.flags : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeFlags(flags) {
+  ensureDataStore();
+  fs.writeFileSync(FLAGS_FILE, JSON.stringify({ flags }, null, 2));
 }
 
 function sanitizeTemplate(input) {
@@ -948,6 +966,55 @@ async function storageListQuestions(tag) {
   return data || [];
 }
 
+async function storageReplaceQuestion({ questionId, tag, question, answer, originalTag, originalQuestion, originalAnswer }) {
+  const nextTag = String(tag || "General").trim();
+  const nextQuestion = String(question || "").trim();
+  const nextAnswer = String(answer || "").trim();
+  if (!nextQuestion || !nextAnswer) throw new Error("Replacement question and answer are required");
+
+  if (!USE_SUPABASE) {
+    const questions = readQuestions();
+    let idx = questions.findIndex((q) => String(q.id) === String(questionId));
+    if (idx < 0) {
+      idx = questions.findIndex(
+        (q) =>
+          normalizeKeyPart(q.tag) === normalizeKeyPart(originalTag) &&
+          normalizeKeyPart(q.question) === normalizeKeyPart(originalQuestion) &&
+          normalizeKeyPart(q.answer) === normalizeKeyPart(originalAnswer)
+      );
+    }
+    if (idx < 0) throw new Error("Question not found");
+
+    questions[idx].tag = nextTag || questions[idx].tag || "General";
+    questions[idx].question = nextQuestion;
+    questions[idx].answer = nextAnswer;
+    writeQuestions(questions);
+    return { id: questions[idx].id, tag: questions[idx].tag, question: questions[idx].question };
+  }
+
+  let existing = null;
+  const byId = await supabase.from("questions").select("id,tag").eq("id", questionId).maybeSingle();
+  if (byId.error && String(byId.error.code || "") !== "PGRST116") throw byId.error;
+  if (byId.data) existing = byId.data;
+  if (!existing) {
+    const byMatch = await supabase
+      .from("questions")
+      .select("id,tag")
+      .eq("tag", String(originalTag || ""))
+      .eq("question", String(originalQuestion || ""))
+      .eq("answer", String(originalAnswer || ""))
+      .maybeSingle();
+    if (byMatch.error && String(byMatch.error.code || "") !== "PGRST116") throw byMatch.error;
+    existing = byMatch.data;
+  }
+  if (!existing) throw new Error("Question not found");
+
+  const payload = { tag: nextTag || existing.tag, question: nextQuestion, answer: nextAnswer };
+  const { error: updateErr } = await supabase.from("questions").update(payload).eq("id", questionId);
+  if (updateErr) throw updateErr;
+  return { id: questionId, tag: payload.tag, question: payload.question };
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
@@ -1336,6 +1403,110 @@ const server = http.createServer(async (req, res) => {
 
       const result = await storageImportQuestions(cards);
       return json(res, 200, result);
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/questions/flag" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const question = String(body.question || "").trim();
+      const questionId = String(body.questionId || "").trim();
+      if (!question || !questionId) return json(res, 400, { error: "Missing question details" });
+
+      const flags = readFlags();
+      const now = Date.now();
+      const newFlag = {
+        id: `flag_${now}_${Math.random().toString(36).slice(2, 8)}`,
+        status: "open",
+        questionId,
+        cardTag: String(body.cardTag || "General").trim(),
+        question,
+        expectedAnswer: String(body.expectedAnswer || "").trim(),
+        reason: String(body.reason || "").trim().slice(0, 500),
+        raisedBy: {
+          sessionId: String(body.sessionId || ""),
+          role: String(body.role || "trainee"),
+          userName: String(body.userName || "anonymous").trim(),
+          userEmail: normalizeEmail(body.userEmail || "")
+        },
+        createdAt: now,
+        updatedAt: now,
+        resolution: null
+      };
+
+      flags.unshift(newFlag);
+      writeFlags(flags);
+      return json(res, 201, { flag: newFlag });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/questions/flags" && req.method === "GET") {
+    const trainerKey = url.searchParams.get("trainerKey");
+    const access = readAccessConfig();
+    if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+
+    const status = String(url.searchParams.get("status") || "").trim().toLowerCase();
+    const all = readFlags();
+    const filtered = status ? all.filter((item) => String(item.status || "").toLowerCase() === status) : all;
+    return json(res, 200, { flags: filtered.slice(0, 1000) });
+  }
+
+  if (url.pathname === "/api/questions/flags/action" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const trainerKey = String(body.trainerKey || "");
+      const access = readAccessConfig();
+      if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+
+      const flagId = String(body.flagId || "").trim();
+      const action = String(body.action || "").trim().toLowerCase();
+      if (!flagId || !action) return json(res, 400, { error: "flagId and action are required" });
+
+      const flags = readFlags();
+      const idx = flags.findIndex((item) => item.id === flagId);
+      if (idx < 0) return json(res, 404, { error: "Flag not found" });
+
+      if (action === "resolve") {
+        flags[idx].status = "resolved";
+        flags[idx].updatedAt = Date.now();
+        flags[idx].resolution = {
+          action: "resolved",
+          note: String(body.note || "").trim().slice(0, 300),
+          by: "trainer",
+          at: Date.now()
+        };
+        writeFlags(flags);
+        return json(res, 200, { flag: flags[idx] });
+      }
+
+      if (action === "replace") {
+        const updated = await storageReplaceQuestion({
+          questionId: flags[idx].questionId,
+          tag: body.newTag || flags[idx].cardTag,
+          question: body.newQuestion,
+          answer: body.newAnswer,
+          originalTag: flags[idx].cardTag,
+          originalQuestion: flags[idx].question,
+          originalAnswer: flags[idx].expectedAnswer
+        });
+
+        flags[idx].status = "replaced";
+        flags[idx].updatedAt = Date.now();
+        flags[idx].resolution = {
+          action: "replaced",
+          by: "trainer",
+          at: Date.now(),
+          replacement: updated
+        };
+        writeFlags(flags);
+        return json(res, 200, { flag: flags[idx], updatedQuestion: updated });
+      }
+
+      return json(res, 400, { error: "Unsupported action" });
     } catch (err) {
       return json(res, 400, { error: err.message });
     }
