@@ -91,19 +91,19 @@ h1 {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  min-height: 92px;
+  min-height: 120px;
 }
 
 .brand-logo {
-  width: 380px;
-  height: 150px;
+  width: 430px;
+  height: 170px;
   object-fit: contain;
   object-position: center center;
-  border-radius: 10px;
+  border-radius: 0;
   background: transparent;
-  border: 1px solid #b9cde4;
-  padding: 0.18rem 0.24rem;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
+  border: none;
+  padding: 0;
+  box-shadow: none;
 }
 
 .brand-intro {
@@ -689,8 +689,8 @@ code {
   }
 
   .brand-logo {
-    width: 280px;
-    height: 110px;
+    width: 320px;
+    height: 126px;
   }
 
   .dashboard {
