@@ -179,6 +179,8 @@ const dom = {
   feedback: document.getElementById("feedback"),
   rationalePlaceholder: document.getElementById("rationalePlaceholder"),
   trialLockNotice: document.getElementById("trialLockNotice"),
+  trialInfoBanner: document.getElementById("trialInfoBanner"),
+  trialInfoWhatsappBtn: document.getElementById("trialInfoWhatsappBtn"),
   upgradeWall: document.getElementById("upgradeWall"),
   upgradeStatus: document.getElementById("upgradeStatus"),
   unlockAccessBtn: document.getElementById("unlockAccessBtn"),
@@ -371,6 +373,11 @@ function updateUpgradeWallUI() {
   if (!dom.counselName.value) dom.counselName.value = defaultName;
   if (!dom.counselEmail.value) dom.counselEmail.value = defaultEmail;
   if (!dom.counselPhone.value) dom.counselPhone.value = defaultPhone;
+}
+
+function updateTrialInfoBannerUI() {
+  const show = state.role === "trial" && state.session.isActive && !hasSessionLimitReached();
+  dom.trialInfoBanner.classList.toggle("hidden", !show);
 }
 
 function toMcqOptionKey(value) {
@@ -771,6 +778,7 @@ function updateRoleUI() {
   syncExamControlLock();
   renderResources();
   updateTrialLockUI();
+  updateTrialInfoBannerUI();
   updateUpgradeWallUI();
 }
 
@@ -830,6 +838,7 @@ function renderCard() {
     setAwaitingNext(false);
     dom.flagQuestionBtn.disabled = true;
     updateTrialLockUI();
+    updateTrialInfoBannerUI();
     updateUpgradeWallUI();
     dom.categoryStatus.textContent = state.role === "trainer" ? `Showing 0 cards for ${state.selectedTag}.` : "";
     return;
@@ -849,6 +858,7 @@ function renderCard() {
     setAwaitingNext(false);
     dom.flagQuestionBtn.disabled = true;
     updateTrialLockUI();
+    updateTrialInfoBannerUI();
     updateUpgradeWallUI();
     dom.categoryStatus.textContent = state.role === "trainer" ? "Question limit reached for current access." : "";
     return;
@@ -880,6 +890,7 @@ function renderCard() {
   setStatus(dom.rationalePlaceholder, String(card.rationale || "").trim() || DEFAULT_RATIONALE_TEXT);
   setAwaitingNext(false);
   updateTrialLockUI();
+  updateTrialInfoBannerUI();
 
   if (state.exam.inProgress) {
     dom.categoryStatus.textContent = `Exam mode: ${state.exam.answered}/${state.exam.queueIds.length} answered.`;
@@ -2738,7 +2749,11 @@ function bindEvents() {
 
   dom.toggleExamPanelBtn.addEventListener("click", () => {
     if (isTrialUser()) {
-      setStatus(dom.examStatus, trialUpgradeMessage(), "error");
+      setStatus(dom.examStatus, "Timed exams are included in full access. Redirecting to WhatsApp...", "error");
+      openWhatsAppCta(
+        "Hello, I am on trial mode and would like full access including timed exam features.",
+        "cta_timed_exam_trial_click"
+      );
       dom.examPanel.classList.add("hidden");
       return;
     }
@@ -2807,6 +2822,12 @@ function bindEvents() {
   dom.brochureBtn.addEventListener("click", openBrochureCta);
   dom.syllabusBtn.addEventListener("click", openSyllabusCta);
   dom.counselingForm.addEventListener("submit", submitCounselingForm);
+  dom.trialInfoWhatsappBtn.addEventListener("click", () => {
+    openWhatsAppCta(
+      "Hello, I am using the trial version and would like to upgrade to full access.",
+      "cta_trial_banner_whatsapp_click"
+    );
+  });
   dom.floatingWhatsappBtn.addEventListener("click", (event) => {
     event.preventDefault();
     openWhatsAppCta(
@@ -2881,6 +2902,7 @@ async function init() {
   renderCategoryScorecards();
   setStatus(dom.examStatus, "Exam mode inactive.");
   updateExamStatusUI();
+  updateTrialInfoBannerUI();
   await loadAnalyticsCohorts();
   await loadBlueprintTemplates();
   await loadAssignedBlueprintForSession();

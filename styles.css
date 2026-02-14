@@ -433,6 +433,16 @@ button {
   background: #0f766e;
 }
 
+.trial-info {
+  border: 1px solid #c5ddd6;
+  border-radius: 8px;
+  background: #f8fffc;
+  padding: 0.5rem;
+  margin-top: 0.35rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
 .panel-actions {
   margin-top: 0.45rem;
   display: flex;
