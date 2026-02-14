@@ -774,7 +774,12 @@ function checkAnswer(userInput, expectedAnswer, card = null) {
 
 function matchesSelectedTag(card) {
   if (state.selectedTag === "ALL") return true;
-  return normalizeTagKey(card.tag) === state.selectedTag;
+  const raw = String(card.tag || "").toUpperCase();
+  const target = state.selectedTag.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+  // Return true if any keyword match represents the selected category
+  const cleaned = raw.replace(/[^A-Z0-9]/g, "");
+  return cleaned.includes(target);
 }
 
 function filteredDeck() {
@@ -783,7 +788,11 @@ function filteredDeck() {
 
 function getCardsForTag(tagKey) {
   if (tagKey === "ALL") return [...state.deck];
-  return state.deck.filter((card) => normalizeTagKey(card.tag) === tagKey);
+  const target = tagKey.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return state.deck.filter((card) => {
+    const cleaned = String(card.tag || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    return cleaned.includes(target);
+  });
 }
 
 function resetStudyOrder(tagKey = null) {
