@@ -1005,7 +1005,13 @@ function renderCard() {
     dom.mcqOptions.innerHTML = (card.options || [])
       .map((opt, idx) => {
         const key = labels[idx];
-        return `<button type="button" class="mcq-option" data-option-key="${key}">${key}) ${opt}</button>`;
+        const isSelected = state.selectedMcqOption === key;
+        return `
+          <label class="mcq-radio-option ${isSelected ? "selected" : ""}" data-option-key="${key}">
+            <input type="radio" name="mcqAnswer" value="${key}" ${isSelected ? "checked" : ""} ${hasSessionLimitReached() ? "disabled" : ""}>
+            <span>${key}) ${opt}</span>
+          </label>
+        `;
       })
       .join("");
     dom.checkBtn.disabled = hasSessionLimitReached();
@@ -3334,13 +3340,16 @@ function bindEvents() {
     setSelectedTag(btn.dataset.tag);
   });
 
-  dom.mcqOptions.addEventListener("click", (event) => {
-    const optionBtn = event.target.closest("button[data-option-key]");
-    if (!optionBtn) return;
-    if (state.awaitingNext || hasSessionLimitReached()) return;
-    state.selectedMcqOption = optionBtn.dataset.optionKey || "";
-    dom.mcqOptions.querySelectorAll("button[data-option-key]").forEach((btn) => {
-      btn.classList.toggle("selected", btn === optionBtn);
+  dom.mcqOptions.addEventListener("change", (event) => {
+    if (event.target.name !== "mcqAnswer") return;
+    if (state.awaitingNext || hasSessionLimitReached()) {
+      event.target.checked = false;
+      return;
+    }
+    const selectedKey = event.target.value;
+    state.selectedMcqOption = selectedKey;
+    dom.mcqOptions.querySelectorAll(".mcq-radio-option").forEach((label) => {
+      label.classList.toggle("selected", label.dataset.optionKey === selectedKey);
     });
   });
 
