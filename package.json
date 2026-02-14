@@ -9,6 +9,9 @@
     "dev": "node server.js",
     "check": "node --check app.js && node --check server.js"
   },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4"
+  },
   "engines": {
     "node": ">=20"
   },
