@@ -313,6 +313,7 @@ function uid(prefix) {
 }
 
 async function hardReset() {
+  alert("Reset button clicked! Starting process..."); // Debug line to confirm action
   const choice = confirm("Do you want to clear the Server Database as well? (Click OK for Server & Local, Cancel for Local Only)");
 
   if (choice) {
