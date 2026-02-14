@@ -831,12 +831,19 @@ function renderCategoryScorecards() {
 
   TRACKED_CATEGORY_KEYS.forEach((key) => {
     const s = stats[key] || { attempted: 0, correct: 0, wrong: 0 };
-    rows.push(`<tr><td>${key}</td><td>${s.attempted}</td><td>${s.correct}</td><td>${s.wrong}</td><td>${formatPercent(s.correct, s.attempted)}</td></tr>`);
+    if (s.attempted > 0) {
+      rows.push(`<tr><td>${key}</td><td>${s.attempted}</td><td>${s.correct}</td><td>${s.wrong}</td><td>${formatPercent(s.correct, s.attempted)}</td></tr>`);
+    }
   });
 
   const other = stats.OTHER || { attempted: 0, correct: 0, wrong: 0 };
   if (other.attempted > 0) {
     rows.push(`<tr><td>OTHER</td><td>${other.attempted}</td><td>${other.correct}</td><td>${other.wrong}</td><td>${formatPercent(other.correct, other.attempted)}</td></tr>`);
+  }
+
+  if (!rows.length) {
+    dom.categoryScoreBody.innerHTML = '<tr><td colspan="5">Scorecards will appear as you attempt questions.</td></tr>';
+    return;
   }
 
   dom.categoryScoreBody.innerHTML = rows.join("");
