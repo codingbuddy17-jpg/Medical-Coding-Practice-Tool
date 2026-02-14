@@ -320,14 +320,15 @@ async function hardReset() {
     if (!key) return;
 
     try {
-      const res = await apiRequest("/api/admin/reset-data", {
+      await apiRequest("/api/admin/reset-data", {
         method: "POST",
         body: JSON.stringify({ adminKey: key })
       });
       alert("Server data cleared.");
     } catch (err) {
-      alert(`Server reset failed: ${err.message}`);
-      return;
+      console.warn("Server reset failed:", err);
+      alert("Server reset failed (check console). Proceeding with local reset...");
+      // Do NOT return here; continue to clear local storage
     }
   } else {
     if (!confirm("This will clear ALL local data and maximize storage. You will need to re-import questions. Continue?")) return;
