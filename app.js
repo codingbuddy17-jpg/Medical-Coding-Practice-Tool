@@ -22,7 +22,9 @@ const CATEGORY_OPTIONS = [
   { key: "GUIDELINES", label: "Guidelines" },
   { key: "CCS", label: "CCS" },
   { key: "CPC", label: "CPC" },
-  { key: "CDIP", label: "CDIP" }
+  { key: "CDIP", label: "CDIP" },
+  { key: "SURGERY-CODING", label: "Surgery Coding" },
+  { key: "IP-DRG-CODING", label: "IP-DRG Coding" }
 ];
 
 const TRACKED_CATEGORY_KEYS = CATEGORY_OPTIONS.filter((item) => item.key !== "ALL").map((item) => item.key);
@@ -318,6 +320,9 @@ function normalizeTagKey(tag) {
   if (cleaned.includes("CCS")) return "CCS";
   if (cleaned.includes("CPC")) return "CPC";
   if (cleaned.includes("CDIP")) return "CDIP";
+  if (cleaned.includes("SURGERYCODING")) return "SURGERY-CODING";
+  if (cleaned.includes("IPDRGCODING")) return "IP-DRG-CODING";
+  if (cleaned.includes("IPDRG")) return "IP-DRG-CODING";
   return "OTHER";
 }
 
@@ -1742,7 +1747,7 @@ function parseRowsMatrix(rows) {
   };
 
   return rows.slice(startAt).map((row) => {
-    const tag = getByName(row, ["tag"], 0) || "General";
+    const tag = getByName(row, ["tag", "tags", "category", "topic"], 0) || "General";
     const type = (getByName(row, ["type"], 1) || (hasNamedHeader ? "short" : "")).toLowerCase();
     const question = getByName(row, ["question"], hasNamedHeader ? -1 : 1);
     const answer = getByName(row, ["answer"], hasNamedHeader ? -1 : 2);
@@ -2507,7 +2512,7 @@ function exportPdfReport() {
   // Branded header ribbon
   doc.setFillColor(15, 118, 110);
   doc.rect(0, 0, 210, 30, "F");
-  doc.setFillColor(29, 78, 216);
+  doc.setFillColor(0, 163, 217);
   doc.rect(0, 30, 210, 6, "F");
 
   let y = 13;
@@ -2554,7 +2559,7 @@ function exportPdfReport() {
   y += 10;
 
   doc.setFontSize(11);
-  doc.setTextColor(29, 78, 216);
+  doc.setTextColor(0, 126, 167);
   doc.text("Category Breakdown", 14, y);
   y += 6;
   doc.setTextColor(15, 23, 42);

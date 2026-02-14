@@ -52,7 +52,7 @@ const DEFAULT_EXAM_TEMPLATES = [
   {
     id: "mixed-final",
     name: "Mixed Final Mock",
-    tags: ["ICD-10-CM", "ICD-10-PCS", "CPT", "MODIFIERS", "GUIDELINES", "CCS", "CPC", "CDIP"],
+    tags: ["ICD-10-CM", "ICD-10-PCS", "CPT", "MODIFIERS", "GUIDELINES", "CCS", "CPC", "CDIP", "SURGERY-CODING", "IP-DRG-CODING"],
     questionCount: 100,
     durationMinutes: 60,
     passThreshold: 85,

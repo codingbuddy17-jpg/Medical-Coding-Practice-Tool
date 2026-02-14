@@ -5,7 +5,8 @@
   --muted: #334155;
   --accent: #0f766e;
   --accent-soft: #d9f3ee;
-  --blue: #0077b6;
+  --blue: #00a3d9;
+  --blue-deep: #007ea7;
   --danger: #b42318;
   --success: #0f766e;
   --line: #d5e3ef;
@@ -21,7 +22,7 @@ body {
   font-family: "Space Grotesk", "Avenir Next", sans-serif;
   color: var(--ink);
   min-height: 100vh;
-  background: radial-gradient(circle at 18% 15%, #dbeafe 0%, transparent 35%),
+  background: radial-gradient(circle at 18% 15%, #d6f1ff 0%, transparent 35%),
     radial-gradient(circle at 85% 20%, #d9f3ee 0%, transparent 30%),
     var(--bg);
   display: flex;
@@ -39,7 +40,7 @@ body {
 .bg-shape-a {
   width: 260px;
   height: 260px;
-  background: #bfdbfe;
+  background: #b9e9ff;
   top: -40px;
   right: -40px;
 }
@@ -94,22 +95,22 @@ h1 {
 }
 
 .brand-logo {
-  width: 240px;
-  height: 96px;
-  object-fit: cover;
-  object-position: center;
+  width: 300px;
+  height: 122px;
+  object-fit: contain;
+  object-position: center center;
   border-radius: 10px;
-  background: #ffffff;
+  background: transparent;
   border: 1px solid #b9cde4;
-  padding: 0.22rem 0.28rem;
+  padding: 0.18rem 0.24rem;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
 }
 
 .brand-intro {
   margin-top: 0.6rem;
   border: 1px solid #a8c3de;
-  background: linear-gradient(155deg, #eaf3ff, #ecfffa 62%, #ffffff);
-  box-shadow: 0 10px 24px rgba(29, 78, 216, 0.08);
+  background: linear-gradient(155deg, #e9f8ff, #ecfffa 62%, #ffffff);
+  box-shadow: 0 10px 24px rgba(0, 163, 217, 0.1);
   position: relative;
   overflow: hidden;
 }
@@ -122,11 +123,11 @@ h1 {
   width: 140px;
   height: 140px;
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(29, 78, 216, 0.18) 0%, rgba(29, 78, 216, 0) 72%);
+  background: radial-gradient(circle, rgba(0, 163, 217, 0.2) 0%, rgba(0, 163, 217, 0) 72%);
 }
 
 .brand-intro h2 {
-  color: #0b3d91;
+  color: var(--blue-deep);
   font-size: 1.02rem;
   margin-bottom: 0.2rem;
   letter-spacing: 0.01em;
@@ -185,7 +186,7 @@ h1 {
 .landing-tile h3 {
   font-size: 0.9rem;
   margin: 0 0 0.2rem;
-  color: #0b3d91;
+  color: var(--blue-deep);
 }
 
 h2,
@@ -345,7 +346,7 @@ textarea {
 
 .tag-btn.active {
   background: var(--accent-soft);
-  border-color: #8ab7eb;
+  border-color: #79d4ef;
   font-weight: 600;
 }
 
@@ -369,7 +370,7 @@ textarea {
 }
 
 .resource-link {
-  color: #1d4ed8;
+  color: var(--blue-deep);
   font-size: 0.8rem;
   text-decoration: none;
 }
@@ -652,8 +653,8 @@ code {
   }
 
   .brand-logo {
-    width: 180px;
-    height: 74px;
+    width: 230px;
+    height: 92px;
   }
 
   .dashboard {
