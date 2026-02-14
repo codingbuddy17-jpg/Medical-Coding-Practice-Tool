@@ -40,15 +40,7 @@ const DEFAULT_RESOURCES = [
   { title: "AHIMA", url: "https://www.ahima.com" }
 ];
 
-const STARTER_DECK = [
-  { tag: "ICD-10-CM", question: "Type 2 diabetes mellitus without complications", answer: "E11.9" },
-  { tag: "ICD-10-CM", question: "Essential (primary) hypertension", answer: "I10" },
-  { tag: "ICD-10-PCS", question: "Resection of liver, open approach pattern starts with:", answer: "0F" },
-  { tag: "CPT", question: "Office/outpatient E/M visit for established patient (moderate complexity)", answer: "99214" },
-  { tag: "CPT", question: "Electrocardiogram routine ECG with interpretation and report", answer: "93000" },
-  { tag: "Modifiers", question: "Significant, separately identifiable E/M service by same physician", answer: "Modifier -25|-25|25" },
-  { tag: "Guidelines", question: "Multiple coding conventions and chapter-specific notes are part of:", answer: "ICD-10-CM guidelines|official coding guidelines" }
-];
+const STARTER_DECK = [];
 
 function createEmptyCategoryStats() {
   const stats = {};
