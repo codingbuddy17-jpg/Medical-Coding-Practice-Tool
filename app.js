@@ -56,7 +56,10 @@ const state = {
   weakDrillEnabled: false,
   examConfig: {
     questionCount: 30,
-    durationMinutes: 30
+    durationMinutes: 30,
+    passThreshold: 80,
+    strictTiming: true,
+    blueprintId: ""
   },
   currentCardIndex: 0,
   deck: [],
@@ -82,7 +85,10 @@ const state = {
     timerId: null,
     answered: 0,
     correct: 0,
-    wrong: 0
+    wrong: 0,
+    passThreshold: 80,
+    strictTiming: true,
+    blueprintName: ""
   },
   awaitingNext: false,
   selectedMcqOption: "",
@@ -97,6 +103,18 @@ const state = {
   adminPanel: {
     verified: false,
     cohorts: []
+  },
+  analytics: {
+    lastScope: "",
+    lastEmail: "",
+    lastCohortName: "",
+    lastDays: 30,
+    lastData: null,
+    lastRecommendations: []
+  },
+  blueprints: {
+    templates: [],
+    assigned: null
   }
 };
 
@@ -122,7 +140,10 @@ const dom = {
   categoryStatus: document.getElementById("categoryStatus"),
   weakDrillToggle: document.getElementById("weakDrillToggle"),
   examQuestionCount: document.getElementById("examQuestionCount"),
+  examBlueprintSelect: document.getElementById("examBlueprintSelect"),
   examDuration: document.getElementById("examDuration"),
+  examPassThreshold: document.getElementById("examPassThreshold"),
+  examStrictTiming: document.getElementById("examStrictTiming"),
   toggleExamPanelBtn: document.getElementById("toggleExamPanelBtn"),
   examPanel: document.getElementById("examPanel"),
   startExamBtn: document.getElementById("startExamBtn"),
@@ -187,7 +208,28 @@ const dom = {
   memberPhoneInput: document.getElementById("memberPhoneInput"),
   enrollMemberBtn: document.getElementById("enrollMemberBtn"),
   enrollStatus: document.getElementById("enrollStatus"),
-  cohortTableBody: document.getElementById("cohortTableBody")
+  cohortTableBody: document.getElementById("cohortTableBody"),
+  blueprintTemplateSelect: document.getElementById("blueprintTemplateSelect"),
+  blueprintQuestionCount: document.getElementById("blueprintQuestionCount"),
+  blueprintDuration: document.getElementById("blueprintDuration"),
+  blueprintPassThreshold: document.getElementById("blueprintPassThreshold"),
+  blueprintStrictTiming: document.getElementById("blueprintStrictTiming"),
+  refreshBlueprintsBtn: document.getElementById("refreshBlueprintsBtn"),
+  assignBlueprintBtn: document.getElementById("assignBlueprintBtn"),
+  blueprintStatus: document.getElementById("blueprintStatus"),
+
+  exportReportBtn: document.getElementById("exportReportBtn"),
+  analyticsUserEmail: document.getElementById("analyticsUserEmail"),
+  analyticsCohortSelect: document.getElementById("analyticsCohortSelect"),
+  analyticsDays: document.getElementById("analyticsDays"),
+  loadUserAnalyticsBtn: document.getElementById("loadUserAnalyticsBtn"),
+  loadBatchAnalyticsBtn: document.getElementById("loadBatchAnalyticsBtn"),
+  loadDrillRecommendationsBtn: document.getElementById("loadDrillRecommendationsBtn"),
+  shareTrendEmailBtn: document.getElementById("shareTrendEmailBtn"),
+  analyticsStatus: document.getElementById("analyticsStatus"),
+  analyticsRecommendedTags: document.getElementById("analyticsRecommendedTags"),
+  analyticsTagBody: document.getElementById("analyticsTagBody"),
+  analyticsTrendBody: document.getElementById("analyticsTrendBody")
 };
 
 function uid(prefix = "id") {
@@ -376,6 +418,9 @@ function loadLocal() {
     state.weakDrillEnabled = Boolean(parsed.weakDrillEnabled);
     state.examConfig.questionCount = Number(parsed.examConfig?.questionCount) || 30;
     state.examConfig.durationMinutes = Number(parsed.examConfig?.durationMinutes) || 30;
+    state.examConfig.passThreshold = Math.min(100, Math.max(1, Number(parsed.examConfig?.passThreshold) || 80));
+    state.examConfig.strictTiming = parsed.examConfig?.strictTiming !== false;
+    state.examConfig.blueprintId = String(parsed.examConfig?.blueprintId || "");
   } catch {
     state.deck = hydrateCards(STARTER_DECK);
     state.resources = [...DEFAULT_RESOURCES];
@@ -626,6 +671,7 @@ function updateRoleUI() {
     dom.adminTools.classList.add("hidden");
     setStatus(dom.adminStatus, "");
   }
+  syncExamControlLock();
   renderResources();
   updateTrialLockUI();
 }
@@ -648,7 +694,13 @@ function updateExamStatusUI() {
 
   const total = state.exam.queueIds.length;
   const answered = state.exam.answered;
-  setStatus(dom.examStatus, `Exam running: ${answered}/${total} answered.`);
+  const threshold = Math.min(100, Math.max(1, Number(state.exam.passThreshold || state.examConfig.passThreshold || 80)));
+  const name = state.exam.blueprintName ? ` [${state.exam.blueprintName}]` : "";
+  setStatus(dom.examStatus, `Exam running${name}: ${answered}/${total} answered. Pass ${threshold}%.`);
+  if (!state.exam.strictTiming) {
+    dom.examTimer.textContent = "Time left: Untimed";
+    return;
+  }
   const mm = String(Math.floor(state.exam.remainingSeconds / 60)).padStart(2, "0");
   const ss = String(state.exam.remainingSeconds % 60).padStart(2, "0");
   dom.examTimer.textContent = `Time left: ${mm}:${ss}`;
@@ -761,13 +813,27 @@ function finishExam(reason) {
   clearExamTimer();
   const attempted = state.exam.answered;
   const score = attempted ? Math.round((state.exam.correct / attempted) * 100) : 0;
+  const passThreshold = Math.min(100, Math.max(1, Number(state.exam.passThreshold || state.examConfig.passThreshold || 80)));
+  const passed = score >= passThreshold;
+  const blueprintNote = state.exam.blueprintName ? ` (${state.exam.blueprintName})` : "";
 
   if (reason === "time") {
-    setStatus(dom.examStatus, `Time up. Exam finished with ${score}% score.`, "error");
+    setStatus(
+      dom.examStatus,
+      `Time up. Exam finished${blueprintNote} with ${score}% (${passed ? "PASS" : "FAIL"}, threshold ${passThreshold}%).`,
+      passed ? "success" : "error"
+    );
   } else if (reason === "completed") {
-    setStatus(dom.examStatus, `Exam completed. Final score: ${score}%.`, "success");
+    setStatus(
+      dom.examStatus,
+      `Exam completed${blueprintNote}. Final score: ${score}% (${passed ? "PASS" : "FAIL"}, threshold ${passThreshold}%).`,
+      passed ? "success" : "error"
+    );
   } else {
-    setStatus(dom.examStatus, `Exam stopped. Current score: ${score}%.`);
+    setStatus(
+      dom.examStatus,
+      `Exam stopped${blueprintNote}. Current score: ${score}% (${passed ? "PASS" : "FAIL"}, threshold ${passThreshold}%).`
+    );
   }
 
   state.exam.inProgress = false;
@@ -777,6 +843,9 @@ function finishExam(reason) {
   state.exam.answered = 0;
   state.exam.correct = 0;
   state.exam.wrong = 0;
+  state.exam.passThreshold = state.examConfig.passThreshold;
+  state.exam.strictTiming = state.examConfig.strictTiming;
+  state.exam.blueprintName = "";
   state.currentCardIndex = 0;
   state.awaitingNext = false;
 
@@ -785,6 +854,7 @@ function finishExam(reason) {
 }
 
 function startExamTimer() {
+  if (!state.exam.strictTiming) return;
   clearExamTimer();
   state.exam.timerId = setInterval(() => {
     state.exam.remainingSeconds -= 1;
@@ -820,6 +890,87 @@ function shuffledCopy(items) {
   return arr;
 }
 
+function canonicalTagForBlueprint(tag) {
+  const key = normalizeTagKey(tag);
+  if (key === "OTHER") return String(tag || "").trim();
+  return key;
+}
+
+function renderBlueprintSelectors() {
+  const templates = Array.isArray(state.blueprints.templates) ? state.blueprints.templates : [];
+  const options = ['<option value="">Manual</option>'].concat(
+    templates.map((tpl) => `<option value="${tpl.id}">${tpl.name}</option>`)
+  );
+  dom.examBlueprintSelect.innerHTML = options.join("");
+  dom.blueprintTemplateSelect.innerHTML = ['<option value="">Select template</option>']
+    .concat(templates.map((tpl) => `<option value="${tpl.id}">${tpl.name}</option>`))
+    .join("");
+
+  if (state.examConfig.blueprintId && templates.some((tpl) => tpl.id === state.examConfig.blueprintId)) {
+    dom.examBlueprintSelect.value = state.examConfig.blueprintId;
+  } else {
+    dom.examBlueprintSelect.value = "";
+  }
+}
+
+function applyBlueprintConfig(template, override = null) {
+  if (!template) return;
+  const source = override || template;
+  state.examConfig.blueprintId = template.id || "";
+  state.examConfig.questionCount = Math.max(1, Number(source.questionCount || template.questionCount || 30));
+  state.examConfig.durationMinutes = Math.max(1, Number(source.durationMinutes || template.durationMinutes || 30));
+  state.examConfig.passThreshold = Math.min(100, Math.max(1, Number(source.passThreshold || template.passThreshold || 80)));
+  state.examConfig.strictTiming = source.strictTiming !== false;
+
+  dom.examQuestionCount.value = String(state.examConfig.questionCount);
+  dom.examDuration.value = String(state.examConfig.durationMinutes);
+  dom.examPassThreshold.value = String(state.examConfig.passThreshold);
+  dom.examStrictTiming.checked = state.examConfig.strictTiming;
+  dom.examBlueprintSelect.value = template.id || "";
+}
+
+function syncExamControlLock() {
+  const locked = state.role === "trainee" && Boolean(state.blueprints.assigned);
+  dom.examBlueprintSelect.disabled = locked;
+  dom.examQuestionCount.disabled = locked;
+  dom.examDuration.disabled = locked;
+  dom.examPassThreshold.disabled = locked;
+  dom.examStrictTiming.disabled = locked;
+}
+
+function buildBlueprintQueue(source, template, total) {
+  if (!template || !Array.isArray(template.tags) || !template.tags.length) {
+    return shuffledCopy(source)
+      .slice(0, total)
+      .map((card) => card.id);
+  }
+
+  const tags = template.tags.map(canonicalTagForBlueprint).filter(Boolean);
+  const perTag = Math.max(1, Math.floor(total / tags.length));
+  const chosen = [];
+  const used = new Set();
+
+  tags.forEach((tag) => {
+    const pool = shuffledCopy(source.filter((card) => canonicalTagForBlueprint(card.tag) === tag));
+    for (let i = 0; i < pool.length && chosen.length < total && i < perTag; i += 1) {
+      if (used.has(pool[i].id)) continue;
+      used.add(pool[i].id);
+      chosen.push(pool[i].id);
+    }
+  });
+
+  if (chosen.length < total) {
+    const remainder = shuffledCopy(source);
+    for (let i = 0; i < remainder.length && chosen.length < total; i += 1) {
+      if (used.has(remainder[i].id)) continue;
+      used.add(remainder[i].id);
+      chosen.push(remainder[i].id);
+    }
+  }
+
+  return chosen.slice(0, total);
+}
+
 function startExam() {
   if (isTrialUser()) {
     setStatus(dom.examStatus, trialUpgradeMessage(), "error");
@@ -843,13 +994,16 @@ function startExam() {
     return;
   }
 
-  const requested = Number(dom.examQuestionCount.value) || state.examConfig.questionCount;
-  const minutes = Number(dom.examDuration.value) || state.examConfig.durationMinutes;
+  const selectedBlueprintId = String(dom.examBlueprintSelect.value || "").trim();
+  const selectedTemplate = state.blueprints.templates.find((tpl) => tpl.id === selectedBlueprintId) || null;
+
+  const requested = Math.max(1, Number(dom.examQuestionCount.value) || state.examConfig.questionCount);
+  const minutes = Math.max(1, Number(dom.examDuration.value) || state.examConfig.durationMinutes);
+  const passThreshold = Math.min(100, Math.max(1, Number(dom.examPassThreshold.value) || state.examConfig.passThreshold || 80));
+  const strictTiming = dom.examStrictTiming.checked;
   const total = Math.min(requested, source.length);
 
-  const queue = shuffledCopy(source)
-    .slice(0, total)
-    .map((card) => card.id);
+  const queue = buildBlueprintQueue(source, selectedTemplate, total);
 
   state.exam.inProgress = true;
   state.exam.queueIds = queue;
@@ -858,9 +1012,15 @@ function startExam() {
   state.exam.answered = 0;
   state.exam.correct = 0;
   state.exam.wrong = 0;
+  state.exam.passThreshold = passThreshold;
+  state.exam.strictTiming = strictTiming;
+  state.exam.blueprintName = selectedTemplate?.name || "";
 
   state.examConfig.questionCount = requested;
   state.examConfig.durationMinutes = minutes;
+  state.examConfig.passThreshold = passThreshold;
+  state.examConfig.strictTiming = strictTiming;
+  state.examConfig.blueprintId = selectedTemplate?.id || "";
 
   startExamTimer();
   updateExamStatusUI();
@@ -1105,6 +1265,9 @@ async function startSession() {
   setStatus(dom.examStatus, "Exam mode inactive.");
   updateExamStatusUI();
   renderCohortUI();
+  await loadAnalyticsCohorts();
+  await loadBlueprintTemplates();
+  await loadAssignedBlueprintForSession();
   await loadDeckFromCloud();
   renderCard();
   saveLocal();
@@ -1646,6 +1809,366 @@ async function loadSessions() {
   }
 }
 
+function renderAnalyticsTables(analytics) {
+  const byTag = Array.isArray(analytics?.byTag) ? analytics.byTag : [];
+  const trend = Array.isArray(analytics?.trend) ? analytics.trend : [];
+
+  if (!byTag.length) {
+    dom.analyticsTagBody.innerHTML = '<tr><td colspan="5">No tag analytics for selected filter.</td></tr>';
+  } else {
+    dom.analyticsTagBody.innerHTML = byTag
+      .map(
+        (row) =>
+          `<tr><td>${row.tag}</td><td>${row.attempted}</td><td>${row.correct}</td><td>${row.wrong}</td><td>${row.accuracy}%</td></tr>`
+      )
+      .join("");
+  }
+
+  if (!trend.length) {
+    dom.analyticsTrendBody.innerHTML = '<tr><td colspan="5">No trend data for selected filter.</td></tr>';
+  } else {
+    dom.analyticsTrendBody.innerHTML = trend
+      .map(
+        (row) =>
+          `<tr><td>${row.day}</td><td>${row.attempted}</td><td>${row.correct}</td><td>${row.wrong}</td><td>${row.accuracy}%</td></tr>`
+      )
+      .join("");
+  }
+}
+
+function renderAnalyticsCohorts(cohorts) {
+  const rows = Array.isArray(cohorts) ? cohorts : [];
+  if (!rows.length) {
+    dom.analyticsCohortSelect.innerHTML = '<option value="">No cohorts</option>';
+    return;
+  }
+
+  const options = ['<option value="">Select cohort</option>'].concat(
+    rows.map((cohort) => `<option value="${cohort.id}">${cohort.name}</option>`)
+  );
+  dom.analyticsCohortSelect.innerHTML = options.join("");
+}
+
+async function loadAnalyticsCohorts() {
+  if (state.role !== "trainer" || !state.trainerKey) return;
+  try {
+    const data = await apiRequest(`/api/cohorts?trainerKey=${encodeURIComponent(state.trainerKey)}`);
+    renderAnalyticsCohorts(data.cohorts || []);
+  } catch {
+    renderAnalyticsCohorts([]);
+  }
+}
+
+async function loadBlueprintTemplates() {
+  if (state.role !== "trainer" || !state.trainerKey) {
+    state.blueprints.templates = [];
+    renderBlueprintSelectors();
+    return;
+  }
+  try {
+    const data = await apiRequest(`/api/exam/templates?trainerKey=${encodeURIComponent(state.trainerKey)}`);
+    state.blueprints.templates = Array.isArray(data.templates) ? data.templates : [];
+    renderBlueprintSelectors();
+  } catch {
+    state.blueprints.templates = [];
+    renderBlueprintSelectors();
+  }
+}
+
+async function loadAssignedBlueprintForSession() {
+  if (!state.session.cohortId) {
+    state.blueprints.assigned = null;
+    syncExamControlLock();
+    return;
+  }
+  try {
+    const data = await apiRequest(`/api/exam/assigned?cohortId=${encodeURIComponent(state.session.cohortId)}`);
+    state.blueprints.assigned = data.assignment || null;
+    if (state.blueprints.assigned?.template) {
+      applyBlueprintConfig(state.blueprints.assigned.template, state.blueprints.assigned);
+    }
+    syncExamControlLock();
+  } catch {
+    state.blueprints.assigned = null;
+    syncExamControlLock();
+  }
+}
+
+function onBlueprintTemplateSelectionChange() {
+  const templateId = dom.blueprintTemplateSelect.value;
+  const template = (state.blueprints.templates || []).find((tpl) => tpl.id === templateId);
+  if (!template) return;
+  dom.blueprintQuestionCount.value = String(template.questionCount || 30);
+  dom.blueprintDuration.value = String(template.durationMinutes || 30);
+  dom.blueprintPassThreshold.value = String(template.passThreshold || 80);
+  dom.blueprintStrictTiming.checked = template.strictTiming !== false;
+}
+
+function onExamBlueprintSelectionChange() {
+  const templateId = dom.examBlueprintSelect.value;
+  const template = (state.blueprints.templates || []).find((tpl) => tpl.id === templateId);
+  if (!template) {
+    state.examConfig.blueprintId = "";
+    saveLocal();
+    return;
+  }
+  applyBlueprintConfig(template);
+  saveLocal();
+}
+
+async function assignBlueprintToCohort() {
+  if (state.role !== "trainer") return;
+  const cohortId = dom.cohortSelect.value;
+  const templateId = dom.blueprintTemplateSelect.value;
+  if (!cohortId || !templateId) {
+    setStatus(dom.blueprintStatus, "Select cohort and blueprint template.", "error");
+    return;
+  }
+  if (!state.trainerKey) {
+    setStatus(dom.blueprintStatus, "Trainer key missing. Start trainer session again.", "error");
+    return;
+  }
+
+  const questionCount = Math.max(1, Number(dom.blueprintQuestionCount.value || 30));
+  const durationMinutes = Math.max(1, Number(dom.blueprintDuration.value || 30));
+  const passThreshold = Math.min(100, Math.max(1, Number(dom.blueprintPassThreshold.value || 80)));
+  const strictTiming = dom.blueprintStrictTiming.checked;
+
+  try {
+    await apiRequest("/api/exam/assign", "POST", {
+      trainerKey: state.trainerKey,
+      cohortId,
+      templateId,
+      questionCount,
+      durationMinutes,
+      passThreshold,
+      strictTiming
+    });
+    setStatus(dom.blueprintStatus, "Blueprint assigned to cohort.", "success");
+    if (state.session.cohortId && state.session.cohortId === cohortId) {
+      await loadAssignedBlueprintForSession();
+      renderCard();
+      saveLocal();
+    }
+  } catch (err) {
+    setStatus(dom.blueprintStatus, `Could not assign blueprint: ${err.message}`, "error");
+  }
+}
+
+function setRecommendedTags(tags) {
+  const values = Array.isArray(tags) ? tags : [];
+  dom.analyticsRecommendedTags.textContent = values.length ? values.join(", ") : "--";
+  state.analytics.lastRecommendations = values;
+}
+
+async function loadUserAnalytics() {
+  if (state.role !== "trainer") return;
+  const trainerKey = state.trainerKey;
+  const email = dom.analyticsUserEmail.value.trim();
+  const days = Number(dom.analyticsDays.value || 30);
+  if (!trainerKey) {
+    setStatus(dom.analyticsStatus, "Trainer key missing. Start trainer session again.", "error");
+    return;
+  }
+  if (!email) {
+    setStatus(dom.analyticsStatus, "Enter user email for analytics.", "error");
+    return;
+  }
+  try {
+    const data = await apiRequest(
+      `/api/analytics/user?trainerKey=${encodeURIComponent(trainerKey)}&email=${encodeURIComponent(email)}&days=${days}`
+    );
+    const analytics = data.analytics || {};
+    renderAnalyticsTables(analytics);
+    setRecommendedTags(data.recommendedTags || []);
+    state.analytics.lastScope = "user";
+    state.analytics.lastEmail = data.email || email;
+    state.analytics.lastCohortName = "";
+    state.analytics.lastDays = days;
+    state.analytics.lastData = analytics;
+    setStatus(dom.analyticsStatus, `Loaded user analytics for ${email}.`, "success");
+  } catch (err) {
+    setStatus(dom.analyticsStatus, `Could not load user analytics: ${err.message}`, "error");
+  }
+}
+
+async function loadBatchAnalytics() {
+  if (state.role !== "trainer") return;
+  const trainerKey = state.trainerKey;
+  const cohortId = dom.analyticsCohortSelect.value;
+  const days = Number(dom.analyticsDays.value || 30);
+  if (!trainerKey) {
+    setStatus(dom.analyticsStatus, "Trainer key missing. Start trainer session again.", "error");
+    return;
+  }
+  if (!cohortId) {
+    setStatus(dom.analyticsStatus, "Select a cohort.", "error");
+    return;
+  }
+  try {
+    const data = await apiRequest(
+      `/api/analytics/batch?trainerKey=${encodeURIComponent(trainerKey)}&cohortId=${encodeURIComponent(cohortId)}&days=${days}`
+    );
+    const analytics = data.analytics || {};
+    renderAnalyticsTables(analytics);
+    setRecommendedTags(data.recommendedTags || []);
+    state.analytics.lastScope = "batch";
+    state.analytics.lastEmail = "";
+    state.analytics.lastCohortName = data.cohortName || "";
+    state.analytics.lastDays = days;
+    state.analytics.lastData = analytics;
+    setStatus(dom.analyticsStatus, `Loaded batch analytics for ${data.cohortName || "selected cohort"}.`, "success");
+  } catch (err) {
+    setStatus(dom.analyticsStatus, `Could not load batch analytics: ${err.message}`, "error");
+  }
+}
+
+async function loadDrillRecommendations() {
+  if (state.role !== "trainer") return;
+  const trainerKey = state.trainerKey;
+  const email = dom.analyticsUserEmail.value.trim();
+  const days = Number(dom.analyticsDays.value || 30);
+  if (!trainerKey) {
+    setStatus(dom.analyticsStatus, "Trainer key missing. Start trainer session again.", "error");
+    return;
+  }
+  if (!email) {
+    setStatus(dom.analyticsStatus, "Enter user email to recommend daily drills.", "error");
+    return;
+  }
+  try {
+    const data = await apiRequest(
+      `/api/analytics/recommendations?trainerKey=${encodeURIComponent(trainerKey)}&email=${encodeURIComponent(email)}&days=${days}&limit=15`
+    );
+    const tags = data.recommendedTags || [];
+    setRecommendedTags(tags);
+    if (!tags.length) {
+      setStatus(dom.analyticsStatus, "No weak-tag pattern found yet for this user.", "error");
+      return;
+    }
+    setStatus(dom.analyticsStatus, `Daily drill recommendation ready (${tags.join(", ")}).`, "success");
+  } catch (err) {
+    setStatus(dom.analyticsStatus, `Could not load recommendations: ${err.message}`, "error");
+  }
+}
+
+function shareTrendByEmail() {
+  if (state.role !== "trainer") return;
+  const analytics = state.analytics.lastData;
+  if (!analytics) {
+    setStatus(dom.analyticsStatus, "Load analytics first, then share.", "error");
+    return;
+  }
+  const recipient = state.analytics.lastScope === "user" ? state.analytics.lastEmail : "";
+  const scopeLabel =
+    state.analytics.lastScope === "batch" ? `Batch: ${state.analytics.lastCohortName || "Cohort"}` : `User: ${recipient}`;
+  const summary = analytics.summary || {};
+  const topWeak = (state.analytics.lastRecommendations || []).join(", ") || "None";
+  const trendLines = (analytics.trend || [])
+    .slice(-10)
+    .map((row) => `${row.day}: ${row.accuracy}% (${row.correct}/${row.attempted})`)
+    .join("\n");
+
+  const subject = `Coding Practice Trend Report (${state.analytics.lastDays}d)`;
+  const body = [
+    `Hello,`,
+    ``,
+    `Here is your coding practice trend summary.`,
+    `Scope: ${scopeLabel}`,
+    `Window: Last ${state.analytics.lastDays} days`,
+    `Overall: ${summary.score || 0}% (${summary.correct || 0}/${summary.attempted || 0})`,
+    `Recommended Daily Drill Tags: ${topWeak}`,
+    ``,
+    `Recent Trend:`,
+    trendLines || "No trend data.",
+    ``,
+    `Regards,`,
+    `Medical Coding Virtual Practice Tool`
+  ].join("\n");
+
+  const mailto = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = mailto;
+}
+
+function exportPdfReport() {
+  if (!window.jspdf?.jsPDF) {
+    setStatus(dom.sessionStatus, "PDF library not loaded. Refresh and try again.", "error");
+    return;
+  }
+  if (!state.userName) {
+    setStatus(dom.sessionStatus, "Start a session before exporting report.", "error");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const attempted = state.session.attempted || 0;
+  const correct = state.session.correct || 0;
+  const wrong = state.session.wrong || 0;
+  const score = attempted ? Math.round((correct / attempted) * 100) : 0;
+  const started = state.session.startedAt ? new Date(state.session.startedAt).toLocaleString() : new Date().toLocaleString();
+  const generated = new Date().toLocaleString();
+  const threshold = Math.min(100, Math.max(1, Number(state.exam.passThreshold || state.examConfig.passThreshold || 80)));
+  const examResult = score >= threshold ? "PASS" : "FAIL";
+
+  let y = 18;
+  doc.setFontSize(16);
+  doc.text("Medical Coding Virtual Practice Tool", 14, y);
+  y += 8;
+  doc.setFontSize(12);
+  doc.text("Completion Report", 14, y);
+  y += 8;
+  doc.setFontSize(10);
+  doc.text(`Name: ${state.userName}`, 14, y);
+  y += 6;
+  doc.text(`Email: ${state.userEmail || "-"}`, 14, y);
+  y += 6;
+  doc.text(`Role: ${state.role}`, 14, y);
+  y += 6;
+  doc.text(`Session Started: ${started}`, 14, y);
+  y += 6;
+  doc.text(`Report Generated: ${generated}`, 14, y);
+  y += 8;
+
+  doc.text(`Attempted: ${attempted}`, 14, y);
+  y += 6;
+  doc.text(`Correct: ${correct}`, 14, y);
+  y += 6;
+  doc.text(`Wrong: ${wrong}`, 14, y);
+  y += 6;
+  doc.text(`Score: ${score}%`, 14, y);
+  y += 6;
+  doc.text(`Exam Threshold: ${threshold}% | Result: ${examResult}`, 14, y);
+  y += 8;
+
+  doc.setFontSize(11);
+  doc.text("Category Breakdown", 14, y);
+  y += 6;
+  doc.setFontSize(9);
+
+  const stats = state.session.categoryStats || {};
+  const rows = Object.keys(stats)
+    .filter((key) => stats[key]?.attempted > 0)
+    .map((key) => {
+      const row = stats[key];
+      const acc = row.attempted ? Math.round((row.correct / row.attempted) * 100) : 0;
+      return `${key}: Attempted ${row.attempted}, Correct ${row.correct}, Wrong ${row.wrong}, Accuracy ${acc}%`;
+    });
+  if (!rows.length) rows.push("No attempts recorded yet.");
+
+  rows.forEach((line) => {
+    if (y > 280) {
+      doc.addPage();
+      y = 18;
+    }
+    doc.text(line, 14, y);
+    y += 5;
+  });
+
+  const fileName = `coding_report_${(state.userName || "user").replace(/[^a-z0-9]+/gi, "_").toLowerCase()}_${Date.now()}.pdf`;
+  doc.save(fileName);
+}
+
 function renderCohortUI() {
   const cohorts = Array.isArray(state.adminPanel.cohorts) ? state.adminPanel.cohorts : [];
   if (!cohorts.length) {
@@ -1716,6 +2239,8 @@ async function loadAdminData() {
     dom.adminTrialLimit.value = String(configRes.trialQuestionLimit || state.accessConfig.trialQuestionLimit || 20);
     state.adminPanel.cohorts = Array.isArray(cohortRes.cohorts) ? cohortRes.cohorts : [];
     renderCohortUI();
+    renderAnalyticsCohorts(state.adminPanel.cohorts);
+    await loadBlueprintTemplates();
     setStatus(dom.adminStatus, "Admin data loaded.", "success");
   } catch (err) {
     setStatus(dom.adminStatus, `Could not load admin data: ${err.message}`, "error");
@@ -1885,8 +2410,20 @@ function bindEvents() {
     saveLocal();
   });
 
+  dom.examBlueprintSelect.addEventListener("change", onExamBlueprintSelectionChange);
+
   dom.examDuration.addEventListener("change", () => {
     state.examConfig.durationMinutes = Number(dom.examDuration.value) || 30;
+    saveLocal();
+  });
+
+  dom.examPassThreshold.addEventListener("change", () => {
+    state.examConfig.passThreshold = Math.min(100, Math.max(1, Number(dom.examPassThreshold.value) || 80));
+    saveLocal();
+  });
+
+  dom.examStrictTiming.addEventListener("change", () => {
+    state.examConfig.strictTiming = dom.examStrictTiming.checked;
     saveLocal();
   });
 
@@ -1922,6 +2459,14 @@ function bindEvents() {
   dom.refreshCohortsBtn.addEventListener("click", loadAdminData);
   dom.enrollMemberBtn.addEventListener("click", enrollSelectedCohortMember);
   dom.cohortSelect.addEventListener("change", syncCohortFormFromSelection);
+  dom.blueprintTemplateSelect.addEventListener("change", onBlueprintTemplateSelectionChange);
+  dom.refreshBlueprintsBtn.addEventListener("click", loadBlueprintTemplates);
+  dom.assignBlueprintBtn.addEventListener("click", assignBlueprintToCohort);
+  dom.loadUserAnalyticsBtn.addEventListener("click", loadUserAnalytics);
+  dom.loadBatchAnalyticsBtn.addEventListener("click", loadBatchAnalytics);
+  dom.loadDrillRecommendationsBtn.addEventListener("click", loadDrillRecommendations);
+  dom.shareTrendEmailBtn.addEventListener("click", shareTrendByEmail);
+  dom.exportReportBtn.addEventListener("click", exportPdfReport);
 
   dom.csvFileInput.addEventListener("change", async () => {
     const file = dom.csvFileInput.files?.[0];
@@ -1972,14 +2517,22 @@ async function init() {
   dom.weakDrillToggle.checked = state.weakDrillEnabled;
   dom.examQuestionCount.value = String(state.examConfig.questionCount);
   dom.examDuration.value = String(state.examConfig.durationMinutes);
+  dom.examPassThreshold.value = String(state.examConfig.passThreshold || 80);
+  dom.examStrictTiming.checked = state.examConfig.strictTiming !== false;
 
   renderCategoryButtons();
   renderResources();
+  renderAnalyticsCohorts([]);
+  setRecommendedTags([]);
+  renderBlueprintSelectors();
   updateRoleUI();
   updateMetrics();
   renderCategoryScorecards();
   setStatus(dom.examStatus, "Exam mode inactive.");
   updateExamStatusUI();
+  await loadAnalyticsCohorts();
+  await loadBlueprintTemplates();
+  await loadAssignedBlueprintForSession();
   await loadDeckFromCloud();
   renderCard();
   setAwaitingNext(false);

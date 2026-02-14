@@ -19,7 +19,10 @@
           <p class="eyebrow">Medical Coding Virtual Practice Tool</p>
           <h1>Practice Flashcards</h1>
         </div>
-        <button id="endSessionBtn" class="ghost-btn" type="button">End Session</button>
+        <div class="panel-actions">
+          <button id="exportReportBtn" class="ghost-btn" type="button">Export PDF Report</button>
+          <button id="endSessionBtn" class="ghost-btn" type="button">End Session</button>
+        </div>
       </header>
 
       <section class="auth panel" id="authPanel">
@@ -97,12 +100,26 @@
                   <div id="examPanel" class="hidden">
                     <h4>Timed Exam Mode</h4>
                     <label>
+                      Blueprint
+                      <select id="examBlueprintSelect">
+                        <option value="">Manual</option>
+                      </select>
+                    </label>
+                    <label>
                       Questions
                       <select id="examQuestionCount">
                         <option value="30">30</option>
                         <option value="50">50</option>
                         <option value="100">100</option>
                       </select>
+                    </label>
+                    <label>
+                      Pass Threshold (%)
+                      <input id="examPassThreshold" type="number" min="1" max="100" step="1" value="80" />
+                    </label>
+                    <label class="inline-toggle">
+                      <input id="examStrictTiming" type="checkbox" checked />
+                      <span>Strict timing (auto-stop on time)</span>
                     </label>
                     <label>
                       Duration (minutes)
@@ -340,12 +357,112 @@
                 </tbody>
               </table>
             </div>
+
+            <h4>Exam Blueprint Assignment</h4>
+            <div class="auth-grid">
+              <label>
+                Blueprint Template
+                <select id="blueprintTemplateSelect">
+                  <option value="">Select template</option>
+                </select>
+              </label>
+              <label>
+                Questions
+                <input id="blueprintQuestionCount" type="number" min="1" step="1" placeholder="50" />
+              </label>
+              <label>
+                Duration (mins)
+                <input id="blueprintDuration" type="number" min="1" step="1" placeholder="45" />
+              </label>
+              <label>
+                Pass Threshold (%)
+                <input id="blueprintPassThreshold" type="number" min="1" max="100" step="1" placeholder="80" />
+              </label>
+              <label class="inline-toggle">
+                <input id="blueprintStrictTiming" type="checkbox" checked />
+                <span>Strict timing</span>
+              </label>
+            </div>
+            <div class="panel-actions">
+              <button id="refreshBlueprintsBtn" class="ghost-btn" type="button">Refresh Blueprints</button>
+              <button id="assignBlueprintBtn" class="primary-btn" type="button">Assign to Selected Cohort</button>
+            </div>
+            <p id="blueprintStatus" class="status"></p>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3>Weak-Topic Analytics</h3>
+          <div class="auth-grid">
+            <label>
+              User Email
+              <input id="analyticsUserEmail" type="email" placeholder="trainee@email.com" />
+            </label>
+            <label>
+              Cohort
+              <select id="analyticsCohortSelect">
+                <option value="">Select cohort</option>
+              </select>
+            </label>
+            <label>
+              Time Window
+              <select id="analyticsDays">
+                <option value="7">Last 7 days</option>
+                <option value="14">Last 14 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="60">Last 60 days</option>
+              </select>
+            </label>
+          </div>
+          <div class="panel-actions">
+            <button id="loadUserAnalyticsBtn" class="primary-btn" type="button">Load User Analytics</button>
+            <button id="loadBatchAnalyticsBtn" class="ghost-btn" type="button">Load Batch Analytics</button>
+            <button id="loadDrillRecommendationsBtn" class="ghost-btn" type="button">Recommend Daily Drill</button>
+            <button id="shareTrendEmailBtn" class="ghost-btn" type="button">Share Trend by Email</button>
+          </div>
+          <p id="analyticsStatus" class="status"></p>
+
+          <p class="status"><strong>Recommended Tags:</strong> <span id="analyticsRecommendedTags">--</span></p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tag</th>
+                  <th>Attempted</th>
+                  <th>Correct</th>
+                  <th>Wrong</th>
+                  <th>Accuracy</th>
+                </tr>
+              </thead>
+              <tbody id="analyticsTagBody">
+                <tr><td colspan="5">No analytics loaded.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Attempted</th>
+                  <th>Correct</th>
+                  <th>Wrong</th>
+                  <th>Accuracy</th>
+                </tr>
+              </thead>
+              <tbody id="analyticsTrendBody">
+                <tr><td colspan="5">No trend loaded.</td></tr>
+              </tbody>
+            </table>
           </div>
         </section>
       </section>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

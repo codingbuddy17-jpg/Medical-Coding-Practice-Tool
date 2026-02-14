@@ -26,6 +26,37 @@ const SESSION_FILE = path.join(DATA_DIR, "sessions.json");
 const QUESTIONS_FILE = path.join(DATA_DIR, "questions.json");
 const ACCESS_FILE = path.join(DATA_DIR, "access-config.json");
 const COHORTS_FILE = path.join(DATA_DIR, "cohorts.json");
+const EXAMS_FILE = path.join(DATA_DIR, "exam-blueprints.json");
+
+const DEFAULT_EXAM_TEMPLATES = [
+  {
+    id: "icd-heavy",
+    name: "ICD-Heavy Mock",
+    tags: ["ICD-10-CM", "ICD-10-PCS", "GUIDELINES"],
+    questionCount: 50,
+    durationMinutes: 45,
+    passThreshold: 80,
+    strictTiming: true
+  },
+  {
+    id: "cpt-heavy",
+    name: "CPT-Heavy Mock",
+    tags: ["CPT", "MODIFIERS", "GUIDELINES"],
+    questionCount: 50,
+    durationMinutes: 45,
+    passThreshold: 80,
+    strictTiming: true
+  },
+  {
+    id: "mixed-final",
+    name: "Mixed Final Mock",
+    tags: ["ICD-10-CM", "ICD-10-PCS", "CPT", "MODIFIERS", "GUIDELINES", "CCS", "CPC", "CDIP"],
+    questionCount: 100,
+    durationMinutes: 60,
+    passThreshold: 85,
+    strictTiming: true
+  }
+];
 
 function ensureDataStore() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -47,6 +78,12 @@ function ensureDataStore() {
     );
   }
   if (!fs.existsSync(COHORTS_FILE)) fs.writeFileSync(COHORTS_FILE, JSON.stringify({ cohorts: [] }, null, 2));
+  if (!fs.existsSync(EXAMS_FILE)) {
+    fs.writeFileSync(
+      EXAMS_FILE,
+      JSON.stringify({ templates: DEFAULT_EXAM_TEMPLATES, assignments: [] }, null, 2)
+    );
+  }
 }
 
 function readSessions() {
@@ -128,6 +165,45 @@ function readCohorts() {
 function writeCohorts(cohorts) {
   ensureDataStore();
   fs.writeFileSync(COHORTS_FILE, JSON.stringify({ cohorts }, null, 2));
+}
+
+function readExamStore() {
+  ensureDataStore();
+  const raw = fs.readFileSync(EXAMS_FILE, "utf8");
+  try {
+    const parsed = JSON.parse(raw);
+    const templates = Array.isArray(parsed.templates) && parsed.templates.length ? parsed.templates : DEFAULT_EXAM_TEMPLATES;
+    const assignments = Array.isArray(parsed.assignments) ? parsed.assignments : [];
+    return { templates, assignments };
+  } catch {
+    return { templates: DEFAULT_EXAM_TEMPLATES, assignments: [] };
+  }
+}
+
+function writeExamStore(store) {
+  ensureDataStore();
+  const payload = {
+    templates: Array.isArray(store.templates) ? store.templates : DEFAULT_EXAM_TEMPLATES,
+    assignments: Array.isArray(store.assignments) ? store.assignments : []
+  };
+  fs.writeFileSync(EXAMS_FILE, JSON.stringify(payload, null, 2));
+  return payload;
+}
+
+function sanitizeTemplate(input) {
+  const id = String(input.id || "").trim();
+  const name = String(input.name || "").trim();
+  const tags = Array.isArray(input.tags)
+    ? input.tags.map((t) => String(t || "").trim()).filter(Boolean)
+    : [];
+  const questionCount = Math.max(1, Number(input.questionCount || 30));
+  const durationMinutes = Math.max(1, Number(input.durationMinutes || 30));
+  const passThreshold = Math.min(100, Math.max(1, Number(input.passThreshold || 80)));
+  const strictTiming = input.strictTiming !== false;
+  if (!id) throw new Error("Template id is required");
+  if (!name) throw new Error("Template name is required");
+  if (!tags.length) throw new Error("At least one tag is required");
+  return { id, name, tags, questionCount, durationMinutes, passThreshold, strictTiming };
 }
 
 function json(res, status, payload) {
@@ -389,6 +465,143 @@ function findCohortByAccessCode(code) {
     .toLowerCase();
   if (!normalized) return null;
   return readCohorts().find((c) => Boolean(c.isActive) && String(c.accessCode || "").trim().toLowerCase() === normalized) || null;
+}
+
+function dayKeyFromTs(ts) {
+  const d = new Date(Number(ts || Date.now()));
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function buildAttemptAnalytics(attempts, days) {
+  const since = Date.now() - Math.max(1, Number(days || 30)) * 24 * 60 * 60 * 1000;
+  const filtered = attempts.filter((a) => Number(a.at || 0) >= since);
+
+  const byTagMap = new Map();
+  const trendMap = new Map();
+
+  for (const attempt of filtered) {
+    const tag = String(attempt.cardTag || "General").trim() || "General";
+    const isCorrect = Boolean(attempt.isCorrect);
+    const day = dayKeyFromTs(attempt.at);
+
+    const tagAgg = byTagMap.get(tag) || { tag, attempted: 0, correct: 0, wrong: 0, accuracy: 0 };
+    tagAgg.attempted += 1;
+    if (isCorrect) tagAgg.correct += 1;
+    else tagAgg.wrong += 1;
+    tagAgg.accuracy = tagAgg.attempted ? Math.round((tagAgg.correct / tagAgg.attempted) * 100) : 0;
+    byTagMap.set(tag, tagAgg);
+
+    const dayAgg = trendMap.get(day) || { day, attempted: 0, correct: 0, wrong: 0, accuracy: 0 };
+    dayAgg.attempted += 1;
+    if (isCorrect) dayAgg.correct += 1;
+    else dayAgg.wrong += 1;
+    dayAgg.accuracy = dayAgg.attempted ? Math.round((dayAgg.correct / dayAgg.attempted) * 100) : 0;
+    trendMap.set(day, dayAgg);
+  }
+
+  const byTag = Array.from(byTagMap.values()).sort((a, b) => {
+    if (a.accuracy !== b.accuracy) return a.accuracy - b.accuracy;
+    return b.attempted - a.attempted;
+  });
+  const trend = Array.from(trendMap.values()).sort((a, b) => a.day.localeCompare(b.day));
+  const attempted = filtered.length;
+  const correct = filtered.filter((a) => a.isCorrect).length;
+  const wrong = attempted - correct;
+
+  return {
+    summary: {
+      attempted,
+      correct,
+      wrong,
+      score: attempted ? Math.round((correct / attempted) * 100) : 0,
+      days: Math.max(1, Number(days || 30))
+    },
+    byTag,
+    trend
+  };
+}
+
+function makeRecommendationFromAnalytics(analytics, maxTags = 3) {
+  const weakTags = (analytics.byTag || [])
+    .filter((row) => row.attempted >= 2)
+    .filter((row) => row.accuracy < 85)
+    .sort((a, b) => {
+      if (a.accuracy !== b.accuracy) return a.accuracy - b.accuracy;
+      return b.attempted - a.attempted;
+    })
+    .slice(0, maxTags);
+
+  if (weakTags.length) return weakTags.map((row) => row.tag);
+  return (analytics.byTag || []).slice(0, maxTags).map((row) => row.tag);
+}
+
+function shuffled(items) {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+  }
+  return arr;
+}
+
+async function listAttemptsForEmails(emails, sinceTs) {
+  const normalizedEmails = Array.from(
+    new Set(
+      (emails || [])
+        .map((email) => normalizeEmail(email))
+        .filter(Boolean)
+    )
+  );
+  if (!normalizedEmails.length) return [];
+  const sinceIso = new Date(Number(sinceTs || Date.now() - 30 * 24 * 60 * 60 * 1000)).toISOString();
+
+  if (!USE_SUPABASE) {
+    const sessions = readSessions().filter((s) => normalizedEmails.includes(normalizeEmail(s.userEmail)));
+    const attempts = [];
+    for (const session of sessions) {
+      const answers = Array.isArray(session.answers) ? session.answers : [];
+      for (const answer of answers) {
+        const at = Number(answer.at || 0);
+        if (at < Number(sinceTs || 0)) continue;
+        attempts.push({
+          cardTag: String(answer.cardTag || "General"),
+          isCorrect: Boolean(answer.isCorrect),
+          at
+        });
+      }
+    }
+    return attempts;
+  }
+
+  const sessionsRes = await supabase
+    .from("sessions")
+    .select("session_id,user_email")
+    .in("user_email", normalizedEmails)
+    .gte("started_at", sinceIso)
+    .limit(5000);
+  if (sessionsRes.error) throw sessionsRes.error;
+  const rows = sessionsRes.data || [];
+  const sessionIds = rows.map((r) => r.session_id).filter(Boolean);
+  if (!sessionIds.length) return [];
+
+  const attemptsRes = await supabase
+    .from("attempts")
+    .select("session_id,card_tag,is_correct,answered_at")
+    .in("session_id", sessionIds)
+    .gte("answered_at", sinceIso)
+    .limit(20000);
+  if (attemptsRes.error) throw attemptsRes.error;
+
+  return (attemptsRes.data || []).map((row) => ({
+    cardTag: String(row.card_tag || "General"),
+    isCorrect: Boolean(row.is_correct),
+    at: Date.parse(row.answered_at)
+  }));
 }
 
 async function upsertUserAndEntitlement({ userName, userEmail, userPhone, role }) {
@@ -891,6 +1104,211 @@ const server = http.createServer(async (req, res) => {
     const cohort = readCohorts().find((c) => c.id === cohortId);
     if (!cohort) return json(res, 404, { error: "Cohort not found" });
     return json(res, 200, { members: Array.isArray(cohort.members) ? cohort.members : [] });
+  }
+
+  if (url.pathname === "/api/cohorts" && req.method === "GET") {
+    const trainerKey = url.searchParams.get("trainerKey");
+    const access = readAccessConfig();
+    if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+    const cohorts = readCohorts().map((cohort) => ({
+      id: cohort.id,
+      name: cohort.name,
+      memberCount: Array.isArray(cohort.members) ? cohort.members.length : 0,
+      isActive: Boolean(cohort.isActive)
+    }));
+    return json(res, 200, { cohorts });
+  }
+
+  if (url.pathname === "/api/analytics/user" && req.method === "GET") {
+    try {
+      const trainerKey = url.searchParams.get("trainerKey");
+      const access = readAccessConfig();
+      if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+
+      const email = normalizeEmail(url.searchParams.get("email"));
+      const days = Math.max(1, Number(url.searchParams.get("days") || 30));
+      if (!email) return json(res, 400, { error: "Missing email" });
+
+      const since = Date.now() - days * 24 * 60 * 60 * 1000;
+      const attempts = await listAttemptsForEmails([email], since);
+      const analytics = buildAttemptAnalytics(attempts, days);
+      const recommendedTags = makeRecommendationFromAnalytics(analytics);
+
+      return json(res, 200, {
+        scope: "user",
+        email,
+        analytics,
+        recommendedTags
+      });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/analytics/batch" && req.method === "GET") {
+    try {
+      const trainerKey = url.searchParams.get("trainerKey");
+      const access = readAccessConfig();
+      if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+
+      const cohortId = String(url.searchParams.get("cohortId") || "");
+      const days = Math.max(1, Number(url.searchParams.get("days") || 30));
+      if (!cohortId) return json(res, 400, { error: "Missing cohortId" });
+
+      const cohort = readCohorts().find((item) => item.id === cohortId);
+      if (!cohort) return json(res, 404, { error: "Cohort not found" });
+      const emails = (Array.isArray(cohort.members) ? cohort.members : []).map((m) => m.email).filter(Boolean);
+      if (!emails.length) {
+        return json(res, 200, {
+          scope: "batch",
+          cohortId,
+          cohortName: cohort.name,
+          memberCount: 0,
+          analytics: buildAttemptAnalytics([], days),
+          recommendedTags: []
+        });
+      }
+
+      const since = Date.now() - days * 24 * 60 * 60 * 1000;
+      const attempts = await listAttemptsForEmails(emails, since);
+      const analytics = buildAttemptAnalytics(attempts, days);
+      const recommendedTags = makeRecommendationFromAnalytics(analytics);
+
+      return json(res, 200, {
+        scope: "batch",
+        cohortId,
+        cohortName: cohort.name,
+        memberCount: emails.length,
+        analytics,
+        recommendedTags
+      });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/analytics/recommendations" && req.method === "GET") {
+    try {
+      const trainerKey = url.searchParams.get("trainerKey");
+      const access = readAccessConfig();
+      if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+
+      const email = normalizeEmail(url.searchParams.get("email"));
+      const days = Math.max(1, Number(url.searchParams.get("days") || 30));
+      const cardLimit = Math.max(1, Math.min(50, Number(url.searchParams.get("limit") || 15)));
+      if (!email) return json(res, 400, { error: "Missing email" });
+
+      const since = Date.now() - days * 24 * 60 * 60 * 1000;
+      const attempts = await listAttemptsForEmails([email], since);
+      const analytics = buildAttemptAnalytics(attempts, days);
+      const recommendedTags = makeRecommendationFromAnalytics(analytics);
+
+      const allQuestions = await storageListQuestions("");
+      const pool = allQuestions.filter((q) => recommendedTags.includes(String(q.tag || "")));
+      const cards = shuffled(pool).slice(0, cardLimit).map((q) => ({
+        id: q.id,
+        tag: q.tag,
+        question: q.question,
+        answer: q.answer
+      }));
+
+      return json(res, 200, {
+        email,
+        days,
+        recommendedTags,
+        cards
+      });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/exam/templates" && req.method === "GET") {
+    const trainerKey = url.searchParams.get("trainerKey");
+    const access = readAccessConfig();
+    if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+    const store = readExamStore();
+    return json(res, 200, { templates: store.templates });
+  }
+
+  if (url.pathname === "/api/exam/templates" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const trainerKey = String(body.trainerKey || "");
+      const access = readAccessConfig();
+      if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+
+      const template = sanitizeTemplate(body.template || {});
+      const store = readExamStore();
+      const idx = store.templates.findIndex((t) => t.id === template.id);
+      if (idx >= 0) store.templates[idx] = template;
+      else store.templates.push(template);
+      writeExamStore(store);
+      return json(res, 200, { template });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/exam/assign" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const trainerKey = String(body.trainerKey || "");
+      const access = readAccessConfig();
+      if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+
+      const cohortId = String(body.cohortId || "");
+      const templateId = String(body.templateId || "");
+      if (!cohortId || !templateId) return json(res, 400, { error: "cohortId and templateId are required" });
+
+      const cohort = readCohorts().find((c) => c.id === cohortId);
+      if (!cohort) return json(res, 404, { error: "Cohort not found" });
+
+      const store = readExamStore();
+      const template = store.templates.find((t) => t.id === templateId);
+      if (!template) return json(res, 404, { error: "Template not found" });
+
+      const assignment = {
+        cohortId,
+        templateId,
+        questionCount: Math.max(1, Number(body.questionCount || template.questionCount || 30)),
+        durationMinutes: Math.max(1, Number(body.durationMinutes || template.durationMinutes || 30)),
+        passThreshold: Math.min(100, Math.max(1, Number(body.passThreshold || template.passThreshold || 80))),
+        strictTiming: body.strictTiming !== false,
+        updatedAt: Date.now()
+      };
+
+      const existingIdx = store.assignments.findIndex((a) => a.cohortId === cohortId);
+      if (existingIdx >= 0) store.assignments[existingIdx] = assignment;
+      else store.assignments.push(assignment);
+      writeExamStore(store);
+
+      return json(res, 200, { assignment });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/exam/assigned" && req.method === "GET") {
+    try {
+      const cohortId = String(url.searchParams.get("cohortId") || "");
+      if (!cohortId) return json(res, 200, { assignment: null });
+
+      const store = readExamStore();
+      const assignment = store.assignments.find((a) => a.cohortId === cohortId);
+      if (!assignment) return json(res, 200, { assignment: null });
+      const template = store.templates.find((t) => t.id === assignment.templateId);
+      if (!template) return json(res, 200, { assignment: null });
+
+      return json(res, 200, {
+        assignment: {
+          ...assignment,
+          template
+        }
+      });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
   }
 
   if (url.pathname === "/api/questions" && req.method === "GET") {
