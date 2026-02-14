@@ -710,6 +710,19 @@ async function apiRequest(path, method = "GET", payload = null) {
   return response.json();
 }
 
+async function loadDeckFromCloud() {
+  try {
+    const data = await apiRequest("/api/questions");
+    const questions = Array.isArray(data.questions) ? data.questions : [];
+    if (!questions.length) return false;
+    state.deck = hydrateCards(questions);
+    resetStudyOrder();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function resetSessionTracking() {
   state.session.correct = 0;
   state.session.wrong = 0;
@@ -801,6 +814,7 @@ async function startSession() {
   updateMetrics();
   setStatus(dom.examStatus, "Exam mode inactive.");
   updateExamStatusUI();
+  await loadDeckFromCloud();
   renderCard();
   saveLocal();
 }
@@ -965,15 +979,39 @@ function parseCsv(text) {
   }));
 }
 
-function importParsedCards(parsed) {
+async function importParsedCards(parsed) {
+  if (state.role === "trainer") {
+    const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
+    if (!trainerKey) {
+      setStatus(dom.importStatus, "Trainer key required for cloud import.", "error");
+      return;
+    }
+
+    try {
+      const result = await apiRequest("/api/questions/import", "POST", {
+        trainerKey,
+        cards: parsed
+      });
+      state.trainerKey = trainerKey;
+      await loadDeckFromCloud();
+      setStatus(dom.importStatus, `Cloud import complete: ${result.inserted} inserted, ${result.skipped} skipped.`, "success");
+      renderCard();
+      saveLocal();
+      return;
+    } catch (err) {
+      setStatus(dom.importStatus, `Cloud import failed: ${err.message}`, "error");
+      return;
+    }
+  }
+
   state.deck = hydrateCards(parsed);
   resetStudyOrder();
-  setStatus(dom.importStatus, `Imported ${parsed.length} cards.`, "success");
+  setStatus(dom.importStatus, `Imported ${parsed.length} cards locally.`, "success");
   renderCard();
   saveLocal();
 }
 
-function importCsv() {
+async function importCsv() {
   if (state.role !== "trainer") return;
 
   const parsed = parseCsv(dom.csvInput.value).filter((r) => r.question && r.answer);
@@ -982,7 +1020,7 @@ function importCsv() {
     return;
   }
 
-  importParsedCards(parsed);
+  await importParsedCards(parsed);
 }
 
 async function importCsvFile() {
@@ -1002,19 +1040,16 @@ async function importCsvFile() {
       return;
     }
     dom.csvInput.value = text;
-    importParsedCards(parsed);
+    await importParsedCards(parsed);
   } catch {
     setStatus(dom.importStatus, "Could not read CSV file.", "error");
   }
 }
 
-function loadStarterDeck() {
+async function loadStarterDeck() {
   if (state.role !== "trainer") return;
-  state.deck = hydrateCards(STARTER_DECK);
-  resetStudyOrder();
-  setStatus(dom.importStatus, "Starter deck loaded.", "success");
-  renderCard();
-  saveLocal();
+  await importParsedCards(STARTER_DECK);
+  setStatus(dom.importStatus, "Starter deck synced to cloud.", "success");
 }
 
 function exportCsv() {
@@ -1201,7 +1236,7 @@ function bindEvents() {
   });
 }
 
-function init() {
+async function init() {
   loadLocal();
   dom.userName.value = state.userName;
   dom.userEmail.value = state.userEmail;
@@ -1220,6 +1255,7 @@ function init() {
   renderCategoryScorecards();
   setStatus(dom.examStatus, "Exam mode inactive.");
   updateExamStatusUI();
+  await loadDeckFromCloud();
   renderCard();
   setAwaitingNext(false);
   bindEvents();

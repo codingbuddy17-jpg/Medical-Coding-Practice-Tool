@@ -22,10 +22,12 @@ const supabase = USE_SUPABASE
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
 const SESSION_FILE = path.join(DATA_DIR, "sessions.json");
+const QUESTIONS_FILE = path.join(DATA_DIR, "questions.json");
 
 function ensureDataStore() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(SESSION_FILE)) fs.writeFileSync(SESSION_FILE, JSON.stringify({ sessions: [] }, null, 2));
+  if (!fs.existsSync(QUESTIONS_FILE)) fs.writeFileSync(QUESTIONS_FILE, JSON.stringify({ questions: [] }, null, 2));
 }
 
 function readSessions() {
@@ -42,6 +44,22 @@ function readSessions() {
 function writeSessions(sessions) {
   ensureDataStore();
   fs.writeFileSync(SESSION_FILE, JSON.stringify({ sessions }, null, 2));
+}
+
+function readQuestions() {
+  ensureDataStore();
+  const raw = fs.readFileSync(QUESTIONS_FILE, "utf8");
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.questions) ? parsed.questions : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeQuestions(questions) {
+  ensureDataStore();
+  fs.writeFileSync(QUESTIONS_FILE, JSON.stringify({ questions }, null, 2));
 }
 
 function json(res, status, payload) {
@@ -350,6 +368,89 @@ async function storageListSessions() {
   }));
 }
 
+function normalizeKeyPart(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function questionCompositeKey(tag, question, answer) {
+  return `${normalizeKeyPart(tag)}|${normalizeKeyPart(question)}|${normalizeKeyPart(answer)}`;
+}
+
+function sanitizeQuestionCard(card) {
+  return {
+    tag: String(card.tag || "General").trim(),
+    question: String(card.question || "").trim(),
+    answer: String(card.answer || "").trim()
+  };
+}
+
+async function storageImportQuestions(cards) {
+  const sanitized = cards.map(sanitizeQuestionCard).filter((c) => c.question && c.answer);
+  const uniqueIncoming = [];
+  const incomingSeen = new Set();
+  for (const card of sanitized) {
+    const key = questionCompositeKey(card.tag, card.question, card.answer);
+    if (incomingSeen.has(key)) continue;
+    incomingSeen.add(key);
+    uniqueIncoming.push(card);
+  }
+
+  if (!uniqueIncoming.length) return { inserted: 0, skipped: cards.length };
+
+  if (!USE_SUPABASE) {
+    const existing = readQuestions();
+    const existingSet = new Set(existing.map((q) => questionCompositeKey(q.tag, q.question, q.answer)));
+    const toInsert = uniqueIncoming.filter((c) => !existingSet.has(questionCompositeKey(c.tag, c.question, c.answer)));
+    const now = Date.now();
+    const newRows = toInsert.map((c, idx) => ({
+      id: `q_${now}_${idx}_${Math.random().toString(36).slice(2, 8)}`,
+      tag: c.tag,
+      question: c.question,
+      answer: c.answer,
+      is_active: true,
+      created_at: new Date(now).toISOString()
+    }));
+    writeQuestions([...existing, ...newRows]);
+    return { inserted: newRows.length, skipped: cards.length - newRows.length };
+  }
+
+  const { data: existingRows, error: existingErr } = await supabase
+    .from("questions")
+    .select("tag,question,answer")
+    .eq("is_active", true);
+  if (existingErr) throw existingErr;
+
+  const existingSet = new Set((existingRows || []).map((q) => questionCompositeKey(q.tag, q.question, q.answer)));
+  const toInsert = uniqueIncoming.filter((c) => !existingSet.has(questionCompositeKey(c.tag, c.question, c.answer)));
+
+  if (!toInsert.length) return { inserted: 0, skipped: cards.length };
+
+  const payload = toInsert.map((c) => ({
+    tag: c.tag,
+    question: c.question,
+    answer: c.answer,
+    is_active: true
+  }));
+
+  const { error: insertErr } = await supabase.from("questions").insert(payload);
+  if (insertErr) throw insertErr;
+
+  return { inserted: payload.length, skipped: cards.length - payload.length };
+}
+
+async function storageListQuestions(tag) {
+  if (!USE_SUPABASE) {
+    const questions = readQuestions().filter((q) => q.is_active !== false);
+    return tag ? questions.filter((q) => q.tag === tag) : questions;
+  }
+
+  let query = supabase.from("questions").select("id,tag,question,answer").eq("is_active", true).order("created_at", { ascending: true });
+  if (tag) query = query.eq("tag", tag);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
@@ -372,6 +473,35 @@ const server = http.createServer(async (req, res) => {
       const body = await parseBody(req);
       const key = String(body.trainerKey || "");
       return json(res, 200, { valid: Boolean(TRAINER_KEY) && key === TRAINER_KEY });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/questions" && req.method === "GET") {
+    try {
+      const tag = url.searchParams.get("tag");
+      const questions = await storageListQuestions(tag || "");
+      return json(res, 200, { questions });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/questions/import" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const trainerKey = String(body.trainerKey || "");
+      if (!TRAINER_KEY || trainerKey !== TRAINER_KEY) {
+        return json(res, 403, { error: "Forbidden" });
+      }
+
+      const cards = Array.isArray(body.cards) ? body.cards : [];
+      if (!cards.length) return json(res, 400, { error: "No cards provided" });
+      if (cards.length > 10000) return json(res, 400, { error: "Batch too large" });
+
+      const result = await storageImportQuestions(cards);
+      return json(res, 200, result);
     } catch (err) {
       return json(res, 400, { error: err.message });
     }
