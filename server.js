@@ -377,10 +377,31 @@ function questionCompositeKey(tag, question, answer) {
 }
 
 function sanitizeQuestionCard(card) {
+  const clean = (input) => {
+    const raw = String(input || "").replace(/\u0000/g, "");
+    let out = "";
+    for (let i = 0; i < raw.length; i += 1) {
+      const code = raw.charCodeAt(i);
+      const isHigh = code >= 0xd800 && code <= 0xdbff;
+      const isLow = code >= 0xdc00 && code <= 0xdfff;
+      if (isHigh) {
+        const next = raw.charCodeAt(i + 1);
+        if (next >= 0xdc00 && next <= 0xdfff) {
+          out += raw[i] + raw[i + 1];
+          i += 1;
+        }
+        continue;
+      }
+      if (isLow) continue;
+      out += raw[i];
+    }
+    return out.trim();
+  };
+
   return {
-    tag: String(card.tag || "General").trim(),
-    question: String(card.question || "").trim(),
-    answer: String(card.answer || "").trim()
+    tag: clean(card.tag || "General"),
+    question: clean(card.question || ""),
+    answer: clean(card.answer || "")
   };
 }
 

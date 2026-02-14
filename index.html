@@ -191,7 +191,11 @@
           <p>CSV columns: <code>tag,question,answer</code>. Multiple valid answers: separate with <code>|</code>.</p>
           <label>
             Upload CSV File
-            <input id="csvFileInput" type="file" accept=".csv,text/csv" />
+            <input
+              id="csvFileInput"
+              type="file"
+              accept=".csv,.tsv,.txt,.xlsx,.xls,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+            />
           </label>
           <textarea id="csvInput" rows="7" placeholder="tag,question,answer&#10;ICD-10-CM,Type 2 diabetes mellitus without complications,E11.9"></textarea>
           <div class="panel-actions">
@@ -232,6 +236,7 @@
       </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

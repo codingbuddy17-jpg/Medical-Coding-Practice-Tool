@@ -961,25 +961,145 @@ function parseCsvLine(line) {
   return cells;
 }
 
+function removeInvalidSurrogates(text) {
+  const value = String(text || "");
+  let out = "";
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i);
+    const isHigh = code >= 0xd800 && code <= 0xdbff;
+    const isLow = code >= 0xdc00 && code <= 0xdfff;
+
+    if (isHigh) {
+      const next = value.charCodeAt(i + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        out += value[i] + value[i + 1];
+        i += 1;
+      }
+      continue;
+    }
+    if (isLow) continue;
+    out += value[i];
+  }
+  return out;
+}
+
+function cleanImportText(text) {
+  return removeInvalidSurrogates(String(text || "").replace(/\u0000/g, "")).trim();
+}
+
+function sanitizeQuestionCard(card) {
+  return {
+    tag: cleanImportText(card.tag || "General"),
+    question: cleanImportText(card.question || ""),
+    answer: cleanImportText(card.answer || "")
+  };
+}
+
+function detectDelimiter(sampleLine) {
+  const line = sampleLine || "";
+  const comma = (line.match(/,/g) || []).length;
+  const semicolon = (line.match(/;/g) || []).length;
+  const tab = (line.match(/\t/g) || []).length;
+  if (tab >= semicolon && tab >= comma) return "\t";
+  if (semicolon > comma) return ";";
+  return ",";
+}
+
+function parseDelimitedLine(line, delimiter) {
+  const cells = [];
+  let current = "";
+  let quoted = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    const next = line[i + 1];
+    if (char === '"' && quoted && next === '"') {
+      current += '"';
+      i += 1;
+      continue;
+    }
+    if (char === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (char === delimiter && !quoted) {
+      cells.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  cells.push(current.trim());
+  return cells;
+}
+
 function parseCsv(text) {
-  const lines = text
+  const clean = cleanImportText(text);
+  const lines = clean
     .split(/\r?\n/)
-    .map((line) => line.trim())
+    .map((line) => cleanImportText(line))
     .filter(Boolean);
 
   if (!lines.length) return [];
 
-  const rows = lines.map(parseCsvLine);
+  const delimiter = detectDelimiter(lines[0]);
+  const rows = lines.map((line) => parseDelimitedLine(line, delimiter));
   const startAt = rows[0][0]?.toLowerCase() === "tag" ? 1 : 0;
 
   return rows.slice(startAt).map((row) => ({
-    tag: row[0] || "General",
-    question: row[1] || "",
-    answer: row[2] || ""
+    tag: cleanImportText(row[0] || "General"),
+    question: cleanImportText(row[1] || ""),
+    answer: cleanImportText(row[2] || "")
   }));
 }
 
+function parseExcelArrayBuffer(buffer) {
+  if (!window.XLSX) throw new Error("Excel parser unavailable");
+  const workbook = window.XLSX.read(buffer, { type: "array" });
+  const firstSheetName = workbook.SheetNames[0];
+  if (!firstSheetName) return [];
+  const sheet = workbook.Sheets[firstSheetName];
+  const rows = window.XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" });
+  if (!rows.length) return [];
+  const headerRow = rows[0].map((x) => cleanImportText(x).toLowerCase());
+  const hasHeader = headerRow[0] === "tag" || (headerRow[1] === "question" && headerRow[2] === "answer");
+  const startAt = hasHeader ? 1 : 0;
+  return rows.slice(startAt).map((row) => ({
+    tag: cleanImportText(row[0] || "General"),
+    question: cleanImportText(row[1] || ""),
+    answer: cleanImportText(row[2] || "")
+  }));
+}
+
+async function readFileAsImportCards(file) {
+  const name = String(file?.name || "").toLowerCase();
+  const isExcel = name.endsWith(".xlsx") || name.endsWith(".xls");
+
+  if (isExcel) {
+    const buffer = await file.arrayBuffer();
+    return parseExcelArrayBuffer(buffer);
+  }
+
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let text;
+  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
+    text = new TextDecoder("utf-16le").decode(bytes);
+  } else if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
+    text = new TextDecoder("utf-16be").decode(bytes);
+  } else {
+    text = new TextDecoder("utf-8").decode(bytes);
+  }
+  return parseCsv(text);
+}
+
 async function importParsedCards(parsed) {
+  const sanitizedCards = parsed.map(sanitizeQuestionCard).filter((r) => r.question && r.answer);
+  if (!sanitizedCards.length) {
+    setStatus(dom.importStatus, "No valid cards after cleaning import data.", "error");
+    return;
+  }
+
   if (state.role === "trainer") {
     const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
     if (!trainerKey) {
@@ -990,7 +1110,7 @@ async function importParsedCards(parsed) {
     try {
       const result = await apiRequest("/api/questions/import", "POST", {
         trainerKey,
-        cards: parsed
+        cards: sanitizedCards
       });
       state.trainerKey = trainerKey;
       await loadDeckFromCloud();
@@ -1004,9 +1124,9 @@ async function importParsedCards(parsed) {
     }
   }
 
-  state.deck = hydrateCards(parsed);
+  state.deck = hydrateCards(sanitizedCards);
   resetStudyOrder();
-  setStatus(dom.importStatus, `Imported ${parsed.length} cards locally.`, "success");
+  setStatus(dom.importStatus, `Imported ${sanitizedCards.length} cards locally.`, "success");
   renderCard();
   saveLocal();
 }
@@ -1033,16 +1153,15 @@ async function importCsvFile() {
   }
 
   try {
-    const text = await file.text();
-    const parsed = parseCsv(text).filter((r) => r.question && r.answer);
+    const parsed = (await readFileAsImportCards(file)).filter((r) => r.question && r.answer);
     if (!parsed.length) {
       setStatus(dom.importStatus, "File has no valid cards.", "error");
       return;
     }
-    dom.csvInput.value = text;
+    dom.csvInput.value = parsed.map((r) => `${r.tag},${r.question},${r.answer}`).join("\n");
     await importParsedCards(parsed);
   } catch {
-    setStatus(dom.importStatus, "Could not read CSV file.", "error");
+    setStatus(dom.importStatus, "Could not read file. Use CSV/TSV or Excel (.xlsx/.xls).", "error");
   }
 }
 
@@ -1205,7 +1324,8 @@ function bindEvents() {
     const file = dom.csvFileInput.files?.[0];
     if (!file) return;
     try {
-      dom.csvInput.value = await file.text();
+      const parsed = await readFileAsImportCards(file);
+      dom.csvInput.value = parsed.map((r) => `${r.tag},${r.question},${r.answer}`).join("\n");
     } catch {
       // fallback: manual paste
     }
