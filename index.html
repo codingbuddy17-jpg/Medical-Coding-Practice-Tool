@@ -627,230 +627,186 @@
               </table>
             </div>
           </section>
-          </tbody>
-          </table>
-        </div>
-        <p id="importBatchStatus" class="status" aria-live="polite"></p>
-      </section>
 
-      <!-- Moved Access Management Here (renamed subtab to Admin & Tools) -->
-      <section class="panel">
-        <h3>Access Management <span id="adminActiveIndicator" class="admin-active-badge hidden" aria-live="polite">Admin
-            active</span></h3>
-        <p class="status">Use this single section to manage trainer keys, trainee access, cohort controls, and access
-          lifecycle.</p>
-        <div class="auth-grid">
-          <label>
-            Admin Key
-            <input id="adminKeyInput" type="password" placeholder="Enter admin key" />
-          </label>
-          <div class="panel-actions">
-            <button id="verifyAdminBtn" class="ghost-btn" type="button">Verify Admin</button>
-            <button id="loadAdminDataBtn" class="ghost-btn" type="button">Load Admin Data</button>
-          </div>
-        </div>
-        <p id="adminStatus" class="status" aria-live="polite"></p>
-        <div class="danger-zone">
-          <p class="danger-zone-label">Danger zone</p>
-          <button id="clearCacheBtn" class="ghost-btn danger-btn" type="button">Clear Cache & Reload</button>
-        </div>
+          <!-- Moved Access Management Here (renamed subtab to Admin & Tools) -->
+          <section class="panel">
+            <h3>Access Management <span id="adminActiveIndicator" class="admin-active-badge hidden"
+                aria-live="polite">Admin
+                active</span></h3>
+            <p class="status">Use this single section to manage trainer keys, trainee access, cohort controls, and
+              access
+              lifecycle.</p>
+            <div class="auth-grid">
+              <label>
+                Admin Key
+                <input id="adminKeyInput" type="password" placeholder="Enter admin key" />
+              </label>
+              <div class="panel-actions">
+                <button id="verifyAdminBtn" class="ghost-btn" type="button">Verify Admin</button>
+                <button id="loadAdminDataBtn" class="ghost-btn" type="button">Load Admin Data</button>
+              </div>
+            </div>
+            <p id="adminStatus" class="status" aria-live="polite"></p>
+            <div class="danger-zone">
+              <p class="danger-zone-label">Danger zone</p>
+              <button id="clearCacheBtn" class="ghost-btn danger-btn" type="button">Clear Cache & Reload</button>
+            </div>
 
-        <div id="adminTools" class="hidden">
-          <h4>Global Access Settings</h4>
-          <div class="auth-grid">
-            <label>
-              Trainee Access Code
-              <input id="adminTraineeCode" type="text" placeholder="Set trainee code" />
-            </label>
-            <label>
-              Trainer Key
-              <input id="adminTrainerKey" type="text" placeholder="Set trainer key" />
-            </label>
-            <label>
-              Trial Question Limit
-              <input id="adminTrialLimit" type="number" min="1" step="1" placeholder="20" />
-            </label>
-            <label>
-              Trainee Access Active
-              <select id="adminTraineeActive">
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </select>
-            </label>
-            <label>
-              Trainee Access Expiry
-              <input id="adminTraineeExpiry" type="date" />
-            </label>
-          </div>
-          <div class="panel-actions">
-            <button id="saveAccessConfigBtn" class="primary-btn" type="button">Save Access Settings</button>
-          </div>
-          <p id="accessConfigStatus" class="status"></p>
+            <div id="adminTools" class="hidden">
+              <h4>Global Access Settings</h4>
+              <div class="auth-grid">
+                <label>
+                  Trainee Access Code
+                  <input id="adminTraineeCode" type="text" placeholder="Set trainee code" />
+                </label>
+                <label>
+                  Trainer Key
+                  <input id="adminTrainerKey" type="text" placeholder="Set trainer key" />
+                </label>
+                <label>
+                  Trial Question Limit
+                  <input id="adminTrialLimit" type="number" min="1" step="1" placeholder="20" />
+                </label>
+                <label>
+                  Trainee Access Active
+                  <select id="adminTraineeActive">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </label>
+                <label>
+                  Trainee Access Expiry
+                  <input id="adminTraineeExpiry" type="date" />
+                </label>
+              </div>
+              <div class="panel-actions">
+                <button id="saveAccessConfigBtn" class="primary-btn" type="button">Save Access Settings</button>
+              </div>
+              <p id="accessConfigStatus" class="status"></p>
 
-          <h4>Cohort / Class Management</h4>
-          <div class="auth-grid">
-            <label>
-              Cohort Name
-              <input id="cohortNameInput" type="text" placeholder="Batch A - CPC Jan" />
-            </label>
-            <label>
-              Cohort Access Code
-              <input id="cohortCodeInput" type="text" placeholder="CPCJAN2026" />
-            </label>
-            <label>
-              Cohort Question Limit
-              <input id="cohortLimitInput" type="number" min="1" step="1" placeholder="1000" />
-            </label>
-            <label>
-              Active
-              <select id="cohortActiveInput">
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </select>
-            </label>
-            <label>
-              Cohort Expiry
-              <input id="cohortExpiryInput" type="date" />
-            </label>
-          </div>
-          <div class="panel-actions">
-            <button id="createCohortBtn" class="primary-btn" type="button">Create Cohort</button>
-            <button id="updateCohortBtn" class="ghost-btn" type="button">Update Selected Cohort</button>
-            <button id="refreshCohortsBtn" class="ghost-btn" type="button">Refresh Cohorts</button>
-          </div>
-          <p id="cohortStatus" class="status"></p>
+              <h4>Cohort / Class Management</h4>
+              <div class="auth-grid">
+                <label>
+                  Cohort Name
+                  <input id="cohortNameInput" type="text" placeholder="Batch A - CPC Jan" />
+                </label>
+                <label>
+                  Cohort Access Code
+                  <input id="cohortCodeInput" type="text" placeholder="CPCJAN2026" />
+                </label>
+                <label>
+                  Cohort Question Limit
+                  <input id="cohortLimitInput" type="number" min="1" step="1" placeholder="1000" />
+                </label>
+                <label>
+                  Active
+                  <select id="cohortActiveInput">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </label>
+                <label>
+                  Cohort Expiry
+                  <input id="cohortExpiryInput" type="date" />
+                </label>
+              </div>
+              <div class="panel-actions">
+                <button id="createCohortBtn" class="primary-btn" type="button">Create Cohort</button>
+                <button id="updateCohortBtn" class="ghost-btn" type="button">Update Selected Cohort</button>
+                <button id="refreshCohortsBtn" class="ghost-btn" type="button">Refresh Cohorts</button>
+              </div>
+              <p id="cohortStatus" class="status"></p>
 
-          <label>
-            Existing Cohorts
-            <select id="cohortSelect"></select>
-          </label>
-          <div class="auth-grid">
-            <label>
-              Member Name
-              <input id="memberNameInput" type="text" placeholder="Optional name" />
-            </label>
-            <label>
-              Member Email
-              <input id="memberEmailInput" type="email" placeholder="trainee@email.com" />
-            </label>
-            <label>
-              Member Phone
-              <input id="memberPhoneInput" type="text" placeholder="+91 xxxxxxxxxx" />
-            </label>
-            <label>
-              Member Active
-              <select id="memberActiveInput">
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </select>
-            </label>
-            <label>
-              Member Expiry
-              <input id="memberExpiryInput" type="date" />
-            </label>
-          </div>
-          <div class="panel-actions">
-            <button id="enrollMemberBtn" class="primary-btn" type="button">Enroll Member</button>
-            <button id="unlockAccessBtn" class="primary-btn" type="button">Request Upgrade (WA)</button>
-          </div>
-          <p id="enrollStatus" class="status"></p>
+              <label>
+                Existing Cohorts
+                <select id="cohortSelect"></select>
+              </label>
+              <div class="auth-grid">
+                <label>
+                  Member Name
+                  <input id="memberNameInput" type="text" placeholder="Optional name" />
+                </label>
+                <label>
+                  Member Email
+                  <input id="memberEmailInput" type="email" placeholder="trainee@email.com" />
+                </label>
+                <label>
+                  Member Phone
+                  <input id="memberPhoneInput" type="text" placeholder="+91 xxxxxxxxxx" />
+                </label>
+                <label>
+                  Member Active
+                  <select id="memberActiveInput">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </label>
+                <label>
+                  Member Expiry
+                  <input id="memberExpiryInput" type="date" />
+                </label>
+              </div>
+              <div class="panel-actions">
+                <button id="enrollMemberBtn" class="primary-btn" type="button">Enroll Member</button>
+                <button id="unlockAccessBtn" class="primary-btn" type="button">Request Upgrade (WA)</button>
+              </div>
+              <p id="enrollStatus" class="status"></p>
 
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Cohort</th>
-                  <th>Access Code</th>
-                  <th>Limit</th>
-                  <th>Active</th>
-                  <th>Members</th>
-                </tr>
-              </thead>
-              <tbody id="cohortTableBody">
-                <tr>
-                  <td colspan="5">No cohorts loaded.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Cohort</th>
+                      <th>Access Code</th>
+                      <th>Limit</th>
+                      <th>Active</th>
+                      <th>Members</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cohortTableBody">
+                    <tr>
+                      <td colspan="5">No cohorts loaded.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
 
-          <h4>Exam Blueprint Assignment</h4>
-          <div class="auth-grid">
-            <label>
-              Blueprint Template
-              <select id="blueprintTemplateSelect">
-                <option value="">Select template</option>
-              </select>
-            </label>
-            <label>
-              Questions
-              <input id="blueprintQuestionCount" type="number" min="1" step="1" placeholder="50" />
-            </label>
-            <label>
-              Duration (mins)
-              <input id="blueprintDuration" type="number" min="1" step="1" placeholder="45" />
-            </label>
-            <label>
-              Pass Threshold (%)
-              <input id="blueprintPassThreshold" type="number" min="1" max="100" step="1" placeholder="80" />
-            </label>
-            <label class="inline-toggle">
-              <input id="blueprintStrictTiming" type="checkbox" checked />
-              <span>Strict timing</span>
-            </label>
-          </div>
-          <div class="panel-actions">
-            <button id="refreshBlueprintsBtn" class="ghost-btn" type="button">Refresh Blueprints</button>
-            <button id="assignBlueprintBtn" class="primary-btn" type="button">Assign to Selected Cohort</button>
-          </div>
-          <p id="blueprintStatus" class="status"></p>
-        </div>
-      </section>
-    </div> <!-- End Sub-View Tools -->
-    </tr>
-    </thead>
-    <tbody id="cohortTableBody">
-      <tr>
-        <td colspan="5">No cohorts loaded.</td>
-      </tr>
-    </tbody>
-    </table>
-    </div>
+              <h4>Exam Blueprint Assignment</h4>
+              <div class="auth-grid">
+                <label>
+                  Blueprint Template
+                  <select id="blueprintTemplateSelect">
+                    <option value="">Select template</option>
+                  </select>
+                </label>
+                <label>
+                  Questions
+                  <input id="blueprintQuestionCount" type="number" min="1" step="1" placeholder="50" />
+                </label>
+                <label>
+                  Duration (mins)
+                  <input id="blueprintDuration" type="number" min="1" step="1" placeholder="45" />
+                </label>
+                <label>
+                  Pass Threshold (%)
+                  <input id="blueprintPassThreshold" type="number" min="1" max="100" step="1" placeholder="80" />
+                </label>
+                <label class="inline-toggle">
+                  <input id="blueprintStrictTiming" type="checkbox" checked />
+                  <span>Strict timing</span>
+                </label>
+              </div>
+              <div class="panel-actions">
+                <button id="refreshBlueprintsBtn" class="ghost-btn" type="button">Refresh Blueprints</button>
+                <button id="assignBlueprintBtn" class="primary-btn" type="button">Assign to Selected Cohort</button>
+              </div>
+              <p id="blueprintStatus" class="status"></p>
+            </div>
 
-    <h4>Exam Blueprint Assignment</h4>
-    <div class="auth-grid">
-      <label>
-        Blueprint Template
-        <select id="blueprintTemplateSelect">
-          <option value="">Select template</option>
-        </select>
-      </label>
-      <label>
-        Questions
-        <input id="blueprintQuestionCount" type="number" min="1" step="1" placeholder="50" />
-      </label>
-      <label>
-        Duration (mins)
-        <input id="blueprintDuration" type="number" min="1" step="1" placeholder="45" />
-      </label>
-      <label>
-        Pass Threshold (%)
-        <input id="blueprintPassThreshold" type="number" min="1" max="100" step="1" placeholder="80" />
-      </label>
-      <label class="inline-toggle">
-        <input id="blueprintStrictTiming" type="checkbox" checked />
-        <span>Strict timing</span>
-      </label>
-    </div>
-    <div class="panel-actions">
-      <button id="refreshBlueprintsBtn" class="ghost-btn" type="button">Refresh Blueprints</button>
-      <button id="assignBlueprintBtn" class="primary-btn" type="button">Assign to Selected Cohort</button>
-    </div>
-    <p id="blueprintStatus" class="status"></p>
-    </div>
-    </section>
-    </section>
-    </div>
+          </section>
+        </div> <!-- Close subview-tools -->
+      </section> <!-- Close trainerZone -->
+    </div> <!-- Close view-mentor -->
   </main>
 
   <a id="floatingWhatsappBtn" class="floating-whatsapp" href="#" aria-label="Chat with us on WhatsApp">Questions? Chat
