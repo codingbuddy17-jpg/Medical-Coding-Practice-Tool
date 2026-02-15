@@ -3779,12 +3779,17 @@ function handleTabSwitch(tabName) {
   // 3. Show Target View & Handle Logic
   if (tabName === "practice") {
     if (navDom.viewPractice) navDom.viewPractice.classList.add("active");
-    // Explicit instant scroll to top
-    window.scrollTo(0, 0);
+    // Explicit scroll to Flashcard area
+    const flashcard = document.getElementById("flashcard");
+    if (flashcard) flashcard.scrollIntoView({ behavior: "smooth", block: "start" });
+    else window.scrollTo(0, 0);
   }
   else if (tabName === "mentor") {
     if (navDom.viewMentor) navDom.viewMentor.classList.add("active");
-    window.scrollTo(0, 0);
+    // Scroll to top of panel row or trainer zone
+    const trainerZone = document.getElementById("trainerZone");
+    if (trainerZone) trainerZone.scrollIntoView({ behavior: "smooth", block: "start" });
+    else window.scrollTo(0, 0);
   }
   else if (tabName === "exam") {
     // Exam is inside practice view
@@ -3804,12 +3809,20 @@ function handleTabSwitch(tabName) {
   else if (tabName === "analytics") {
     if (state.role === "trainer") {
       if (navDom.viewMentor) navDom.viewMentor.classList.add("active");
-      const analyticsSection = document.getElementById("categoryScoreBody")?.closest(".panel");
-      if (analyticsSection) analyticsSection.scrollIntoView({ behavior: "smooth" });
+      // Trainer Analytics -> "Mentor Session Console" table
+      const sessionTable = document.getElementById("sessionTableBody");
+      if (sessionTable) {
+        const panel = sessionTable.closest(".panel");
+        if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     } else {
       if (navDom.viewPractice) navDom.viewPractice.classList.add("active");
-      const dashboard = document.querySelector(".dashboard");
-      if (dashboard) dashboard.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Trainee Analytics -> "Per-Category Scorecards"
+      const catScoreBody = document.getElementById("categoryScoreBody");
+      if (catScoreBody) {
+        const panel = catScoreBody.closest(".panel");
+        if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     }
   }
 }
