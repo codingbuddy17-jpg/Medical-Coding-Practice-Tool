@@ -2216,9 +2216,12 @@ function mergeImportStatus(a, b) {
 
 function renderImportPreview() {
   const active = Boolean(state.importPreview.active);
-  dom.importPreviewPanel.classList.toggle("hidden", !active);
+  if (dom.importPreviewPanel) {
+    dom.importPreviewPanel.classList.toggle("hidden", !active);
+    dom.importPreviewPanel.style.display = active ? "block" : "none"; // Force visible
+  }
   if (!active) {
-    dom.importPreviewSummary.textContent = "";
+    if (dom.importPreviewSummary) dom.importPreviewSummary.textContent = "";
     dom.importPreviewBody.innerHTML = '<tr><td colspan="5">No preview yet.</td></tr>';
     dom.confirmImportBtn.disabled = true;
     return;
@@ -2656,9 +2659,11 @@ async function importCsvFile() {
   const file = dom.csvFileInput.files?.[0];
 
   if (!file) {
-    setStatus(dom.importStatus, "Choose a CSV file first.", "error");
+    setStatus(dom.importStatus, "Choose a file first.", "error");
     return;
   }
+
+  setStatus(dom.importStatus, "Reading file...", "neutral"); // Processing feedback
 
   try {
     const parsed = await readFileAsImportCards(file);
@@ -2668,8 +2673,11 @@ async function importCsvFile() {
     }
     dom.csvInput.value = formatCardsForTextarea(parsed);
     await prepareImportPreview(parsed);
-  } catch {
-    setStatus(dom.importStatus, "Could not read file. Use CSV/TSV or Excel (.xlsx/.xls).", "error");
+    // Explicitly unhide via style if classList fails for some reason
+    if (dom.importPreviewPanel) dom.importPreviewPanel.style.display = "block";
+  } catch (err) {
+    console.error("Import Error:", err);
+    setStatus(dom.importStatus, `Error reading file: ${err.message || "Unknown error"}. Use .csv or .xlsx.`, "error");
   }
 }
 
