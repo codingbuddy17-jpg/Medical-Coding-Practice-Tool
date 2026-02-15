@@ -228,6 +228,8 @@ function cacheDOM() {
     counselMessage: document.getElementById("counselMessage"),
     floatingWhatsappBtn: document.getElementById("floatingWhatsappBtn"),
 
+    categoryScoreBody: document.getElementById("categoryScoreBody"),
+
     adminTools: document.getElementById("adminTools"),
     adminStatus: document.getElementById("adminStatus"),
     adminActiveIndicator: document.getElementById("adminActiveIndicator"),
