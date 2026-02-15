@@ -394,6 +394,13 @@ textarea {
   gap: 0.55rem;
   grid-template-columns: 1.3fr 0.7fr;
   grid-template-rows: auto auto;
+  transition: transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.25s ease;
+}
+
+.flashcard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.08), 0 4px 8px -2px rgba(0, 0, 0, 0.04);
+  border-color: #cbd5e1;
 }
 
 .visual-half {
@@ -719,6 +726,12 @@ textarea {
   border-radius: 14px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   border: 1px solid #e2e8f0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.panel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
 }
 
 .panel h3 {
@@ -747,14 +760,35 @@ button {
 }
 
 .primary-btn {
-  background: var(--accent);
-  color: #fff;
+  background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(6, 182, 212, 0.25);
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
+  filter: brightness(1.05);
+}
+
+.primary-btn:active {
+  transform: translateY(0);
 }
 
 .ghost-btn {
-  background: #fff;
-  border-color: var(--line);
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.ghost-btn:hover {
+  background: rgba(241, 245, 249, 0.8);
   color: var(--ink);
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
 }
 
 .btn-gradient-teal {
