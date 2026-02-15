@@ -1916,6 +1916,10 @@ async function validateCurrentAnswer() {
       else state.session.wrong += 1;
 
       recordCategoryAndCardStats(card, result.isCorrect);
+      updateMetrics(); // Sync top bar stats
+
+      // Throttle to prevent double-clicks/execution
+      await new Promise(r => setTimeout(r, 300));
 
       // Auto-advance immediately
       state.awaitingNext = true; // Required for nextQuestion() to proceed
