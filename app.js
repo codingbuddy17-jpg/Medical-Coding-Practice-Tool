@@ -3795,7 +3795,7 @@ function handleTabSwitch(tabName) {
   }
   else if (tabName === "analytics") {
     // Determine context
-    if (state.userRole === "trainer") {
+    if (state.role === "trainer") {
       if (navDom.viewMentor) navDom.viewMentor.classList.add("active");
       // Scroll to mentor analytics? (Weak-Topic Analytics)
       const analyticsSection = document.querySelector("#trainerZone .panel:nth-child(2)"); // Rough guess
@@ -3806,6 +3806,9 @@ function handleTabSwitch(tabName) {
       const dashboard = document.querySelector(".dashboard");
       if (dashboard) dashboard.scrollIntoView({ behavior: "smooth" });
     }
+  } else if (tabName === "practice") {
+    if (navDom.viewPractice) navDom.viewPractice.classList.add("active");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 }
 
@@ -3813,7 +3816,7 @@ function handleTabSwitch(tabName) {
 function showNavigation() {
   if (navDom.mainNav) navDom.mainNav.classList.remove("hidden");
 
-  if (state.userRole === "trainer") {
+  if (state.role === "trainer") {
     if (navDom.navMentorItem) navDom.navMentorItem.classList.remove("hidden");
     handleTabSwitch("mentor");
   } else {
