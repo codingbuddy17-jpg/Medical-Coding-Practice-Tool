@@ -1424,8 +1424,30 @@ function startExam() {
   }
 
   const source = filteredDeck();
-  if (!source.length) {
-    setStatus(dom.examStatus, "No cards available for selected category.", "error");
+  let candidateCards = source; // Default to current filtered deck (e.g. from main category buttons)
+
+  const mode = dom.examModeSelect.value;
+  if (mode === "topic") {
+    const topic = dom.examTopicSelect.value;
+    if (!topic) {
+      setStatus(dom.examStatus, "Select a topic for Topic Master mode.", "error");
+      return;
+    }
+    candidateCards = state.deck.filter(c => normalizeTagKey(c.tag) === normalizeTagKey(topic));
+  } else if (mode === "weakness") {
+    // Filter for cards with accuracy < 50%
+    candidateCards = state.deck.filter(c => {
+      const s = state.session.cardStats[c.id];
+      return s && (s.correct / s.attempted) < 0.5;
+    });
+    if (candidateCards.length < 5) {
+      setStatus(dom.examStatus, "Not enough weak cards (min 5) for drill.", "error");
+      return;
+    }
+  }
+
+  if (!candidateCards.length) {
+    setStatus(dom.examStatus, "No cards available for selected criteria.", "error");
     return;
   }
 
@@ -1436,9 +1458,12 @@ function startExam() {
   const minutes = Math.max(1, Number(dom.examDuration.value) || state.examConfig.durationMinutes);
   const passThreshold = Math.min(100, Math.max(1, Number(dom.examPassThreshold.value) || state.examConfig.passThreshold || 80));
   const strictTiming = dom.examStrictTiming.checked;
-  const total = Math.min(requested, source.length);
+  const total = Math.min(requested, candidateCards.length);
 
-  const queue = buildBlueprintQueue(source, selectedTemplate, total);
+  // For Blueprint/Standard, we might just use random or blueprint logic
+  // But for Topic/Weakness we shouldn't use blueprint queue logic unless verified.
+  // For now, simple random shuffle for Topic/Weakness/Standard
+  const queue = shuffleCardsForExam(candidateCards, total);
 
   state.exam.inProgress = true;
   state.exam.queueIds = queue;
