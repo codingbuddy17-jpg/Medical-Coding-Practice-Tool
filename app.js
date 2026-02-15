@@ -1844,13 +1844,31 @@ async function validateCurrentAnswer() {
   const result = checkAnswer(responseValue, card.answer, card);
   state.session.attempted += 1;
 
+  if (state.exam.inProgress) {
+    // EXAM MODE: Silent Check (No Feedback, Auto-advance)
+    state.exam.answered += 1;
+    if (result.isCorrect) {
+      state.exam.correct += 1;
+    } else {
+      state.exam.wrong += 1;
+    }
+    // Update generic session stats too, but silently
+    if (result.isCorrect) state.session.correct += 1;
+    else state.session.wrong += 1;
+
+    recordCategoryAndCardStats(card, result.isCorrect);
+
+    // Auto-advance immediately
+    nextQuestion();
+    return;
+  }
+
+  // PRACTICE MODE: Visual Feedback
   if (result.isCorrect) {
     state.session.correct += 1;
-    if (state.exam.inProgress) state.exam.correct += 1;
     setStatus(dom.feedback, `Correct. Expected: ${result.primaryAnswer}`, "success");
   } else {
     state.session.wrong += 1;
-    if (state.exam.inProgress) state.exam.wrong += 1;
     setStatus(dom.feedback, `Not correct. Expected: ${result.primaryAnswer}`, "error");
   }
 
