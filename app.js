@@ -236,7 +236,8 @@ function cacheDOM() {
     adminActiveIndicator: document.getElementById("adminActiveIndicator"),
     trainerZone: document.getElementById("trainerZone"),
     importStatus: document.getElementById("importStatus"),
-    csvFileInput: document.getElementById("csvFileInput"), // Fixed: Was missing or named incorrectly
+    csvFileInput: document.getElementById("csvFileInput"),
+    csvInput: document.getElementById("csvInput"), // Textarea for raw CSV
     importFileBtn: document.getElementById("importFileBtn"),
     importBtn: document.getElementById("importBtn"),
     loadStarterBtn: document.getElementById("loadStarterBtn"),
@@ -257,7 +258,8 @@ function cacheDOM() {
     rollbackBatchIdInput: document.getElementById("rollbackBatchIdInput"),
     rollbackBatchBtn: document.getElementById("rollbackBatchBtn"),
     importBatchBody: document.getElementById("importBatchBody"),
-    importBatchStatus: document.getElementById("importBatchStatus"),
+    importBatchBody: document.getElementById("importBatchBody"),
+    importBatchStatus: document.getElementById("importBatchStatus"), // Ensure this ID exists in HTML
 
     refreshSessionsBtn: document.getElementById("refreshSessionsBtn"),
     exportSessionsBtn: document.getElementById("exportSessionsBtn"),
