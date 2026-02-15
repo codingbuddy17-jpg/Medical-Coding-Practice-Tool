@@ -524,6 +524,28 @@ textarea {
   text-decoration: underline;
 }
 
+.resource-item.featured {
+  background: linear-gradient(135deg, #fffcf0 0%, #fff 100%);
+  border: 1px solid #fceeb5;
+  box-shadow: 0 4px 6px -1px rgba(217, 119, 6, 0.1);
+  margin-bottom: 0.5rem;
+}
+
+.resource-item.featured .resource-link {
+  color: #b45309;
+  /* Amber/Gold text */
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.resource-item.featured:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px -2px rgba(217, 119, 6, 0.15);
+  border-color: #fbbf24;
+}
+
 .resource-manager {
   border-top: 1px dashed #cfe2dc;
   padding-top: 0.4rem;
