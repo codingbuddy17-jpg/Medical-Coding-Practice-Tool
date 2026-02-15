@@ -236,7 +236,7 @@ function cacheDOM() {
     adminActiveIndicator: document.getElementById("adminActiveIndicator"),
     trainerZone: document.getElementById("trainerZone"),
     importStatus: document.getElementById("importStatus"),
-    importFile: document.getElementById("importFile"),
+    csvFileInput: document.getElementById("csvFileInput"), // Fixed: Was missing or named incorrectly
     importFileBtn: document.getElementById("importFileBtn"),
     importBtn: document.getElementById("importBtn"),
     loadStarterBtn: document.getElementById("loadStarterBtn"),
