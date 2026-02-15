@@ -2320,6 +2320,7 @@ async function loadImportReviewQueue() {
     if (dom.importReviewOpenCount) {
       dom.importReviewOpenCount.textContent = openCount > 0 ? String(openCount) : "";
     }
+    updateDashboardWidgets();
   } catch (err) {
     setStatus(dom.importReviewStatus, `Could not load import review queue: ${err.message}`, "error");
     if (dom.importReviewOpenCount) dom.importReviewOpenCount.textContent = "";
@@ -2601,6 +2602,7 @@ function renderSessionConsoleTable() {
   const sessions = filteredSessionsForConsole();
   if (!sessions.length) {
     dom.sessionTableBody.innerHTML = '<tr><td colspan="7">No sessions found for current filter.</td></tr>';
+    updateDashboardWidgets();
     return;
   }
 
@@ -2614,6 +2616,8 @@ function renderSessionConsoleTable() {
       return `<tr><td>${escapeHtml(s.userName)}</td><td>${escapeHtml(toAccessTypeLabel(s.role))}</td><td>${attempted}</td><td>${correct}</td><td>${wrong}</td><td>${score}%</td><td>${escapeHtml(started)}</td></tr>`;
     })
     .join("");
+
+  updateDashboardWidgets();
 }
 
 function exportSessionsCsv() {
@@ -2729,6 +2733,7 @@ async function loadFlagQueue() {
     if (dom.flagQueueOpenCount) {
       dom.flagQueueOpenCount.textContent = openCount > 0 ? String(openCount) : "";
     }
+    updateDashboardWidgets();
   } catch (err) {
     setStatus(dom.flagQueueStatus, `Could not load review queue: ${err.message}`, "error");
     if (dom.flagQueueOpenCount) dom.flagQueueOpenCount.textContent = "";
@@ -3796,6 +3801,11 @@ function handleTabSwitch(tabName) {
     const trainerZone = document.getElementById("trainerZone");
     if (trainerZone) trainerZone.scrollIntoView({ behavior: "smooth", block: "start" });
     else window.scrollTo(0, 0);
+
+    // Initialize Dashboard Default View
+    handleMentorSubTab("users");
+    // Update Stats
+    updateDashboardWidgets();
   }
   else if (tabName === "exam") {
     // Exam is inside practice view
@@ -3837,6 +3847,63 @@ function showNavigation() {
     handleTabSwitch("practice");
   }
 }
+
+// Mentor Dashboard Logic
+function handleMentorSubTab(subTab) {
+  // Update Buttons
+  document.querySelectorAll(".sub-nav-item").forEach(btn => {
+    if (btn.dataset.subtab === subTab) btn.classList.add("active");
+    else btn.classList.remove("active");
+  });
+
+  // Hide all sub-views
+  document.getElementById("subview-users").classList.add("hidden");
+  document.getElementById("subview-kpi").classList.add("hidden");
+  document.getElementById("subview-tools").classList.add("hidden");
+
+  // Show target
+  if (subTab === "users") document.getElementById("subview-users").classList.remove("hidden");
+  else if (subTab === "kpi") document.getElementById("subview-kpi").classList.remove("hidden");
+  else if (subTab === "tools") document.getElementById("subview-tools").classList.remove("hidden");
+}
+
+function updateDashboardWidgets() {
+  // 1. Active Students: Count rows in session table (excluding "No sessions")
+  const sessionRows = document.querySelectorAll("#sessionTableBody tr");
+  let studentCount = 0;
+  if (sessionRows.length > 0 && !sessionRows[0].innerText.includes("No sessions")) {
+    studentCount = sessionRows.length;
+  }
+  const widgetStudents = document.getElementById("widgetActiveStudents");
+  if (widgetStudents) widgetStudents.textContent = studentCount;
+
+  // 2. Pending Flags: Count rows in flag queue
+  const flagRows = document.querySelectorAll("#flagQueueBody tr");
+  let flagCount = 0;
+  if (flagRows.length > 0 && !flagRows[0].innerText.includes("No flagged")) {
+    flagCount = flagRows.length;
+  }
+  const widgetFlags = document.getElementById("widgetPendingFlags");
+  if (widgetFlags) widgetFlags.textContent = flagCount;
+
+  // 3. Open Reviews: Count rows in import review
+  const reviewRows = document.querySelectorAll("#importReviewBody tr");
+  let reviewCount = 0;
+  if (reviewRows.length > 0 && !reviewRows[0].innerText.includes("No import review")) {
+    reviewCount = reviewRows.length;
+  }
+  const widgetReviews = document.getElementById("widgetOpenReviews");
+  if (widgetReviews) widgetReviews.textContent = reviewCount;
+}
+
+// Initialize Sub-Nav Listeners
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".sub-nav-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      handleMentorSubTab(btn.dataset.subtab);
+    });
+  });
+});
 
 // Start App (Delayed to ensure all modules loaded)
 if (typeof init === "function") init();
