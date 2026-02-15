@@ -1252,6 +1252,8 @@ function finishExam(reason) {
 
   state.exam.inProgress = false;
   state.exam.paused = false; // Reset pause state
+  setExamControlsLocked(false); // Unlock controls
+  clearExamTimer();
   state.exam.queueIds = [];
   state.exam.cursor = 0;
   state.exam.remainingSeconds = 0;
@@ -1872,6 +1874,7 @@ async function validateCurrentAnswer() {
     recordCategoryAndCardStats(card, result.isCorrect);
 
     // Auto-advance immediately
+    state.awaitingNext = true; // Required for nextQuestion() to proceed
     nextQuestion();
     return;
   }
@@ -1903,7 +1906,8 @@ async function validateCurrentAnswer() {
 }
 
 function nextQuestion() {
-  if (!state.awaitingNext) {
+  // Allow advance if awaiting next (Practice) OR Exam in progress (Auto/Manual)
+  if (!state.awaitingNext && !state.exam.inProgress) {
     setStatus(dom.feedback, "Use Check first, then click Next.");
     return;
   }
@@ -3951,7 +3955,8 @@ function handleTabSwitch(tabName) {
   if (navDom.viewMentor) navDom.viewMentor.classList.remove("active");
 
   // 3. Auto-Close Mock Exam Panel if not on Exam tab
-  if (tabName !== "exam") {
+  // 3. Auto-Close Mock Exam Panel only if leaving Practice/Exam context
+  if (tabName !== "exam" && tabName !== "practice") {
     const examPanel = document.getElementById("examPanel");
     if (examPanel) examPanel.classList.add("hidden");
   }
