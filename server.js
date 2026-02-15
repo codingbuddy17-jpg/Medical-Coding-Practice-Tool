@@ -1614,48 +1614,24 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { success: true, mode: "file" });
       }
 
-      // Supabase Reset
-      const tables = ["questions", "import_batches", "import_batch_items", "import_review_queue", "sessions", "attempts", "cta_events", "flags"];
-      const results = {};
+      // Supabase Reset: delete all rows from each table (order respects FK: attempts before sessions)
+      const { error: attemptsErr } = await supabase.from("attempts").delete().gt("id", -1);
+      if (attemptsErr) throw attemptsErr;
+      const { error: sessionsErr } = await supabase.from("sessions").delete().neq("session_id", "");
+      if (sessionsErr) throw sessionsErr;
+      const { error: flagsErr } = await supabase.from("flags").delete().neq("id", "");
+      if (flagsErr) throw flagsErr;
+      const { error: ctaErr } = await supabase.from("cta_events").delete().neq("id", "");
+      if (ctaErr) throw ctaErr;
 
-      for (const table of tables) {
-        const { error } = await supabase.from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all rows. neq is a hack if table allows empty delete, otherwise use a truty condition if needed or just separate calls. 
-        // Supabase often blocks 'delete without where'. 
-        // A safer way is usually .neq('id', 0) if id is int, or similar. 
-        // Let's try to keep it simple or use a known always-true condition if possible, or iterate.
-        // actually .delete().neq('id', 'placeholder') might work if IDs are strings/UUIDs.
-        // For tables with bigserial (int) ids: import_batches, import_batch_items.
-        // For tables with UUID/text ids: questions, import_review_queue, sessions, flags, cta_events.
-
-        let query = supabase.from(table).delete();
-        if (["import_batches", "import_batch_items"].includes(table)) {
-          query = query.gt("id", -1);
-        } else {
-          // For text/uuid IDs, .neq('id', 'x') is usually fine to match all real IDs.
-          // However, let's use a more generic approach if possible? No, specific is better.
-          // "sessions" uses "session_id" as key? No, "session_id" is a column, "id" might not exist or be primary.
-          // Let's check schema again.
-          // questions: id (text)
-          // import_batches: id (bigserial)
-          // import_batch_items: id (bigserial)
-          // import_review_queue: id (uuid)
-          // sessions: session_id (text) - wait, let's look at server.js readSessions/writeSessions vs supabase.
-          // Supabase sessions table: session_id is likely the key.
-          // attempts: id (bigserial)
-          // cta_events: id?
-          // flags: id?
-        }
-
-        // Actually, just using a separate function or doing it carefully is better.
-        // Let's look at the existing code to see tables.
-      }
-
-      // Simpler approach for now: Just delete from the main ones user cares about.
-      await supabase.from("questions").delete().neq("id", "placeholder");
-      await supabase.from("import_batches").delete().gt("id", -1);
-      await supabase.from("import_batch_items").delete().gt("id", -1);
-      await supabase.from("import_review_queue").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      // Optional: attempts, sessions, flags.
+      const { error: questionsErr } = await supabase.from("questions").delete().neq("id", "placeholder");
+      if (questionsErr) throw questionsErr;
+      const { error: batchesErr } = await supabase.from("import_batches").delete().gt("id", -1);
+      if (batchesErr) throw batchesErr;
+      const { error: batchItemsErr } = await supabase.from("import_batch_items").delete().gt("id", -1);
+      if (batchItemsErr) throw batchItemsErr;
+      const { error: reviewErr } = await supabase.from("import_review_queue").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      if (reviewErr) throw reviewErr;
 
       return json(res, 200, { success: true, mode: "supabase" });
     } catch (err) {

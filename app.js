@@ -195,7 +195,6 @@ const dom = {
   rationalePlaceholder: document.getElementById("rationalePlaceholder"),
   trialLockNotice: document.getElementById("trialLockNotice"),
   trialInfoBanner: document.getElementById("trialInfoBanner"),
-  trialInfoWhatsappBtn: document.getElementById("trialInfoWhatsappBtn"),
   preSessionLanding: document.getElementById("preSessionLanding"),
   landingStartTrialBtn: document.getElementById("landingStartTrialBtn"),
   landingFullAccessBtn: document.getElementById("landingFullAccessBtn"),
@@ -374,6 +373,24 @@ function normalizeTagKey(tag) {
   if (cleaned.includes("IPDRGCODING")) return "IP-DRG-CODING";
   if (cleaned.includes("IPDRG")) return "IP-DRG-CODING";
   return "OTHER";
+}
+
+function escapeHtml(str) {
+  const s = String(str ?? "");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function safeResourceHref(url) {
+  const trimmed = String(url || "").trim();
+  if (!trimmed) return "#";
+  const normalized = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  if (/^\s*javascript:/i.test(normalized) || /^\s*data:/i.test(normalized)) return "#";
+  return normalized;
 }
 
 function sanitizeUrl(url) {
@@ -857,7 +874,7 @@ function currentCard() {
 function renderCategoryButtons() {
   dom.categoryButtons.innerHTML = CATEGORY_OPTIONS.map((item) => {
     const activeClass = item.key === state.selectedTag ? "active" : "";
-    return `<button type="button" class="tag-btn ${activeClass}" data-tag="${item.key}">${item.label}</button>`;
+    return `<button type="button" class="tag-btn ${activeClass}" data-tag="${escapeHtml(item.key)}">${escapeHtml(item.label)}</button>`;
   }).join("");
 }
 
@@ -873,9 +890,10 @@ function renderResources() {
       const removeBtn = isTrainer
         ? `<button type="button" class="ghost-btn" data-remove-resource="${idx}">Delete</button>`
         : "";
+      const href = safeResourceHref(item.url);
       return `
         <li class="resource-item">
-          <a class="resource-link" href="${item.url}" target="_blank" rel="noopener noreferrer">${item.title}</a>
+          <a class="resource-link" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title)}</a>
           ${removeBtn}
         </li>
       `;
@@ -1059,7 +1077,7 @@ function renderCard() {
         return `
           <label class="mcq-radio-option ${isSelected ? "selected" : ""}" data-option-key="${key}">
             <input type="radio" name="mcqAnswer" value="${key}" ${isSelected ? "checked" : ""} ${hasSessionLimitReached() ? "disabled" : ""}>
-            <span>${key}) ${opt}</span>
+            <span>${key}) ${escapeHtml(opt)}</span>
           </label>
         `;
       })
@@ -1197,11 +1215,11 @@ function canonicalTagForBlueprint(tag) {
 function renderBlueprintSelectors() {
   const templates = Array.isArray(state.blueprints.templates) ? state.blueprints.templates : [];
   const options = ['<option value="">Manual</option>'].concat(
-    templates.map((tpl) => `<option value="${tpl.id}">${tpl.name}</option>`)
+    templates.map((tpl) => `<option value="${escapeHtml(tpl.id)}">${escapeHtml(tpl.name)}</option>`)
   );
   dom.examBlueprintSelect.innerHTML = options.join("");
   dom.blueprintTemplateSelect.innerHTML = ['<option value="">Select template</option>']
-    .concat(templates.map((tpl) => `<option value="${tpl.id}">${tpl.name}</option>`))
+    .concat(templates.map((tpl) => `<option value="${escapeHtml(tpl.id)}">${escapeHtml(tpl.name)}</option>`))
     .join("");
 
   if (state.examConfig.blueprintId && templates.some((tpl) => tpl.id === state.examConfig.blueprintId)) {
@@ -1968,7 +1986,7 @@ function renderImportPreview() {
       const status = String(row.status || "pass");
       const reason = Array.isArray(row.reasons) && row.reasons.length ? row.reasons.join("; ") : "-";
       const question = String(row.question || "").slice(0, 140);
-      return `<tr><td>${row.rowNumber}</td><td><span class="import-status-pill import-status-${status}">${status}</span></td><td>${row.tag || ""}</td><td>${question}</td><td>${reason}</td></tr>`;
+      return `<tr><td>${row.rowNumber}</td><td><span class="import-status-pill import-status-${escapeHtml(status)}">${escapeHtml(status)}</span></td><td>${escapeHtml(row.tag || "")}</td><td>${escapeHtml(question)}</td><td>${escapeHtml(reason)}</td></tr>`;
     })
     .join("");
 }
@@ -2218,9 +2236,9 @@ function renderImportReviewQueue() {
       const reasons = Array.isArray(item.reasons) && item.reasons.length ? item.reasons.join("; ") : "-";
       const actionBtn =
         String(item.status || "") === "open"
-          ? `<button class="ghost-btn" type="button" data-import-review-action="resolve" data-import-review-id="${item.id}">Resolve</button>`
-          : `<button class="ghost-btn" type="button" data-import-review-action="reopen" data-import-review-id="${item.id}">Reopen</button>`;
-      return `<tr><td>${item.status}</td><td>${item.tag || ""}</td><td>${String(item.question || "").slice(0, 120)}</td><td>${reasons}</td><td>${actionBtn}</td></tr>`;
+          ? `<button class="ghost-btn" type="button" data-import-review-action="resolve" data-import-review-id="${escapeHtml(item.id)}">Resolve</button>`
+          : `<button class="ghost-btn" type="button" data-import-review-action="reopen" data-import-review-id="${escapeHtml(item.id)}">Reopen</button>`;
+      return `<tr><td>${escapeHtml(item.status)}</td><td>${escapeHtml(item.tag || "")}</td><td>${escapeHtml(String(item.question || "").slice(0, 120))}</td><td>${escapeHtml(reasons)}</td><td>${actionBtn}</td></tr>`;
     })
     .join("");
 }
@@ -2320,7 +2338,7 @@ function renderImportBatches() {
   dom.importBatchBody.innerHTML = items
     .map((item) => {
       const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : "-";
-      return `<tr><td>${item.id}</td><td>${Number(item.insertedCount || 0)}</td><td>${Number(item.warnCount || 0)}</td><td>${Number(item.failCount || 0)}</td><td>${Number(item.skippedCount || 0)}</td><td>${createdAt}</td></tr>`;
+      return `<tr><td>${escapeHtml(item.id)}</td><td>${Number(item.insertedCount || 0)}</td><td>${Number(item.warnCount || 0)}</td><td>${Number(item.failCount || 0)}</td><td>${Number(item.skippedCount || 0)}</td><td>${escapeHtml(createdAt)}</td></tr>`;
     })
     .join("");
 }
@@ -2525,7 +2543,7 @@ function renderSessionConsoleTable() {
       const wrong = s.summary?.wrong || 0;
       const score = attempted ? Math.round((correct / attempted) * 100) : 0;
       const started = new Date(s.startedAt).toLocaleString();
-      return `<tr><td>${s.userName}</td><td>${toAccessTypeLabel(s.role)}</td><td>${attempted}</td><td>${correct}</td><td>${wrong}</td><td>${score}%</td><td>${started}</td></tr>`;
+      return `<tr><td>${escapeHtml(s.userName)}</td><td>${escapeHtml(toAccessTypeLabel(s.role))}</td><td>${attempted}</td><td>${correct}</td><td>${wrong}</td><td>${score}%</td><td>${escapeHtml(started)}</td></tr>`;
     })
     .join("");
 }
@@ -2609,15 +2627,15 @@ function renderFlagQueue(flags) {
       const safeReason = reason.length > 60 ? `${reason.slice(0, 60)}...` : reason;
       const canAct = item.status === "open";
       const actions = canAct
-        ? `<button type="button" class="ghost-btn" data-flag-action="resolve" data-flag-id="${item.id}">Resolve</button>
-           <button type="button" class="ghost-btn" data-flag-action="replace" data-flag-id="${item.id}">Replace</button>`
+        ? `<button type="button" class="ghost-btn" data-flag-action="resolve" data-flag-id="${escapeHtml(item.id)}">Resolve</button>
+           <button type="button" class="ghost-btn" data-flag-action="replace" data-flag-id="${escapeHtml(item.id)}">Replace</button>`
         : "-";
       return `<tr>
-        <td>${item.cardTag || "-"}</td>
-        <td title="${question.replaceAll('"', "&quot;")}">${safeQuestion}</td>
-        <td>${by} (${role})</td>
-        <td title="${reason.replaceAll('"', "&quot;")}">${safeReason || "-"}</td>
-        <td>${item.status || "-"}</td>
+        <td>${escapeHtml(item.cardTag || "-")}</td>
+        <td title="${escapeHtml(question)}">${escapeHtml(safeQuestion)}</td>
+        <td>${escapeHtml(by)} (${escapeHtml(role)})</td>
+        <td title="${escapeHtml(reason)}">${escapeHtml(safeReason || "-")}</td>
+        <td>${escapeHtml(item.status || "-")}</td>
         <td>${actions}</td>
       </tr>`;
     })
@@ -2716,7 +2734,7 @@ function renderAnalyticsTables(analytics) {
     dom.analyticsTagBody.innerHTML = byTag
       .map(
         (row) =>
-          `<tr><td>${row.tag}</td><td>${row.attempted}</td><td>${row.correct}</td><td>${row.wrong}</td><td>${row.accuracy}%</td></tr>`
+          `<tr><td>${escapeHtml(row.tag)}</td><td>${row.attempted}</td><td>${row.correct}</td><td>${row.wrong}</td><td>${row.accuracy}%</td></tr>`
       )
       .join("");
   }
@@ -2727,7 +2745,7 @@ function renderAnalyticsTables(analytics) {
     dom.analyticsTrendBody.innerHTML = trend
       .map(
         (row) =>
-          `<tr><td>${row.day}</td><td>${row.attempted}</td><td>${row.correct}</td><td>${row.wrong}</td><td>${row.accuracy}%</td></tr>`
+          `<tr><td>${escapeHtml(row.day)}</td><td>${row.attempted}</td><td>${row.correct}</td><td>${row.wrong}</td><td>${row.accuracy}%</td></tr>`
       )
       .join("");
   }
@@ -2741,7 +2759,7 @@ function renderAnalyticsCohorts(cohorts) {
   }
 
   const options = ['<option value="">Select cohort</option>'].concat(
-    rows.map((cohort) => `<option value="${cohort.id}">${cohort.name}</option>`)
+    rows.map((cohort) => `<option value="${escapeHtml(cohort.id)}">${escapeHtml(cohort.name)}</option>`)
   );
   dom.analyticsCohortSelect.innerHTML = options.join("");
 }
@@ -3159,12 +3177,12 @@ function renderCohortUI() {
     return;
   }
 
-  dom.cohortSelect.innerHTML = cohorts.map((cohort) => `<option value="${cohort.id}">${cohort.name}</option>`).join("");
+  dom.cohortSelect.innerHTML = cohorts.map((cohort) => `<option value="${escapeHtml(cohort.id)}">${escapeHtml(cohort.name)}</option>`).join("");
   dom.cohortTableBody.innerHTML = cohorts
     .map(
       (cohort) =>
-        `<tr><td>${cohort.name}</td><td>${cohort.accessCode}</td><td>${cohort.questionLimit}</td><td>${cohort.isActive ? "Yes" : "No"
-        }</td><td>${cohort.memberCount}${cohort.expiresAt ? ` (Exp: ${toDateInputValue(cohort.expiresAt)})` : ""}</td></tr>`
+        `<tr><td>${escapeHtml(cohort.name)}</td><td>${escapeHtml(cohort.accessCode)}</td><td>${cohort.questionLimit}</td><td>${cohort.isActive ? "Yes" : "No"
+        }</td><td>${cohort.memberCount}${cohort.expiresAt ? ` (Exp: ${escapeHtml(toDateInputValue(cohort.expiresAt))})` : ""}</td></tr>`
     )
     .join("");
   syncCohortFormFromSelection();
