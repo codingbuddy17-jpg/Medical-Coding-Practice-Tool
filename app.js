@@ -3606,26 +3606,26 @@ async function enrollSelectedCohortMember() {
 }
 
 function bindEvents() {
-  dom.roleSelect.addEventListener("change", () => {
+  if (dom.roleSelect) dom.roleSelect.addEventListener("change", () => {
     state.role = dom.roleSelect.value;
     if (state.role !== "trainer") state.trainerKeyVerified = false;
     updateRoleUI();
     saveLocal();
   });
 
-  dom.startBtn.addEventListener("click", startSession);
-  dom.endSessionBtn.addEventListener("click", endSession);
-  dom.checkBtn.addEventListener("click", validateCurrentAnswer);
-  dom.nextBtn.addEventListener("click", nextQuestion);
-  dom.flagQuestionBtn.addEventListener("click", flagCurrentQuestion);
+  if (dom.startBtn) dom.startBtn.addEventListener("click", startSession);
+  if (dom.endSessionBtn) dom.endSessionBtn.addEventListener("click", endSession);
+  if (dom.checkBtn) dom.checkBtn.addEventListener("click", validateCurrentAnswer);
+  if (dom.nextBtn) dom.nextBtn.addEventListener("click", nextQuestion);
+  if (dom.flagQuestionBtn) dom.flagQuestionBtn.addEventListener("click", flagCurrentQuestion);
 
-  dom.categoryButtons.addEventListener("click", (event) => {
+  if (dom.categoryButtons) dom.categoryButtons.addEventListener("click", (event) => {
     const btn = event.target.closest("button[data-tag]");
     if (!btn) return;
     setSelectedTag(btn.dataset.tag);
   });
 
-  dom.mcqOptions.addEventListener("change", (event) => {
+  if (dom.mcqOptions) dom.mcqOptions.addEventListener("change", (event) => {
     if (event.target.name !== "mcqAnswer") return;
     if (state.awaitingNext || hasSessionLimitReached()) {
       event.target.checked = false;
@@ -3638,34 +3638,34 @@ function bindEvents() {
     });
   });
 
-  dom.weakDrillToggle.addEventListener("change", (event) => {
+  if (dom.weakDrillToggle) dom.weakDrillToggle.addEventListener("change", (event) => {
     state.weakDrillEnabled = event.target.checked;
     saveLocal();
   });
 
-  dom.examQuestionCount.addEventListener("change", () => {
+  if (dom.examQuestionCount) dom.examQuestionCount.addEventListener("change", () => {
     state.examConfig.questionCount = Number(dom.examQuestionCount.value) || 30;
     saveLocal();
   });
 
-  dom.examBlueprintSelect.addEventListener("change", onExamBlueprintSelectionChange);
+  if (dom.examBlueprintSelect) dom.examBlueprintSelect.addEventListener("change", onExamBlueprintSelectionChange);
 
-  dom.examDuration.addEventListener("change", () => {
+  if (dom.examDuration) dom.examDuration.addEventListener("change", () => {
     state.examConfig.durationMinutes = Number(dom.examDuration.value) || 30;
     saveLocal();
   });
 
-  dom.examPassThreshold.addEventListener("change", () => {
+  if (dom.examPassThreshold) dom.examPassThreshold.addEventListener("change", () => {
     state.examConfig.passThreshold = Math.min(100, Math.max(1, Number(dom.examPassThreshold.value) || 80));
     saveLocal();
   });
 
-  dom.examStrictTiming.addEventListener("change", () => {
+  if (dom.examStrictTiming) dom.examStrictTiming.addEventListener("change", () => {
     state.examConfig.strictTiming = dom.examStrictTiming.checked;
     saveLocal();
   });
 
-  dom.toggleExamPanelBtn.addEventListener("click", () => {
+  if (dom.toggleExamPanelBtn) dom.toggleExamPanelBtn.addEventListener("click", () => {
     if (isTrialUser()) {
       setStatus(dom.examStatus, "Mock Exam Practice Mode is available for trainees only. Please contact us to upgrade your access.", "error");
       dom.examTrialContactWrap.classList.remove("hidden");
@@ -3676,12 +3676,12 @@ function bindEvents() {
     dom.examPanel.classList.toggle("hidden");
   });
 
-  dom.startExamBtn.addEventListener("click", startExam);
-  dom.stopExamBtn.addEventListener("click", stopExam);
-  dom.pauseExamBtn.addEventListener("click", togglePauseExam);
+  if (dom.startExamBtn) dom.startExamBtn.addEventListener("click", startExam);
+  if (dom.stopExamBtn) dom.stopExamBtn.addEventListener("click", stopExam);
+  if (dom.pauseExamBtn) dom.pauseExamBtn.addEventListener("click", togglePauseExam);
 
   // Dynamic Exam Mode UI
-  dom.examModeSelect.addEventListener("change", () => {
+  if (dom.examModeSelect) dom.examModeSelect.addEventListener("change", () => {
     const mode = dom.examModeSelect.value;
     if (mode === "topic") {
       dom.examTopicSelectLabel.classList.remove("hidden");
@@ -3695,8 +3695,8 @@ function bindEvents() {
     }
   });
 
-  dom.addResourceBtn.addEventListener("click", addResource);
-  dom.resourceList.addEventListener("click", (event) => {
+  if (dom.addResourceBtn) dom.addResourceBtn.addEventListener("click", addResource);
+  if (dom.resourceList) dom.resourceList.addEventListener("click", (event) => {
     const btn = event.target.closest("button[data-remove-resource]");
     if (!btn) return;
     removeResource(Number(btn.dataset.removeResource));
@@ -3804,7 +3804,7 @@ function bindEvents() {
       "cta_timed_exam_trial_click"
     );
   });
-  dom.floatingWhatsappBtn.addEventListener("click", (event) => {
+  if (dom.floatingWhatsappBtn) dom.floatingWhatsappBtn.addEventListener("click", (event) => {
     event.preventDefault();
     openWhatsAppCta(
       "Hello, I have completed the trial and would like to request full access to the complete training program.",
@@ -3812,18 +3812,20 @@ function bindEvents() {
     );
   });
 
-  dom.csvFileInput.addEventListener("change", async () => {
+  if (dom.csvFileInput) dom.csvFileInput.addEventListener("change", async () => {
     const file = dom.csvFileInput.files?.[0];
     if (!file) return;
     try {
       const parsed = await readFileAsImportCards(file);
-      dom.csvInput.value = formatCardsForTextarea(parsed);
-    } catch {
-      // fallback: manual paste
+      if (dom.csvInput) dom.csvInput.value = formatCardsForTextarea(parsed);
+      setStatus(dom.importStatus, `Loaded ${parsed.length} cards from file. Click Import to finish.`);
+    } catch (err) {
+      console.error(err);
+      setStatus(dom.importStatus, `Error reading file: ${err.message}`, "error");
     }
   });
 
-  dom.userAnswer.addEventListener("keydown", (event) => {
+  if (dom.userAnswer) dom.userAnswer.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
       validateCurrentAnswer();
