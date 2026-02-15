@@ -411,6 +411,7 @@ function normalizeTagKey(tag) {
   if (cleaned.includes("SURGERYCODING")) return "SURGERY-CODING";
   if (cleaned.includes("IPDRGCODING")) return "IP-DRG-CODING";
   if (cleaned.includes("IPDRG")) return "IP-DRG-CODING";
+  if (cleaned.includes("MEDICINE")) return "MEDICINE";
   return "OTHER";
 }
 
