@@ -361,6 +361,18 @@ async function hardReset() {
   localStorage.clear();
   sessionStorage.clear();
   window.location.reload();
+  window.location.reload();
+}
+
+function setExamControlsLocked(locked) {
+  if (dom.startExamBtn) dom.startExamBtn.disabled = locked;
+  if (dom.examModeSelect) dom.examModeSelect.disabled = locked;
+  if (dom.examTopicSelect) dom.examTopicSelect.disabled = locked;
+  if (dom.examBlueprintSelect) dom.examBlueprintSelect.disabled = locked;
+  if (dom.examQuestionCount) dom.examQuestionCount.disabled = locked;
+  if (dom.examDuration) dom.examDuration.disabled = locked;
+  if (dom.examPassThreshold) dom.examPassThreshold.disabled = locked;
+  if (dom.examStrictTiming) dom.examStrictTiming.disabled = locked;
 }
 
 function setStatus(el, message, mode = "") {
@@ -1512,7 +1524,10 @@ function startExam() {
 
   state.examConfig.strictTiming = strictTiming;
   state.examConfig.blueprintId = selectedTemplate?.id || "";
+  state.exam.inProgress = true;
   state.exam.paused = false;
+
+  setExamControlsLocked(true); // Lock controls
 
   dom.pauseExamBtn.classList.remove("hidden"); // Show pause button
   dom.pauseExamBtn.textContent = "Pause";
@@ -3610,6 +3625,8 @@ async function enrollSelectedCohortMember() {
 }
 
 function bindEvents() {
+  if (bindEvents.done) return;
+  bindEvents.done = true;
   if (dom.roleSelect) dom.roleSelect.addEventListener("change", () => {
     state.role = dom.roleSelect.value;
     if (state.role !== "trainer") state.trainerKeyVerified = false;
