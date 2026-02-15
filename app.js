@@ -1410,6 +1410,10 @@ function buildBlueprintQueue(source, template, total) {
   return shuffledCopy(chosen.slice(0, total));
 }
 
+function shuffleCardsForExam(cards, limit) {
+  return shuffledCopy(cards).slice(0, limit).map(c => c.id);
+}
+
 function startExam() {
   if (isTrialUser()) {
     setStatus(dom.examStatus, trialUpgradeMessage(), "error");
