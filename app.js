@@ -3709,10 +3709,10 @@ function bindEvents() {
     clearImportPreview();
     setStatus(dom.importStatus, "Import preview cleared.");
   });
-  dom.refreshImportReviewBtn.addEventListener("click", loadImportReviewQueue);
-  dom.resolveAllImportReviewBtn.addEventListener("click", resolveAllImportReviewItems);
-  dom.exportImportReviewBtn.addEventListener("click", exportImportReviewQueueCsv);
-  dom.importReviewStatusFilter.addEventListener("change", loadImportReviewQueue);
+  if (dom.refreshImportReviewBtn) dom.refreshImportReviewBtn.addEventListener("click", loadImportReviewQueue);
+  if (dom.resolveAllImportReviewBtn) dom.resolveAllImportReviewBtn.addEventListener("click", resolveAllImportReviewItems);
+  if (dom.exportImportReviewBtn) dom.exportImportReviewBtn.addEventListener("click", exportImportReviewQueueCsv);
+  if (dom.importReviewStatusFilter) dom.importReviewStatusFilter.addEventListener("change", loadImportReviewQueue);
   dom.importReviewBody.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-import-review-action][data-import-review-id]");
     if (!button) return;
