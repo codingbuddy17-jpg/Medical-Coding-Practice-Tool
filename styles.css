@@ -1256,7 +1256,6 @@ code {
   transform: translateY(-1px);
 }
 
-/* Global Utility */
 .hidden {
   display: none !important;
 }
