@@ -195,6 +195,7 @@ const dom = {
 
   cardTag: document.getElementById("cardTag"),
   cardPrompt: document.getElementById("cardPrompt"),
+  flashcard: document.getElementById("flashcard"),
   shortAnswerRow: document.getElementById("shortAnswerRow"),
   mcqOptions: document.getElementById("mcqOptions"),
   userAnswer: document.getElementById("userAnswer"),

@@ -620,11 +620,23 @@ textarea {
 }
 
 .answer-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
+  display: flex;
   gap: 0.5rem;
   align-items: center;
   /* Verification: ensure buttons align vertically */
+}
+
+.answer-row input {
+  flex: 2;
+  font-size: 1rem;
+  padding: 0.6rem;
+}
+
+.answer-row button {
+  flex: 1;
+  font-size: 1rem;
+  padding: 0.6rem;
+  font-weight: 600;
 }
 
 /* Medium Check Button */
