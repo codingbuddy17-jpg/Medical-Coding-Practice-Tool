@@ -24,7 +24,8 @@ const CATEGORY_OPTIONS = [
   { key: "CPC", label: "CPC" },
   { key: "CDIP", label: "CDIP" },
   { key: "SURGERY-CODING", label: "Surgery Coding" },
-  { key: "IP-DRG-CODING", label: "IP-DRG Coding" }
+  { key: "IP-DRG-CODING", label: "IP-DRG Coding" },
+  { key: "MEDICINE", label: "Medicine" }
 ];
 
 const TRACKED_CATEGORY_KEYS = CATEGORY_OPTIONS.filter((item) => item.key !== "ALL").map((item) => item.key);
