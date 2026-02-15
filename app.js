@@ -1268,22 +1268,44 @@ function finishExam(reason) {
   clearExamTimer();
   state.exam.queueIds = [];
   state.exam.cursor = 0;
-  state.exam.remainingSeconds = 0;
-  state.exam.answered = 0;
-  state.exam.correct = 0;
-  state.exam.wrong = 0;
-  state.exam.passThreshold = state.examConfig.passThreshold;
-  state.exam.strictTiming = state.examConfig.strictTiming;
-  state.exam.blueprintName = "";
-  state.currentCardIndex = 0;
-  state.awaitingNext = false;
 
-  updateExamStatusUI();
-  dom.flashcard.classList.remove("paused-hidden"); // Ensure visibility
-  const overlay = document.querySelector(".paused-overlay");
-  if (overlay) overlay.remove();
+  // Show Modal
+  const overlay = document.createElement("div");
+  overlay.className = "exam-result-overlay";
+  overlay.innerHTML = `
+    <div class="exam-result-card ${passed ? "pass" : "fail"}">
+      <h2>Exam Completed</h2>
+      <div class="result-score">${score}%</div>
+      <p class="result-status">${passed ? "PASSED" : "FAILED"}</p>
+      <p class="result-detail">Correct: ${state.exam.correct} | Wrong: ${state.exam.wrong} | Attempted: ${attempted}</p>
+      <p class="result-note">Threshold: ${passThreshold}%</p>
+      <div class="result-actions">
+        <button class="primary-btn" onclick="window.location.reload()">Return to Dashboard</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
 
-  renderCard();
+  // Clean up UI behind modal
+  dom.flashcard.classList.add("blurred");
+  dom.examPanel.classList.add("hidden");
+}
+state.exam.remainingSeconds = 0;
+state.exam.answered = 0;
+state.exam.correct = 0;
+state.exam.wrong = 0;
+state.exam.passThreshold = state.examConfig.passThreshold;
+state.exam.strictTiming = state.examConfig.strictTiming;
+state.exam.blueprintName = "";
+state.currentCardIndex = 0;
+state.awaitingNext = false;
+
+updateExamStatusUI();
+dom.flashcard.classList.remove("paused-hidden"); // Ensure visibility
+const overlay = document.querySelector(".paused-overlay");
+if (overlay) overlay.remove();
+
+renderCard();
 }
 
 function togglePauseExam() {
