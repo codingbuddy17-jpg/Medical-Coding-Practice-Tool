@@ -1212,6 +1212,7 @@ function finishExam(reason) {
   }
 
   state.exam.inProgress = false;
+  state.exam.paused = false; // Reset pause state
   state.exam.queueIds = [];
   state.exam.cursor = 0;
   state.exam.remainingSeconds = 0;
@@ -1225,11 +1226,38 @@ function finishExam(reason) {
   state.awaitingNext = false;
 
   updateExamStatusUI();
+  dom.flashcard.classList.remove("paused-hidden"); // Ensure visibility
+  const overlay = document.querySelector(".paused-overlay");
+  if (overlay) overlay.remove();
+
   renderCard();
 }
 
+function togglePauseExam() {
+  if (!state.exam.inProgress) return;
+  state.exam.paused = !state.exam.paused;
+
+  if (state.exam.paused) {
+    clearExamTimer();
+    dom.pauseExamBtn.textContent = "Resume";
+    // Add overlay
+    const overlay = document.createElement("div");
+    overlay.className = "paused-overlay";
+    overlay.innerHTML = `
+      <h3>Exam Paused</h3>
+      <p>Click Resume to continue.</p>
+    `;
+    dom.flashcard.appendChild(overlay);
+  } else {
+    startExamTimer();
+    dom.pauseExamBtn.textContent = "Pause";
+    const overlay = document.querySelector(".paused-overlay");
+    if (overlay) overlay.remove();
+  }
+}
+
 function startExamTimer() {
-  if (!state.exam.strictTiming) return;
+  if (!state.exam.strictTiming || state.exam.paused) return; // Don't start if paused
   clearExamTimer();
   state.exam.timerId = setInterval(() => {
     state.exam.remainingSeconds -= 1;
@@ -1286,6 +1314,12 @@ function renderBlueprintSelectors() {
   } else {
     dom.examBlueprintSelect.value = "";
   }
+
+  // Render Topics
+  const topics = [...new Set(state.deck.map(c => normalizeTagKey(c.tag)))].sort();
+  dom.examTopicSelect.innerHTML = ['<option value="">Select Topic...</option>']
+    .concat(topics.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`))
+    .join("");
 }
 
 function applyBlueprintConfig(template, override = null) {
@@ -1396,6 +1430,13 @@ function startExam() {
   state.examConfig.passThreshold = passThreshold;
   state.examConfig.strictTiming = strictTiming;
   state.examConfig.blueprintId = selectedTemplate?.id || "";
+
+  state.examConfig.strictTiming = strictTiming;
+  state.examConfig.blueprintId = selectedTemplate?.id || "";
+  state.exam.paused = false;
+
+  dom.pauseExamBtn.classList.remove("hidden"); // Show pause button
+  dom.pauseExamBtn.textContent = "Pause";
 
   startExamTimer();
   updateExamStatusUI();
@@ -3542,6 +3583,22 @@ function bindEvents() {
 
   dom.startExamBtn.addEventListener("click", startExam);
   dom.stopExamBtn.addEventListener("click", stopExam);
+  dom.pauseExamBtn.addEventListener("click", togglePauseExam);
+
+  // Dynamic Exam Mode UI
+  dom.examModeSelect.addEventListener("change", () => {
+    const mode = dom.examModeSelect.value;
+    if (mode === "topic") {
+      dom.examTopicSelectLabel.classList.remove("hidden");
+      dom.examBlueprintSelectLabel.classList.add("hidden");
+    } else if (mode === "blueprint") {
+      dom.examTopicSelectLabel.classList.add("hidden");
+      dom.examBlueprintSelectLabel.classList.remove("hidden");
+    } else {
+      dom.examTopicSelectLabel.classList.add("hidden");
+      dom.examBlueprintSelectLabel.classList.add("hidden");
+    }
+  });
 
   dom.addResourceBtn.addEventListener("click", addResource);
   dom.resourceList.addEventListener("click", (event) => {

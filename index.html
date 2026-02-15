@@ -160,9 +160,24 @@
                   <div id="examPanel" class="hidden panel">
                     <h4>Timed Exam Mode</h4>
                     <label>
-                      Blueprint
+                      Exam Mode
+                      <select id="examModeSelect">
+                        <option value="standard">Standard Mock (Random)</option>
+                        <option value="topic">Topic Master (Focus)</option>
+                        <option value="weakness">Weakness Drill (Hardest)</option>
+                        <option value="blueprint">Trainer Blueprint</option>
+                      </select>
+                    </label>
+                    <label id="examTopicSelectLabel" class="hidden">
+                      Target Topic
+                      <select id="examTopicSelect">
+                        <option value="">Select Topic...</option>
+                      </select>
+                    </label>
+                    <label id="examBlueprintSelectLabel" class="hidden">
+                      Select Blueprint
                       <select id="examBlueprintSelect">
-                        <option value="">Manual</option>
+                        <option value="">Select...</option>
                       </select>
                     </label>
                     <label>
@@ -190,7 +205,8 @@
                       </select>
                     </label>
                     <div class="panel-actions">
-                      <button id="startExamBtn" class="ghost-btn" type="button">Start Exam</button>
+                      <button id="startExamBtn" class="primary-btn" type="button">Start Exam</button>
+                      <button id="pauseExamBtn" class="ghost-btn hidden" type="button">Pause</button>
                       <button id="stopExamBtn" class="ghost-btn" type="button">Stop Exam</button>
                     </div>
                   </div>

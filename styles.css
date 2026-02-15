@@ -1216,3 +1216,42 @@ code {
   /* Ensure header stays inside */
   margin-top: 0.5rem;
 }
+
+/* Pause Overlay */
+.paused-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(4px);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  border-radius: 14px;
+}
+
+.paused-overlay h3 {
+  font-size: 1.5rem;
+  color: var(--ink);
+  margin: 0;
+}
+
+.flashcard {
+  position: relative;
+  /* Context for overlay */
+}
+
+/* Pause Button (Amber/Yellow) */
+#pauseExamBtn {
+  color: #b45309;
+  border-color: #fcd34d;
+  background: #fffbeb;
+}
+
+#pauseExamBtn:hover {
+  background: #fef3c7;
+  border-color: #fbbf24;
+  transform: translateY(-1px);
+}
