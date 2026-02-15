@@ -1255,3 +1255,8 @@ code {
   border-color: #fbbf24;
   transform: translateY(-1px);
 }
+
+/* Global Utility */
+.hidden {
+  display: none !important;
+}
