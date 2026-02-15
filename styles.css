@@ -4,6 +4,7 @@
   --ink: #0f172a;
   --muted: #334155;
   --accent: #0f766e;
+  --accent-dark: #0d5f57;
   --accent-soft: #d9f3ee;
   --blue: #00a3d9;
   --blue-deep: #007ea7;
@@ -856,6 +857,7 @@ code {
 .analytics-summary {
   margin: 0.35rem 0 0;
 }
+
 /* -------------------------------------------------------------------------- */
 /* NAVIGATION SYSTEM (Minimalist) */
 /* -------------------------------------------------------------------------- */
@@ -864,7 +866,8 @@ code {
   display: flex;
   justify-content: center;
   margin-bottom: 1rem;
-  padding: 0 !important; /* Override panel padding */
+  padding: 0 !important;
+  /* Override panel padding */
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
@@ -919,16 +922,25 @@ code {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Mock Exam Highlight */
 #examPanel h4 {
-  background: var(--accent-dark); /* Teal Dark */
+  background: var(--accent-dark);
+  /* Teal Dark */
   color: white;
   padding: 0.75rem 1rem;
-  margin: -1.25rem -1.25rem 1rem -1.25rem; /* Negative margins to fill panel top */
+  margin: -1.25rem -1.25rem 1rem -1.25rem;
+  /* Negative margins to fill panel top */
   border-radius: var(--radius-md) var(--radius-md) 0 0;
   display: block;
   font-weight: 600;
@@ -937,8 +949,11 @@ code {
 
 /* Navigation Fix Additions */
 #examPanel {
-  border: 1px solid var(--accent); /* Highlight border for Mock Exam */
-  background: #f0fdfa; /* Light Teal Tint */
-  overflow: hidden; /* Ensure header stays inside */
+  border: 1px solid var(--accent);
+  /* Highlight border for Mock Exam */
+  background: #f0fdfa;
+  /* Light Teal Tint */
+  overflow: hidden;
+  /* Ensure header stays inside */
   margin-top: 0.5rem;
 }

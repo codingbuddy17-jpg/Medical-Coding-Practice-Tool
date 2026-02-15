@@ -3741,12 +3741,9 @@ async function init() {
 // init(); // Moved to end of file
 
 /* -------------------------------------------------------------------------- */
-/* NAVIGATION SYSTEM (Phase 2) */
 /* -------------------------------------------------------------------------- */
-
-// Initialize Navigation Elements (Appended)
-// Note: We need to ensure these are available after DOM load, 
-// which is already handled by the main script structure, but let's be safe.
+/* NAVIGATION SYSTEM (Phase 2 & Fixes) */
+/* -------------------------------------------------------------------------- */
 
 const navDom = {
   mainNav: document.getElementById("mainNav"),
@@ -3759,7 +3756,10 @@ const navDom = {
 // Add Listeners
 if (navDom.navItems) {
   navDom.navItems.forEach(btn => {
-    btn.addEventListener("click", () => handleTabSwitch(btn.dataset.tab));
+    btn.addEventListener("click", (e) => {
+      e.preventDefault(); // Safety check
+      handleTabSwitch(btn.dataset.tab);
+    });
   });
 }
 
@@ -3772,50 +3772,41 @@ function handleTabSwitch(tabName) {
     else btn.classList.remove("active");
   });
 
-  // 2. Hide All Views first
+  // 2. Hide All Views
   if (navDom.viewPractice) navDom.viewPractice.classList.remove("active");
   if (navDom.viewMentor) navDom.viewMentor.classList.remove("active");
 
   // 3. Show Target View & Handle Logic
   if (tabName === "practice") {
     if (navDom.viewPractice) navDom.viewPractice.classList.add("active");
-    // Ensure we are at the top
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // Explicit instant scroll to top
+    window.scrollTo(0, 0);
   }
   else if (tabName === "mentor") {
     if (navDom.viewMentor) navDom.viewMentor.classList.add("active");
-    // Ensure we are at the top of mentor view
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo(0, 0);
   }
   else if (tabName === "exam") {
     // Exam is inside practice view
     if (navDom.viewPractice) navDom.viewPractice.classList.add("active");
 
-    // Ensure exam panel is stored in a variable or fetched fresh
     const examPanel = document.getElementById("examPanel");
     if (examPanel) {
-      // If hidden, simulate toggle click or just remove hidden class? 
-      // Safer to click toggle if logic is attached to it, but direct manipulation is cleaner here.
       if (examPanel.classList.contains("hidden")) {
-        // Trigger the button to ensure state sync (e.g. icon rotation if any)
-        const toggleBtn = document.getElementById("toggleExamPanelBtn");
-        if (toggleBtn) toggleBtn.click();
-        else examPanel.classList.remove("hidden");
+        // Force show
+        examPanel.classList.remove("hidden");
+        // Also update the toggle button state if possible, or just click it if safer
+        // But direct manipulation is guaranteed to show it.
       }
       examPanel.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
   else if (tabName === "analytics") {
-    // Determine context based on role
     if (state.role === "trainer") {
-      // Go to Mentor View -> Analytics Section
       if (navDom.viewMentor) navDom.viewMentor.classList.add("active");
       const analyticsSection = document.getElementById("categoryScoreBody")?.closest(".panel");
-      // Fallback if specific ID not found, just scroll to bottom
       if (analyticsSection) analyticsSection.scrollIntoView({ behavior: "smooth" });
-      else window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
     } else {
-      // Go to Practice View -> Dashboard Section
       if (navDom.viewPractice) navDom.viewPractice.classList.add("active");
       const dashboard = document.querySelector(".dashboard");
       if (dashboard) dashboard.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -3829,13 +3820,13 @@ function showNavigation() {
 
   if (state.role === "trainer") {
     if (navDom.navMentorItem) navDom.navMentorItem.classList.remove("hidden");
+    // Ensure we start on practice or mentor?
     handleTabSwitch("mentor");
   } else {
-    // Hide mentor tab (just in case)
     if (navDom.navMentorItem) navDom.navMentorItem.classList.add("hidden");
     handleTabSwitch("practice");
   }
 }
 
 // Start App (Delayed to ensure all modules loaded)
-init();
+if (typeof init === "function") init();
