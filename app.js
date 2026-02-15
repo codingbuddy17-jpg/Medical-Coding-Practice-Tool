@@ -960,11 +960,21 @@ function updateRoleUI() {
   const isTrainer = state.role === "trainer";
   const trainerKeyVerified = isTrainer && state.trainerKeyVerified;
   const isTrainee = state.role === "trainee";
+  console.log("updateRoleUI called. Role:", state.role);
   const canUseExam = isTrainer || isTrainee;
   dom.trainerZone.classList.toggle("hidden", !trainerKeyVerified);
   dom.resourceManager.classList.toggle("hidden", !trainerKeyVerified);
-  dom.traineeCodeWrap.classList.toggle("hidden", !isTrainee);
-  dom.trainerKeyWrap.classList.toggle("hidden", !isTrainer);
+
+  // Force visibility via inline style to prevent CSS conflicts
+  if (dom.traineeCodeWrap) {
+    dom.traineeCodeWrap.classList.toggle("hidden", !isTrainee);
+    dom.traineeCodeWrap.style.display = isTrainee ? "block" : "none";
+  }
+  if (dom.trainerKeyWrap) {
+    dom.trainerKeyWrap.classList.toggle("hidden", !isTrainer);
+    dom.trainerKeyWrap.style.display = isTrainer ? "block" : "none";
+  }
+
   if (!canUseExam) dom.examPanel.classList.add("hidden");
   dom.importStatus.textContent = "";
   dom.sessionLoadStatus.textContent = "";
