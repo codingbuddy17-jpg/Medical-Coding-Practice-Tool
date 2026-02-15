@@ -166,6 +166,8 @@ const dom = {
   categoryStatus: document.getElementById("categoryStatus"),
   weakDrillToggle: document.getElementById("weakDrillToggle"),
   examQuestionCount: document.getElementById("examQuestionCount"),
+  examModeSelect: document.getElementById("examModeSelect"),
+  examTopicSelect: document.getElementById("examTopicSelect"),
   examBlueprintSelect: document.getElementById("examBlueprintSelect"),
   examDuration: document.getElementById("examDuration"),
   examPassThreshold: document.getElementById("examPassThreshold"),
@@ -3978,11 +3980,23 @@ function updateDashboardWidgets() {
 }
 
 // Initialize Sub-Nav Listeners
+// Initialize Sub-Nav Listeners
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("DOM loaded, initializing app...");
+
+  // Sub-nav for Mentor Dashboard
   document.querySelectorAll(".sub-nav-item").forEach(btn => {
     btn.addEventListener("click", () => {
       handleMentorSubTab(btn.dataset.subtab);
     });
+  });
+
+  // Start App
+  init().catch(err => console.error("App init failed:", err));
+});
+btn.addEventListener("click", () => {
+  handleMentorSubTab(btn.dataset.subtab);
+});
   });
 });
 
