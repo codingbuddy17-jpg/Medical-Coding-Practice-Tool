@@ -1277,8 +1277,14 @@ function togglePauseExam() {
     overlay.innerHTML = `
       <h3>Exam Paused</h3>
       <p>Click Resume to continue.</p>
+      <button class="primary-btn" onclick="document.dispatchEvent(new CustomEvent('resume-exam-trigger'))">Resume Exam</button>
     `;
     dom.flashcard.appendChild(overlay);
+
+    // Quick helper to catch the resume click from overlay
+    document.addEventListener('resume-exam-trigger', togglePauseExam, { once: true });
+  } else {
+    clearExamTimer();
   } else {
     startExamTimer();
     dom.pauseExamBtn.textContent = "Pause";
