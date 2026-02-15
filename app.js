@@ -1013,10 +1013,24 @@ function updateSessionIdentityLock() {
       dom.topbarSessionSummary.textContent = `${name} · ${score}%`;
       dom.topbarSessionSummary.classList.remove("hidden");
       dom.topbarSessionActions.classList.remove("hidden");
+
+      // Show Practice View
+      const practiceTab = document.getElementById("view-practice");
+      if (practiceTab) {
+        practiceTab.classList.remove("hidden");
+        practiceTab.classList.add("active");
+      }
     } else {
       dom.topbarSessionSummary.textContent = "";
       dom.topbarSessionSummary.classList.add("hidden");
       dom.topbarSessionActions.classList.add("hidden");
+
+      // Hide Practice View
+      const practiceTab = document.getElementById("view-practice");
+      if (practiceTab) {
+        practiceTab.classList.add("hidden");
+        practiceTab.classList.remove("active");
+      }
     }
   }
 }
