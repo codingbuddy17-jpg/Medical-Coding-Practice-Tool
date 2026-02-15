@@ -391,9 +391,11 @@ textarea {
   min-height: 0;
   padding: 0.7rem;
   display: grid;
-  gap: 0.55rem;
-  grid-template-columns: 1.3fr 0.7fr;
-  grid-template-rows: auto auto;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+  /* Default: Stacked for mobile */
+  grid-template-rows: auto auto auto;
+  /* visual, question, answer */
   transition: transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.25s ease;
 }
 
@@ -549,14 +551,38 @@ textarea {
 }
 
 .question-quarter {
-  grid-column: 1 / 2;
+  grid-column: 1 / -1;
+  /* Default full width */
   min-height: 140px;
 }
 
 .answer-quarter {
-  grid-column: 2 / 3;
+  grid-column: 1 / -1;
+  /* Default full width */
   align-content: start;
   min-height: 280px;
+}
+
+/* Desktop: Balanced 50/50 Split */
+@media (min-width: 900px) {
+  .flashcard {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+    /* Match heights */
+  }
+
+  .visual-half {
+    grid-column: 1 / -1;
+  }
+
+  .question-quarter {
+    grid-column: 1 / 2;
+  }
+
+  .answer-quarter {
+    grid-column: 2 / 3;
+    /* Reset min-height to match neighbor if needed, or keep 280 */
+  }
 }
 
 .question-quarter p {
