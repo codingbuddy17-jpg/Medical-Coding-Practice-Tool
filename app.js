@@ -57,6 +57,7 @@ const state = {
   userEmail: "",
   userPhone: "",
   trainerKey: "",
+  trainerKeyVerified: false,
   adminKey: "",
   selectedTag: "ALL",
   weakDrillEnabled: false,
@@ -931,17 +932,19 @@ function renderCategoryScorecards() {
 
 function updateRoleUI() {
   const isTrainer = state.role === "trainer";
+  const trainerKeyVerified = isTrainer && state.trainerKeyVerified;
   const isTrainee = state.role === "trainee";
   const canUseExam = isTrainer || isTrainee;
-  dom.trainerZone.classList.toggle("hidden", !isTrainer);
-  dom.resourceManager.classList.toggle("hidden", !isTrainer);
+  dom.trainerZone.classList.toggle("hidden", !trainerKeyVerified);
+  dom.resourceManager.classList.toggle("hidden", !trainerKeyVerified);
   dom.traineeCodeWrap.classList.toggle("hidden", !isTrainee);
   dom.trainerKeyWrap.classList.toggle("hidden", !isTrainer);
   if (!canUseExam) dom.examPanel.classList.add("hidden");
   dom.importStatus.textContent = "";
   dom.sessionLoadStatus.textContent = "";
-  if (!isTrainer) clearImportPreview();
+  if (!trainerKeyVerified) clearImportPreview();
   if (!isTrainer) {
+    state.trainerKeyVerified = false;
     state.adminPanel.verified = false;
     dom.adminTools.classList.add("hidden");
     setStatus(dom.adminStatus, "");
@@ -950,7 +953,7 @@ function updateRoleUI() {
   dom.flagQuestionBtn.classList.toggle("hidden", isTrainer);
   syncExamControlLock();
   renderResources();
-  if (isTrainer) {
+  if (trainerKeyVerified) {
     loadImportReviewQueue();
     loadImportBatches();
   } else {
@@ -1551,6 +1554,7 @@ async function startSession() {
   state.userPhone = userPhone;
   state.role = role;
   state.trainerKey = trainerKey;
+  state.trainerKeyVerified = role === "trainer";
   state.currentCardIndex = 0;
   state.session.id = uid("session");
   state.session.startedAt = Date.now();
@@ -3392,6 +3396,7 @@ async function enrollSelectedCohortMember() {
 function bindEvents() {
   dom.roleSelect.addEventListener("change", () => {
     state.role = dom.roleSelect.value;
+    if (state.role !== "trainer") state.trainerKeyVerified = false;
     updateRoleUI();
     saveLocal();
   });
@@ -3614,6 +3619,7 @@ function bindEvents() {
 async function init() {
   loadLocal();
   state.session.isActive = false;
+  state.trainerKeyVerified = false;
   await loadPublicAccessConfig();
   dom.userName.value = state.userName;
   dom.userEmail.value = state.userEmail;
