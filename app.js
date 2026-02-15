@@ -1270,9 +1270,9 @@ function finishExam(reason) {
   state.exam.cursor = 0;
 
   // Show Modal
-  const overlay = document.createElement("div");
-  overlay.className = "exam-result-overlay";
-  overlay.innerHTML = `
+  const resultOverlay = document.createElement("div");
+  resultOverlay.className = "exam-result-overlay";
+  resultOverlay.innerHTML = `
     <div class="exam-result-card ${passed ? "pass" : "fail"}">
       <h2>Exam Completed</h2>
       <div class="result-score">${score}%</div>
@@ -1284,7 +1284,7 @@ function finishExam(reason) {
       </div>
     </div>
   `;
-  document.body.appendChild(overlay);
+  document.body.appendChild(resultOverlay);
 
   // Clean up UI behind modal
   dom.flashcard.classList.add("blurred");
