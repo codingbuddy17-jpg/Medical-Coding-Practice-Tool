@@ -856,3 +856,69 @@ code {
 .analytics-summary {
   margin: 0.35rem 0 0;
 }
+/* -------------------------------------------------------------------------- */
+/* NAVIGATION SYSTEM (Minimalist) */
+/* -------------------------------------------------------------------------- */
+
+.main-nav {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+  padding: 0 !important; /* Override panel padding */
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.nav-links {
+  display: flex;
+  gap: 0.5rem;
+  background: white;
+  padding: 0.5rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--line);
+}
+
+.main-nav.hidden {
+  display: none;
+}
+
+.nav-item {
+  background: transparent;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+  background: #f8fafc;
+  color: var(--ink);
+}
+
+.nav-item.active {
+  background: var(--surface-active);
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Hide sections when not active */
+.tab-pane {
+  display: none;
+}
+
+.tab-pane.active {
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}

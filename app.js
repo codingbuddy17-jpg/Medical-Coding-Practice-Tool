@@ -505,13 +505,31 @@ function updateTrialInfoBannerUI() {
 }
 
 function updatePreSessionLandingUI() {
-  const show = !state.session.isActive;
-  if (show) {
+  const isActive = state.session.isActive;
+
+  if (!isActive) {
+    // Show Landing & Auth
     dom.preSessionLanding.classList.remove("hidden", "landing-hidden");
+    if (dom.authPanel) dom.authPanel.classList.remove("hidden");
+    if (dom.brandIntro) dom.brandIntro.classList.remove("hidden");
+    if (dom.trialInfoBanner) dom.trialInfoBanner.classList.add("hidden");
+
+    // Hide Navigation & Views
+    if (navDom.mainNav) navDom.mainNav.classList.add("hidden");
+    if (navDom.viewPractice) navDom.viewPractice.classList.remove("active");
+    if (navDom.viewMentor) navDom.viewMentor.classList.remove("active");
+    if (navDom.topbarSessionActions) navDom.topbarSessionActions.classList.add("hidden");
+    if (navDom.topbarSessionSummary) navDom.topbarSessionSummary.classList.add("hidden");
   } else {
+    // Hide Landing & Auth
     dom.preSessionLanding.classList.add("landing-hidden");
+    if (dom.authPanel) dom.authPanel.classList.add("hidden");
+    if (dom.brandIntro) dom.brandIntro.classList.add("hidden");
+
+    // Show Navigation & Views
+    showNavigation();
   }
-  dom.preSessionLanding.setAttribute("aria-hidden", show ? "false" : "true");
+  dom.preSessionLanding.setAttribute("aria-hidden", !isActive ? "false" : "true");
 }
 
 function toMcqOptionKey(value) {
@@ -3720,4 +3738,90 @@ async function init() {
   bindEvents();
 }
 
+// init(); // Moved to end of file
+
+/* -------------------------------------------------------------------------- */
+/* NAVIGATION SYSTEM (Phase 2) */
+/* -------------------------------------------------------------------------- */
+
+// Initialize Navigation Elements (Appended)
+// Note: We need to ensure these are available after DOM load, 
+// which is already handled by the main script structure, but let's be safe.
+
+const navDom = {
+  mainNav: document.getElementById("mainNav"),
+  navItems: document.querySelectorAll(".nav-item"),
+  viewPractice: document.getElementById("view-practice"),
+  viewMentor: document.getElementById("view-mentor"),
+  navMentorItem: document.getElementById("navMentorItem")
+};
+
+// Add Listeners
+if (navDom.navItems) {
+  navDom.navItems.forEach(btn => {
+    btn.addEventListener("click", () => handleTabSwitch(btn.dataset.tab));
+  });
+}
+
+function handleTabSwitch(tabName) {
+  if (!tabName) return;
+
+  // 1. Update Buttons
+  navDom.navItems.forEach(btn => {
+    if (btn.dataset.tab === tabName) btn.classList.add("active");
+    else btn.classList.remove("active");
+  });
+
+  // 2. Hide All Views
+  if (navDom.viewPractice) navDom.viewPractice.classList.remove("active");
+  if (navDom.viewMentor) navDom.viewMentor.classList.remove("active");
+
+  // 3. Show Target View
+  if (tabName === "practice") {
+    if (navDom.viewPractice) navDom.viewPractice.classList.add("active");
+  }
+  else if (tabName === "mentor") {
+    if (navDom.viewMentor) navDom.viewMentor.classList.add("active");
+  }
+  else if (tabName === "exam") {
+    // For now, exam is inside practice view.
+    if (navDom.viewPractice) navDom.viewPractice.classList.add("active");
+    // Scroll to exam controls if needed
+    const examPanel = document.getElementById("examPanel");
+    if (examPanel && examPanel.classList.contains("hidden")) {
+      document.getElementById("toggleExamPanelBtn").click();
+    }
+    examPanel.scrollIntoView({ behavior: "smooth" });
+  }
+  else if (tabName === "analytics") {
+    // Determine context
+    if (state.userRole === "trainer") {
+      if (navDom.viewMentor) navDom.viewMentor.classList.add("active");
+      // Scroll to mentor analytics? (Weak-Topic Analytics)
+      const analyticsSection = document.querySelector("#trainerZone .panel:nth-child(2)"); // Rough guess
+      if (analyticsSection) analyticsSection.scrollIntoView({ behavior: "smooth" });
+    } else {
+      if (navDom.viewPractice) navDom.viewPractice.classList.add("active");
+      // Scroll to dashboard
+      const dashboard = document.querySelector(".dashboard");
+      if (dashboard) dashboard.scrollIntoView({ behavior: "smooth" });
+    }
+  }
+}
+
+// Override show/hide logic (Helper to be called inside startSession)
+function showNavigation() {
+  if (navDom.mainNav) navDom.mainNav.classList.remove("hidden");
+
+  if (state.userRole === "trainer") {
+    if (navDom.navMentorItem) navDom.navMentorItem.classList.remove("hidden");
+    handleTabSwitch("mentor");
+  } else {
+    // Hide mentor tab (just in case)
+    if (navDom.navMentorItem) navDom.navMentorItem.classList.add("hidden");
+    handleTabSwitch("practice");
+  }
+}
+
+// Start App (Delayed to ensure all modules loaded)
 init();
