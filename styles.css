@@ -908,8 +908,8 @@ code {
 .nav-item {
   background: transparent;
   border: none;
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.95rem;
   color: var(--muted);
   font-weight: 500;
   cursor: pointer;
@@ -918,15 +918,18 @@ code {
 }
 
 .nav-item:hover {
-  background: #f8fafc;
-  color: var(--ink);
+  background: #e0f2fe;
+  /* Light Sky Blue Tint */
+  color: var(--blue-deep);
 }
 
 .nav-item.active {
-  background: var(--surface-active);
-  color: var(--primary);
+  background: var(--accent);
+  /* Teal Block */
+  color: #ffffff;
   font-weight: 600;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 4px rgba(15, 118, 110, 0.3);
+  transform: translateY(-1px);
 }
 
 /* Hide sections when not active */
