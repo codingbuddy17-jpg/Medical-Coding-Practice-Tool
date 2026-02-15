@@ -1289,23 +1289,22 @@ function finishExam(reason) {
   // Clean up UI behind modal
   dom.flashcard.classList.add("blurred");
   dom.examPanel.classList.add("hidden");
-}
-state.exam.remainingSeconds = 0;
-state.exam.answered = 0;
-state.exam.correct = 0;
-state.exam.wrong = 0;
-state.exam.passThreshold = state.examConfig.passThreshold;
-state.exam.strictTiming = state.examConfig.strictTiming;
-state.exam.blueprintName = "";
-state.currentCardIndex = 0;
-state.awaitingNext = false;
+  state.exam.remainingSeconds = 0;
+  state.exam.answered = 0;
+  state.exam.correct = 0;
+  state.exam.wrong = 0;
+  state.exam.passThreshold = state.examConfig.passThreshold;
+  state.exam.strictTiming = state.examConfig.strictTiming;
+  state.exam.blueprintName = "";
+  state.currentCardIndex = 0;
+  state.awaitingNext = false;
 
-updateExamStatusUI();
-dom.flashcard.classList.remove("paused-hidden"); // Ensure visibility
-const overlay = document.querySelector(".paused-overlay");
-if (overlay) overlay.remove();
+  updateExamStatusUI();
+  dom.flashcard.classList.remove("paused-hidden"); // Ensure visibility
+  const overlay = document.querySelector(".paused-overlay");
+  if (overlay) overlay.remove();
 
-renderCard();
+  renderCard();
 }
 
 function togglePauseExam() {
