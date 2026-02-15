@@ -1409,8 +1409,10 @@ function applyBlueprintConfig(template, override = null) {
   state.examConfig.passThreshold = Math.min(100, Math.max(1, Number(source.passThreshold || template.passThreshold || 80)));
   state.examConfig.strictTiming = source.strictTiming !== false;
 
-  dom.examQuestionCount.value = String(state.examConfig.questionCount);
-  dom.examDuration.value = String(state.examConfig.durationMinutes);
+  // Set values (ensure they match available options, or default to nearest)
+  if (dom.examQuestionCount) dom.examQuestionCount.value = String(state.examConfig.questionCount);
+  if (dom.examDuration) dom.examDuration.value = String(state.examConfig.durationMinutes);
+  dom.examPassThreshold.value = String(state.examConfig.passThreshold);
   dom.examPassThreshold.value = String(state.examConfig.passThreshold);
   dom.examStrictTiming.checked = state.examConfig.strictTiming;
   dom.examBlueprintSelect.value = template.id || "";
