@@ -178,8 +178,12 @@ const dom = {
   examTrialContactBtn: document.getElementById("examTrialContactBtn"),
   startExamBtn: document.getElementById("startExamBtn"),
   stopExamBtn: document.getElementById("stopExamBtn"),
+  pauseExamBtn: document.getElementById("pauseExamBtn"),
   examStatus: document.getElementById("examStatus"),
   examTimer: document.getElementById("examTimer"),
+
+  examTopicSelectLabel: document.getElementById("examTopicSelectLabel"),
+  examBlueprintSelectLabel: document.getElementById("examBlueprintSelectLabel"),
 
   resourceList: document.getElementById("resourceList"),
   resourceManager: document.getElementById("resourceManager"),
