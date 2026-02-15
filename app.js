@@ -337,6 +337,7 @@ async function hardReset() {
   }
 
   localStorage.clear();
+  sessionStorage.clear();
   window.location.reload();
 }
 
@@ -1287,7 +1288,7 @@ function buildBlueprintQueue(source, template, total) {
     }
   }
 
-  return chosen.slice(0, total);
+  return shuffledCopy(chosen.slice(0, total));
 }
 
 function startExam() {
@@ -1427,7 +1428,7 @@ function recordCategoryAndCardStats(card, isCorrect) {
 }
 
 async function apiRequest(path, method = "GET", payload = null) {
-  const options = { method, headers: {} };
+  const options = { method, headers: {}, cache: "no-store" };
   if (payload) {
     options.headers["Content-Type"] = "application/json";
     options.body = JSON.stringify(payload);
@@ -1453,6 +1454,7 @@ async function loadDeckFromCloud() {
     if (!questions.length) return false;
     state.deck = hydrateCards(questions);
     resetStudyOrder();
+    saveLocal();
     return true;
   } catch {
     return false;
