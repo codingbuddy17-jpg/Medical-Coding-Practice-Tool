@@ -3844,6 +3844,9 @@ function bindEvents() {
 
 async function init() {
   loadLocal();
+  bindEvents(); // Bind listeners immediately so buttons work even if data loads slowly
+
+  state.session.isActive = false;
   state.session.isActive = false;
   state.trainerKeyVerified = false;
   await loadPublicAccessConfig();
@@ -3892,7 +3895,9 @@ async function init() {
   setAwaitingNext(false);
   renderCard();
   setAwaitingNext(false);
-  bindEvents();
+  renderCard();
+  setAwaitingNext(false);
+  // bindEvents(); // Moved to top
 }
 
 // Ensure DOM is ready before init
@@ -4065,6 +4070,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Start App
   if (typeof init === "function") {
-    init().catch(err => console.error("App init failed:", err));
+    init().catch(err => {
+      console.error("App init failed:", err);
+      alert(`App initialization error: ${err.message}`);
+    });
   }
 });
