@@ -3702,85 +3702,89 @@ function bindEvents() {
     removeResource(Number(btn.dataset.removeResource));
   });
 
-  dom.importFileBtn.addEventListener("click", importCsvFile);
-  dom.importBtn.addEventListener("click", importCsv);
-  dom.confirmImportBtn.addEventListener("click", confirmImportFromPreview);
-  dom.cancelImportPreviewBtn.addEventListener("click", () => {
+  if (dom.importFileBtn) dom.importFileBtn.addEventListener("click", importCsvFile);
+  if (dom.importBtn) dom.importBtn.addEventListener("click", importCsv);
+  if (dom.confirmImportBtn) dom.confirmImportBtn.addEventListener("click", confirmImportFromPreview);
+  if (dom.cancelImportPreviewBtn) dom.cancelImportPreviewBtn.addEventListener("click", () => {
     clearImportPreview();
     setStatus(dom.importStatus, "Import preview cleared.");
   });
+
   if (dom.refreshImportReviewBtn) dom.refreshImportReviewBtn.addEventListener("click", loadImportReviewQueue);
   if (dom.resolveAllImportReviewBtn) dom.resolveAllImportReviewBtn.addEventListener("click", resolveAllImportReviewItems);
   if (dom.exportImportReviewBtn) dom.exportImportReviewBtn.addEventListener("click", exportImportReviewQueueCsv);
   if (dom.importReviewStatusFilter) dom.importReviewStatusFilter.addEventListener("change", loadImportReviewQueue);
-  dom.importReviewBody.addEventListener("click", (event) => {
+  if (dom.importReviewBody) dom.importReviewBody.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-import-review-action][data-import-review-id]");
     if (!button) return;
     handleImportReviewAction(button.dataset.importReviewAction, button.dataset.importReviewId);
   });
-  dom.refreshImportBatchesBtn.addEventListener("click", loadImportBatches);
-  dom.rollbackBatchBtn.addEventListener("click", rollbackImportBatch);
-  dom.loadStarterBtn.addEventListener("click", loadStarterDeck);
-  dom.exportBtn.addEventListener("click", exportCsv);
-  dom.refreshSessionsBtn.addEventListener("click", loadSessions);
-  dom.exportSessionsBtn.addEventListener("click", exportSessionsCsv);
-  dom.sessionSearchInput.addEventListener("input", renderSessionConsoleTable);
-  dom.sessionRoleFilter.addEventListener("change", renderSessionConsoleTable);
-  dom.refreshFlagsBtn.addEventListener("click", loadFlagQueue);
-  dom.flagStatusFilter.addEventListener("change", loadFlagQueue);
-  dom.flagQueueBody.addEventListener("click", (event) => {
+
+  if (dom.refreshImportBatchesBtn) dom.refreshImportBatchesBtn.addEventListener("click", loadImportBatches);
+  if (dom.rollbackBatchBtn) dom.rollbackBatchBtn.addEventListener("click", rollbackImportBatch);
+  if (dom.loadStarterBtn) dom.loadStarterBtn.addEventListener("click", loadStarterDeck);
+  if (dom.exportBtn) dom.exportBtn.addEventListener("click", exportCsv);
+  if (dom.refreshSessionsBtn) dom.refreshSessionsBtn.addEventListener("click", loadSessions);
+  if (dom.exportSessionsBtn) dom.exportSessionsBtn.addEventListener("click", exportSessionsCsv);
+  if (dom.sessionSearchInput) dom.sessionSearchInput.addEventListener("input", renderSessionConsoleTable);
+  if (dom.sessionRoleFilter) dom.sessionRoleFilter.addEventListener("change", renderSessionConsoleTable);
+  if (dom.refreshFlagsBtn) dom.refreshFlagsBtn.addEventListener("click", loadFlagQueue);
+  if (dom.flagStatusFilter) dom.flagStatusFilter.addEventListener("change", loadFlagQueue);
+  if (dom.flagQueueBody) dom.flagQueueBody.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-flag-action][data-flag-id]");
     if (!button) return;
     const action = button.dataset.flagAction;
     const flagId = button.dataset.flagId;
     handleFlagQueueAction(action, flagId);
   });
-  dom.verifyAdminBtn.addEventListener("click", verifyAdmin);
-  dom.loadAdminDataBtn.addEventListener("click", loadAdminData);
-  dom.clearCacheBtn.addEventListener("click", hardReset);
-  dom.saveAccessConfigBtn.addEventListener("click", saveAccessConfig);
-  dom.createCohortBtn.addEventListener("click", createCohortFromForm);
-  dom.updateCohortBtn.addEventListener("click", updateSelectedCohortFromForm);
-  dom.refreshCohortsBtn.addEventListener("click", loadAdminData);
-  dom.enrollMemberBtn.addEventListener("click", enrollSelectedCohortMember);
-  dom.cohortSelect.addEventListener("change", syncCohortFormFromSelection);
-  dom.blueprintTemplateSelect.addEventListener("change", onBlueprintTemplateSelectionChange);
-  dom.refreshBlueprintsBtn.addEventListener("click", loadBlueprintTemplates);
-  dom.assignBlueprintBtn.addEventListener("click", assignBlueprintToCohort);
-  dom.loadUserAnalyticsBtn.addEventListener("click", loadUserAnalytics);
-  dom.loadBatchAnalyticsBtn.addEventListener("click", loadBatchAnalytics);
-  dom.loadDrillRecommendationsBtn.addEventListener("click", loadDrillRecommendations);
-  dom.shareTrendEmailBtn.addEventListener("click", shareTrendByEmail);
-  dom.exportReportBtn.addEventListener("click", exportPdfReport);
-  dom.unlockAccessBtn.addEventListener("click", () => {
+
+  if (dom.verifyAdminBtn) dom.verifyAdminBtn.addEventListener("click", verifyAdmin);
+  if (dom.loadAdminDataBtn) dom.loadAdminDataBtn.addEventListener("click", loadAdminData);
+  if (dom.clearCacheBtn) dom.clearCacheBtn.addEventListener("click", hardReset);
+  if (dom.saveAccessConfigBtn) dom.saveAccessConfigBtn.addEventListener("click", saveAccessConfig);
+  if (dom.createCohortBtn) dom.createCohortBtn.addEventListener("click", createCohortFromForm);
+  if (dom.updateCohortBtn) dom.updateCohortBtn.addEventListener("click", updateSelectedCohortFromForm);
+  if (dom.refreshCohortsBtn) dom.refreshCohortsBtn.addEventListener("click", loadAdminData);
+  if (dom.enrollMemberBtn) dom.enrollMemberBtn.addEventListener("click", enrollSelectedCohortMember);
+  if (dom.cohortSelect) dom.cohortSelect.addEventListener("change", syncCohortFormFromSelection);
+  if (dom.blueprintTemplateSelect) dom.blueprintTemplateSelect.addEventListener("change", onBlueprintTemplateSelectionChange);
+  if (dom.refreshBlueprintsBtn) dom.refreshBlueprintsBtn.addEventListener("click", loadBlueprintTemplates);
+  if (dom.assignBlueprintBtn) dom.assignBlueprintBtn.addEventListener("click", assignBlueprintToCohort);
+  if (dom.loadUserAnalyticsBtn) dom.loadUserAnalyticsBtn.addEventListener("click", loadUserAnalytics);
+  if (dom.loadBatchAnalyticsBtn) dom.loadBatchAnalyticsBtn.addEventListener("click", loadBatchAnalytics);
+  if (dom.loadDrillRecommendationsBtn) dom.loadDrillRecommendationsBtn.addEventListener("click", loadDrillRecommendations);
+  if (dom.shareTrendEmailBtn) dom.shareTrendEmailBtn.addEventListener("click", shareTrendByEmail);
+  if (dom.exportReportBtn) dom.exportReportBtn.addEventListener("click", exportPdfReport);
+
+  if (dom.unlockAccessBtn) dom.unlockAccessBtn.addEventListener("click", () => {
     openWhatsAppCta(
       "Hello, I have completed the trial and would like to request full access to the complete training program.",
       "cta_unlock_full_access_click"
     );
   });
-  dom.whatsappUpgradeBtn.addEventListener("click", () => {
+  if (dom.whatsappUpgradeBtn) dom.whatsappUpgradeBtn.addEventListener("click", () => {
     openWhatsAppCta(
       "Hello, I have completed the trial and would like to request full access to the complete training program.",
       "cta_whatsapp_click"
     );
   });
-  dom.callUpgradeBtn.addEventListener("click", openPhoneCta);
-  dom.demoClassBtn.addEventListener("click", () => {
+  if (dom.callUpgradeBtn) dom.callUpgradeBtn.addEventListener("click", openPhoneCta);
+  if (dom.demoClassBtn) dom.demoClassBtn.addEventListener("click", () => {
     openWhatsAppCta(
       "Hello, I would like to attend the free live demo class. Please share available slots and registration details.",
       "cta_demo_class_click"
     );
   });
-  dom.brochureBtn.addEventListener("click", openBrochureCta);
-  dom.syllabusBtn.addEventListener("click", openSyllabusCta);
-  dom.counselingForm.addEventListener("submit", submitCounselingForm);
-  dom.trialInfoWhatsappBtn.addEventListener("click", () => {
+  if (dom.brochureBtn) dom.brochureBtn.addEventListener("click", openBrochureCta);
+  if (dom.syllabusBtn) dom.syllabusBtn.addEventListener("click", openSyllabusCta);
+  if (dom.counselingForm) dom.counselingForm.addEventListener("submit", submitCounselingForm);
+  if (dom.trialInfoWhatsappBtn) dom.trialInfoWhatsappBtn.addEventListener("click", () => {
     openWhatsAppCta(
       "Hello, I am using the trial version and would like to upgrade to full access.",
       "cta_trial_banner_whatsapp_click"
     );
   });
-  dom.landingStartTrialBtn.addEventListener("click", () => {
+  if (dom.landingStartTrialBtn) dom.landingStartTrialBtn.addEventListener("click", () => {
     dom.roleSelect.value = "trial";
     state.role = "trial";
     updateRoleUI();
@@ -3788,13 +3792,13 @@ function bindEvents() {
     trackCtaEvent("landing_start_trial_click");
     dom.userName.focus();
   });
-  dom.landingFullAccessBtn.addEventListener("click", () => {
+  if (dom.landingFullAccessBtn) dom.landingFullAccessBtn.addEventListener("click", () => {
     openWhatsAppCta(
       "Hello, I would like to unlock full access to PracticeBuddy Lab for complete training and assessments.",
       "cta_landing_full_access_click"
     );
   });
-  dom.examTrialContactBtn.addEventListener("click", () => {
+  if (dom.examTrialContactBtn) dom.examTrialContactBtn.addEventListener("click", () => {
     openWhatsAppCta(
       "Hello, I am on trial mode and would like trainee access to enable Mock Exam Practice Mode.",
       "cta_timed_exam_trial_click"
