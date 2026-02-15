@@ -1289,8 +1289,6 @@ function cacheDOM() {
       // Quick helper to catch the resume click from overlay
       document.addEventListener('resume-exam-trigger', togglePauseExam, { once: true });
     } else {
-      clearExamTimer();
-    } else {
       startExamTimer();
       dom.pauseExamBtn.textContent = "Pause";
       const overlay = document.querySelector(".paused-overlay");
