@@ -1396,6 +1396,8 @@ function applyBlueprintConfig(template, override = null) {
 }
 
 function syncExamControlLock() {
+  if (state.exam.inProgress) return; // Do not unlock if exam is running!
+
   const locked = state.role === "trainee" && Boolean(state.blueprints.assigned);
   dom.examBlueprintSelect.disabled = locked;
   dom.examQuestionCount.disabled = locked;
@@ -1834,90 +1836,98 @@ async function logAnswer(payload) {
 }
 
 async function validateCurrentAnswer() {
-  if (!state.session.isActive) {
-    setStatus(dom.feedback, "Start a session first.", "error");
-    return;
-  }
+  if (state.processingAnswer) return; // Prevent double-submit
+  state.processingAnswer = true;
 
-  if (hasSessionLimitReached()) {
-    updateTrialLockUI();
-    setStatus(dom.feedback, `Question limit reached. ${trialUpgradeMessage()}`, "error");
-    return;
-  }
-
-  if (state.awaitingNext) {
-    setStatus(dom.feedback, "Click Next to move to the next question.");
-    return;
-  }
-
-  const card = currentCard();
-  if (!card) {
-    setStatus(dom.feedback, "No card available in selected category.", "error");
-    return;
-  }
-
-  let responseValue = "";
-  if (card.type === "mcq") {
-    responseValue = state.selectedMcqOption;
-    if (!responseValue) {
-      setStatus(dom.feedback, "Select an option before checking.", "error");
+  try {
+    if (!state.session.isActive) {
+      setStatus(dom.feedback, "Start a session first.", "error");
       return;
     }
-  } else {
-    responseValue = dom.userAnswer.value.trim();
-    if (!responseValue) {
-      setStatus(dom.feedback, "Enter an answer before checking.", "error");
+
+    if (hasSessionLimitReached()) {
+      updateTrialLockUI();
+      setStatus(dom.feedback, `Question limit reached. ${trialUpgradeMessage()}`, "error");
       return;
     }
-  }
 
-  const result = checkAnswer(responseValue, card.answer, card);
-  state.session.attempted += 1;
+    if (state.awaitingNext) {
+      setStatus(dom.feedback, "Click Next to move to the next question.");
+      return;
+    }
 
-  if (state.exam.inProgress) {
-    // EXAM MODE: Silent Check (No Feedback, Auto-advance)
-    state.exam.answered += 1;
-    if (result.isCorrect) {
-      state.exam.correct += 1;
+    const card = currentCard();
+    if (!card) {
+      setStatus(dom.feedback, "No card available in selected category.", "error");
+      return;
+    }
+
+    let responseValue = "";
+    if (card.type === "mcq") {
+      responseValue = state.selectedMcqOption;
+      if (!responseValue) {
+        setStatus(dom.feedback, "Select an option before checking.", "error");
+        return;
+      }
     } else {
-      state.exam.wrong += 1;
+      responseValue = dom.userAnswer.value.trim();
+      if (!responseValue) {
+        setStatus(dom.feedback, "Enter an answer before checking.", "error");
+        return;
+      }
     }
-    // Update generic session stats too, but silently
-    if (result.isCorrect) state.session.correct += 1;
-    else state.session.wrong += 1;
+
+    const result = checkAnswer(responseValue, card.answer, card);
+    state.session.attempted += 1;
+
+    if (state.exam.inProgress) {
+      // EXAM MODE: Silent Check (No Feedback, Auto-advance)
+      state.exam.answered += 1;
+      if (result.isCorrect) {
+        state.exam.correct += 1;
+      } else {
+        state.exam.wrong += 1;
+      }
+      // Update generic session stats too, but silently
+      if (result.isCorrect) state.session.correct += 1;
+      else state.session.wrong += 1;
+
+      recordCategoryAndCardStats(card, result.isCorrect);
+
+      // Auto-advance immediately
+      state.awaitingNext = true; // Required for nextQuestion() to proceed
+      nextQuestion();
+      return;
+    }
+
+    // PRACTICE MODE: Visual Feedback
+    if (result.isCorrect) {
+      state.session.correct += 1;
+      setStatus(dom.feedback, `Correct. Expected: ${result.primaryAnswer}`, "success");
+    } else {
+      state.session.wrong += 1;
+      setStatus(dom.feedback, `Not correct. Expected: ${result.primaryAnswer}`, "error");
+    }
 
     recordCategoryAndCardStats(card, result.isCorrect);
+    updateMetrics();
+    renderCategoryScorecards();
 
-    // Auto-advance immediately
-    state.awaitingNext = true; // Required for nextQuestion() to proceed
-    nextQuestion();
-    return;
+    await logAnswer({
+      sessionId: state.session.id,
+      cardTag: card.tag,
+      question: card.question,
+      expectedAnswer: result.primaryAnswer,
+      acceptedAnswers: result.acceptedAnswers,
+      userAnswer: responseValue,
+      isCorrect: result.isCorrect,
+      at: Date.now()
+    });
+    setAwaitingNext(true);
+
+  } finally {
+    state.processingAnswer = false;
   }
-
-  // PRACTICE MODE: Visual Feedback
-  if (result.isCorrect) {
-    state.session.correct += 1;
-    setStatus(dom.feedback, `Correct. Expected: ${result.primaryAnswer}`, "success");
-  } else {
-    state.session.wrong += 1;
-    setStatus(dom.feedback, `Not correct. Expected: ${result.primaryAnswer}`, "error");
-  }
-
-  recordCategoryAndCardStats(card, result.isCorrect);
-  updateMetrics();
-  renderCategoryScorecards();
-
-  await logAnswer({
-    sessionId: state.session.id,
-    cardTag: card.tag,
-    question: card.question,
-    expectedAnswer: result.primaryAnswer,
-    acceptedAnswers: result.acceptedAnswers,
-    userAnswer: responseValue,
-    isCorrect: result.isCorrect,
-    at: Date.now()
-  });
-  setAwaitingNext(true);
 }
 
 function nextQuestion() {
