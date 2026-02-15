@@ -154,6 +154,9 @@ const dom = {
   endSessionBtn: document.getElementById("endSessionBtn"),
   sessionStatus: document.getElementById("sessionStatus"),
 
+  topbarSessionSummary: document.getElementById("topbarSessionSummary"),
+  topbarSessionActions: document.getElementById("topbarSessionActions"),
+  metricScoreCard: document.getElementById("metricScoreCard"),
   correctCount: document.getElementById("correctCount"),
   wrongCount: document.getElementById("wrongCount"),
   attemptedCount: document.getElementById("attemptedCount"),
@@ -307,7 +310,11 @@ const dom = {
   analyticsScore: document.getElementById("analyticsScore"),
   analyticsRecommendedTags: document.getElementById("analyticsRecommendedTags"),
   analyticsTagBody: document.getElementById("analyticsTagBody"),
-  analyticsTrendBody: document.getElementById("analyticsTrendBody")
+  analyticsTrendBody: document.getElementById("analyticsTrendBody"),
+  adminActiveIndicator: document.getElementById("adminActiveIndicator"),
+  importReviewOpenCount: document.getElementById("importReviewOpenCount"),
+  flagQueueOpenCount: document.getElementById("flagQueueOpenCount"),
+  sessionConsoleSummary: document.getElementById("sessionConsoleSummary")
 };
 
 function uid(prefix) {
@@ -948,6 +955,7 @@ function updateRoleUI() {
     state.trainerKeyVerified = false;
     state.adminPanel.verified = false;
     dom.adminTools.classList.add("hidden");
+    if (dom.adminActiveIndicator) dom.adminActiveIndicator.classList.add("hidden");
     setStatus(dom.adminStatus, "");
   }
   dom.examTrialContactWrap.classList.add("hidden");
@@ -978,6 +986,21 @@ function updateSessionIdentityLock() {
   dom.traineeCode.disabled = locked;
   dom.trainerKey.disabled = locked;
   dom.startBtn.disabled = locked;
+
+  if (dom.topbarSessionSummary && dom.topbarSessionActions) {
+    if (state.session.isActive) {
+      const name = state.userName || "Session";
+      const attempted = state.session.attempted || 0;
+      const score = attempted ? Math.round((state.session.correct / attempted) * 100) : 0;
+      dom.topbarSessionSummary.textContent = `${name} · ${score}%`;
+      dom.topbarSessionSummary.classList.remove("hidden");
+      dom.topbarSessionActions.classList.remove("hidden");
+    } else {
+      dom.topbarSessionSummary.textContent = "";
+      dom.topbarSessionSummary.classList.add("hidden");
+      dom.topbarSessionActions.classList.add("hidden");
+    }
+  }
 }
 
 function updateMetrics() {
@@ -988,6 +1011,20 @@ function updateMetrics() {
   dom.wrongCount.textContent = String(wrong);
   dom.attemptedCount.textContent = String(attempted);
   dom.sessionScore.textContent = `${score}%`;
+
+  if (dom.metricScoreCard) {
+    dom.metricScoreCard.classList.remove("score-high", "score-mid", "score-low");
+    if (attempted > 0) {
+      if (score >= 80) dom.metricScoreCard.classList.add("score-high");
+      else if (score >= 50) dom.metricScoreCard.classList.add("score-mid");
+      else dom.metricScoreCard.classList.add("score-low");
+    }
+  }
+
+  if (dom.topbarSessionSummary && state.session.isActive) {
+    const name = state.userName || "Session";
+    dom.topbarSessionSummary.textContent = `${name} · ${score}%`;
+  }
 }
 
 function updateExamStatusUI() {
@@ -2261,8 +2298,13 @@ async function loadImportReviewQueue() {
     state.importAdmin.reviewItems = Array.isArray(data.items) ? data.items : [];
     renderImportReviewQueue();
     setStatus(dom.importReviewStatus, `Loaded ${state.importAdmin.reviewItems.length} review items.`, "success");
+    const openCount = state.importAdmin.reviewItems.filter((i) => String(i.status || "").toLowerCase() === "open").length;
+    if (dom.importReviewOpenCount) {
+      dom.importReviewOpenCount.textContent = openCount > 0 ? String(openCount) : "";
+    }
   } catch (err) {
     setStatus(dom.importReviewStatus, `Could not load import review queue: ${err.message}`, "error");
+    if (dom.importReviewOpenCount) dom.importReviewOpenCount.textContent = "";
   }
 }
 
@@ -2510,8 +2552,10 @@ async function loadSessions() {
     state.sessionConsole.all = Array.isArray(data.sessions) ? data.sessions : [];
     renderSessionConsoleTable();
     setStatus(dom.sessionLoadStatus, `Loaded ${state.sessionConsole.all.length} sessions.`, "success");
+    if (dom.sessionConsoleSummary) dom.sessionConsoleSummary.textContent = state.sessionConsole.all.length > 0 ? String(state.sessionConsole.all.length) : "";
   } catch (err) {
     setStatus(dom.sessionLoadStatus, `Could not load sessions: ${err.message}`, "error");
+    if (dom.sessionConsoleSummary) dom.sessionConsoleSummary.textContent = "";
   }
 }
 
@@ -2663,8 +2707,13 @@ async function loadFlagQueue() {
     state.reviewQueue.items = Array.isArray(data.flags) ? data.flags : [];
     renderFlagQueue(state.reviewQueue.items);
     setStatus(dom.flagQueueStatus, `Loaded ${state.reviewQueue.items.length} flagged items.`, "success");
+    const openCount = state.reviewQueue.items.filter((i) => String(i.status || "").toLowerCase() === "open").length;
+    if (dom.flagQueueOpenCount) {
+      dom.flagQueueOpenCount.textContent = openCount > 0 ? String(openCount) : "";
+    }
   } catch (err) {
     setStatus(dom.flagQueueStatus, `Could not load review queue: ${err.message}`, "error");
+    if (dom.flagQueueOpenCount) dom.flagQueueOpenCount.textContent = "";
   }
 }
 
@@ -3217,12 +3266,14 @@ async function verifyAdmin() {
     if (!data.valid) {
       state.adminPanel.verified = false;
       dom.adminTools.classList.add("hidden");
+      if (dom.adminActiveIndicator) dom.adminActiveIndicator.classList.add("hidden");
       setStatus(dom.adminStatus, "Invalid admin key.", "error");
       return;
     }
     state.adminPanel.verified = true;
     state.adminKey = adminKey;
     dom.adminTools.classList.remove("hidden");
+    if (dom.adminActiveIndicator) dom.adminActiveIndicator.classList.remove("hidden");
     setStatus(dom.adminStatus, "Admin verified.", "success");
   } catch (err) {
     setStatus(dom.adminStatus, `Admin verification failed: ${err.message}`, "error");

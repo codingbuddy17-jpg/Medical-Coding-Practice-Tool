@@ -67,10 +67,25 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 1rem;
   padding: 0.15rem 0.1rem 0.35rem;
   border-bottom: 1px solid #dbe6f2;
   margin-bottom: 0.45rem;
+}
+
+.topbar-session-summary {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.topbar-session-summary:not(.hidden) {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.topbar-session-actions.hidden {
+  display: none;
 }
 
 .eyebrow {
@@ -224,9 +239,84 @@ h4 {
   font-size: 1.05rem;
 }
 
+.metric-score strong {
+  font-size: 1.35rem;
+}
+
+.metric-score.score-high strong {
+  color: var(--success);
+}
+
+.metric-score.score-mid strong {
+  color: #b45309;
+}
+
+.metric-score.score-low strong {
+  color: var(--danger);
+}
+
 .metric-label {
   font-size: 0.8rem;
   color: var(--muted);
+}
+
+.panel-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-left: 0.35rem;
+}
+
+.panel-badge:not(:empty)::before {
+  content: "(";
+}
+
+.panel-badge:not(:empty)::after {
+  content: " open)";
+}
+
+.panel-badge-sessions:not(:empty)::after {
+  content: " sessions)";
+}
+
+.admin-active-badge:not(.hidden) {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--success);
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  background: #dcfce7;
+  border: 1px solid var(--success);
+}
+
+.danger-zone {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(180, 35, 24, 0.35);
+  border-radius: 10px;
+  background: #fef2f2;
+}
+
+.danger-zone-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--danger);
+  margin: 0 0 0.4rem 0;
+}
+
+.danger-btn {
+  color: var(--danger) !important;
+  border-color: var(--danger) !important;
+}
+
+.danger-btn:hover {
+  background: #fef2f2 !important;
 }
 
 .panel {
@@ -238,6 +328,24 @@ h4 {
 
 .auth {
   margin-top: 0.65rem;
+}
+
+.auth-hint {
+  margin-bottom: 0.5rem;
+}
+
+.auth-group {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.auth-group-legend {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 0 0.35rem;
 }
 
 .auth-grid {

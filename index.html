@@ -28,7 +28,8 @@
           <p class="status">360° From Learning to Leadership in Medical Coding</p>
         </div>
       </div>
-      <div class="panel-actions">
+      <span id="topbarSessionSummary" class="topbar-session-summary hidden" aria-live="polite"></span>
+      <div id="topbarSessionActions" class="panel-actions topbar-session-actions hidden">
         <button id="exportReportBtn" class="ghost-btn" type="button">Export PDF Report</button>
         <button id="endSessionBtn" class="ghost-btn" type="button">End Session</button>
       </div>
@@ -66,36 +67,45 @@
 
     <section class="auth panel" id="authPanel">
       <h2>Start Session</h2>
-      <div class="auth-grid">
-        <label>
-          Name
-          <input id="userName" type="text" placeholder="Learner name" />
-        </label>
-        <label>
-          Email
-          <input id="userEmail" type="email" placeholder="name@email.com" />
-        </label>
-        <label>
-          Phone
-          <input id="userPhone" type="text" placeholder="+91 xxxxxxxxxx" />
-        </label>
-        <label>
-          Role
-          <select id="roleSelect">
-            <option value="trial">Trial Access</option>
-            <option value="trainee">Learner Access</option>
-            <option value="trainer">Mentor Console</option>
-          </select>
-        </label>
-        <label id="traineeCodeWrap" class="hidden">
-          Learner Access Code
-          <input id="traineeCode" type="password" placeholder="Enter access code" />
-        </label>
-        <label id="trainerKeyWrap" class="hidden">
-          Mentor Key
-          <input id="trainerKey" type="password" placeholder="Enter trainer key" />
-        </label>
-      </div>
+      <p class="status auth-hint">Enter your details and choose how you want to access the lab.</p>
+      <fieldset class="auth-group">
+        <legend class="auth-group-legend">Your details</legend>
+        <div class="auth-grid">
+          <label>
+            Name
+            <input id="userName" type="text" placeholder="Learner name" />
+          </label>
+          <label>
+            Email
+            <input id="userEmail" type="email" placeholder="name@email.com" />
+          </label>
+          <label>
+            Phone
+            <input id="userPhone" type="text" placeholder="+91 xxxxxxxxxx" />
+          </label>
+        </div>
+      </fieldset>
+      <fieldset class="auth-group">
+        <legend class="auth-group-legend">Access</legend>
+        <div class="auth-grid">
+          <label>
+            Role
+            <select id="roleSelect">
+              <option value="trial">Trial Access</option>
+              <option value="trainee">Learner Access</option>
+              <option value="trainer">Mentor Console</option>
+            </select>
+          </label>
+          <label id="traineeCodeWrap" class="hidden">
+            Learner Access Code
+            <input id="traineeCode" type="password" placeholder="Enter access code" />
+          </label>
+          <label id="trainerKeyWrap" class="hidden">
+            Mentor Key
+            <input id="trainerKey" type="password" placeholder="Enter trainer key" />
+          </label>
+        </div>
+      </fieldset>
       <div class="panel-actions">
         <button id="startBtn" class="primary-btn" type="button">Start</button>
       </div>
@@ -103,6 +113,10 @@
     </section>
 
     <section class="dashboard" aria-label="Session analytics">
+      <div class="metric metric-score" id="metricScoreCard">
+        <span class="metric-label">Session Score</span>
+        <strong id="sessionScore">0%</strong>
+      </div>
       <div class="metric">
         <span class="metric-label">Correct Answers</span>
         <strong id="correctCount">0</strong>
@@ -114,10 +128,6 @@
       <div class="metric">
         <span class="metric-label">Attempted</span>
         <strong id="attemptedCount">0</strong>
-      </div>
-      <div class="metric">
-        <span class="metric-label">Session Score</span>
-        <strong id="sessionScore">0%</strong>
       </div>
     </section>
 
@@ -224,8 +234,7 @@
             <p id="trialLockNotice" class="status hidden"></p>
           </div>
           <div id="trialInfoBanner" class="trial-info hidden">
-            <p class="status">You are using the Trial Version. For full access to complete question bank and exam
-              features, contact us.</p>
+            <p class="status">You are using the Trial Version. <strong>Unlock full bank + exam mode.</strong> For full access, contact us.</p>
             <button id="trialInfoWhatsappBtn" class="ghost-btn cta-secondary" type="button">Contact On WhatsApp</button>
           </div>
         </section>
@@ -296,6 +305,75 @@
 
     <section class="panel-row" id="trainerZone">
       <section class="panel">
+        <h3>Mentor Session Console <span id="sessionConsoleSummary" class="panel-badge panel-badge-sessions" aria-live="polite"></span></h3>
+        <div class="panel-actions">
+          <input id="sessionSearchInput" type="text" placeholder="Search learner" />
+          <select id="sessionRoleFilter">
+            <option value="">All Access Types</option>
+            <option value="trial">Trial Access</option>
+            <option value="trainee">Learner Access</option>
+            <option value="trainer">Mentor Console</option>
+          </select>
+          <button id="refreshSessionsBtn" class="ghost-btn" type="button">Refresh Sessions</button>
+          <button id="exportSessionsBtn" class="ghost-btn" type="button">Export Sessions CSV</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Access Type</th>
+                <th>Attempted</th>
+                <th>Correct</th>
+                <th>Wrong</th>
+                <th>Score</th>
+                <th>Started</th>
+              </tr>
+            </thead>
+            <tbody id="sessionTableBody">
+              <tr>
+                <td colspan="7">No sessions loaded.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p id="sessionLoadStatus" class="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel">
+        <h3>Question Review Queue <span id="flagQueueOpenCount" class="panel-badge" aria-live="polite"></span></h3>
+        <div class="panel-actions">
+          <select id="flagStatusFilter">
+            <option value="open">Open</option>
+            <option value="">All</option>
+            <option value="resolved">Resolved</option>
+            <option value="replaced">Replaced</option>
+          </select>
+          <button id="refreshFlagsBtn" class="ghost-btn" type="button">Refresh Queue</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tag</th>
+                <th>Question</th>
+                <th>Raised By</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="flagQueueBody">
+              <tr>
+                <td colspan="6">No flagged questions loaded.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p id="flagQueueStatus" class="status"></p>
+      </section>
+
+      <section class="panel">
         <h3>Mentor Deck Manager</h3>
         <p>CSV/XLSX headers (order can vary):
           <code>tag/tags,type,question,answer,rationale,option_a,option_b,option_c,option_d,correct_option</code>.</p>
@@ -307,8 +385,8 @@
         <textarea id="csvInput" rows="7"
           placeholder="tag,question,answer&#10;ICD-10-CM,Type 2 diabetes mellitus without complications,E11.9"></textarea>
         <div class="panel-actions">
-          <button id="importFileBtn" class="primary-btn" type="button">Import CSV File</button>
-          <button id="importBtn" class="primary-btn" type="button">Import CSV</button>
+          <button id="importFileBtn" class="primary-btn" type="button">Upload file</button>
+          <button id="importBtn" class="ghost-btn" type="button">Paste & import</button>
           <button id="loadStarterBtn" class="ghost-btn" type="button">Load Starter Deck</button>
           <button id="exportBtn" class="ghost-btn" type="button">Export Deck</button>
         </div>
@@ -342,7 +420,7 @@
       </section>
 
       <section class="panel">
-        <h3>Import Quality Queue</h3>
+        <h3>Import Quality Queue <span id="importReviewOpenCount" class="panel-badge" aria-live="polite"></span></h3>
         <div class="panel-actions">
           <select id="importReviewStatusFilter">
             <option value="open">Open</option>
@@ -379,7 +457,7 @@
         <div class="panel-actions">
           <button id="refreshImportBatchesBtn" class="ghost-btn" type="button">Refresh Batches</button>
           <input id="rollbackBatchIdInput" type="text" placeholder="Enter batch ID for rollback" />
-          <button id="rollbackBatchBtn" class="ghost-btn" type="button">Rollback Batch</button>
+          <button id="rollbackBatchBtn" class="ghost-btn danger-btn" type="button">Rollback Batch</button>
         </div>
         <div class="table-wrap">
           <table>
@@ -404,76 +482,97 @@
       </section>
 
       <section class="panel">
-        <h3>Mentor Session Console</h3>
+        <h3>Weak-Topic Analytics</h3>
+        <div class="auth-grid">
+          <label>
+            User Email
+            <input id="analyticsUserEmail" type="email" placeholder="trainee@email.com" />
+          </label>
+          <label>
+            Cohort
+            <select id="analyticsCohortSelect">
+              <option value="">Select cohort</option>
+            </select>
+          </label>
+          <label>
+            Time Window
+            <select id="analyticsDays">
+              <option value="7">Last 7 days</option>
+              <option value="14">Last 14 days</option>
+              <option value="30" selected>Last 30 days</option>
+              <option value="60">Last 60 days</option>
+            </select>
+          </label>
+        </div>
         <div class="panel-actions">
-          <input id="sessionSearchInput" type="text" placeholder="Search learner" />
-          <select id="sessionRoleFilter">
-            <option value="">All Access Types</option>
-            <option value="trial">Trial Access</option>
-            <option value="trainee">Learner Access</option>
-            <option value="trainer">Mentor Console</option>
-          </select>
-          <button id="refreshSessionsBtn" class="ghost-btn" type="button">Refresh Sessions</button>
-          <button id="exportSessionsBtn" class="ghost-btn" type="button">Export Sessions CSV</button>
+          <button id="loadUserAnalyticsBtn" class="primary-btn" type="button">Load User Analytics</button>
+          <button id="loadBatchAnalyticsBtn" class="ghost-btn" type="button">Load Batch Analytics</button>
+          <button id="loadDrillRecommendationsBtn" class="ghost-btn" type="button">Recommend Daily Drill</button>
+          <button id="shareTrendEmailBtn" class="ghost-btn" type="button">Share Trend by Email</button>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>User</th>
-                <th>Access Type</th>
-                <th>Attempted</th>
-                <th>Correct</th>
-                <th>Wrong</th>
-                <th>Score</th>
-                <th>Started</th>
-              </tr>
-            </thead>
-            <tbody id="sessionTableBody">
-              <tr>
-                <td colspan="7">No sessions loaded.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p id="sessionLoadStatus" class="status" aria-live="polite"></p>
-      </section>
+        <p id="analyticsStatus" class="status"></p>
+        <section class="dashboard analytics-summary">
+          <div class="metric">
+            <span class="metric-label">Analyzed Attempts</span>
+            <strong id="analyticsAttempted">0</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Correct</span>
+            <strong id="analyticsCorrect">0</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Wrong</span>
+            <strong id="analyticsWrong">0</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Overall Score</span>
+            <strong id="analyticsScore">0%</strong>
+          </div>
+        </section>
 
-      <section class="panel">
-        <h3>Question Review Queue</h3>
-        <div class="panel-actions">
-          <select id="flagStatusFilter">
-            <option value="open">Open</option>
-            <option value="">All</option>
-            <option value="resolved">Resolved</option>
-            <option value="replaced">Replaced</option>
-          </select>
-          <button id="refreshFlagsBtn" class="ghost-btn" type="button">Refresh Queue</button>
-        </div>
+        <p class="status"><strong>Recommended Tags:</strong> <span id="analyticsRecommendedTags">--</span></p>
+
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
                 <th>Tag</th>
-                <th>Question</th>
-                <th>Raised By</th>
-                <th>Reason</th>
-                <th>Status</th>
-                <th>Action</th>
+                <th>Attempted</th>
+                <th>Correct</th>
+                <th>Wrong</th>
+                <th>Accuracy</th>
               </tr>
             </thead>
-            <tbody id="flagQueueBody">
+            <tbody id="analyticsTagBody">
               <tr>
-                <td colspan="6">No flagged questions loaded.</td>
+                <td colspan="5">No analytics loaded.</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <p id="flagQueueStatus" class="status"></p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Attempted</th>
+                <th>Correct</th>
+                <th>Wrong</th>
+                <th>Accuracy</th>
+              </tr>
+            </thead>
+            <tbody id="analyticsTrendBody">
+              <tr>
+                <td colspan="5">No trend loaded.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section class="panel">
-        <h3>Access Management</h3>
+        <h3>Access Management <span id="adminActiveIndicator" class="admin-active-badge hidden" aria-live="polite">Admin active</span></h3>
         <p class="status">Use this single section to manage trainer keys, trainee access, cohort controls, and access
           lifecycle.</p>
         <div class="auth-grid">
@@ -484,11 +583,13 @@
           <div class="panel-actions">
             <button id="verifyAdminBtn" class="ghost-btn" type="button">Verify Admin</button>
             <button id="loadAdminDataBtn" class="ghost-btn" type="button">Load Admin Data</button>
-            <button id="clearCacheBtn" class="ghost-btn" type="button"
-              style="color:var(--danger); border-color:var(--danger);">Clear Cache & Reload</button>
           </div>
         </div>
         <p id="adminStatus" class="status" aria-live="polite"></p>
+        <div class="danger-zone">
+          <p class="danger-zone-label">Danger zone</p>
+          <button id="clearCacheBtn" class="ghost-btn danger-btn" type="button">Clear Cache & Reload</button>
+        </div>
 
         <div id="adminTools" class="hidden">
           <h4>Global Access Settings</h4>
@@ -640,100 +741,10 @@
           <p id="blueprintStatus" class="status"></p>
         </div>
       </section>
-
-      <section class="panel">
-        <h3>Weak-Topic Analytics</h3>
-        <div class="auth-grid">
-          <label>
-            User Email
-            <input id="analyticsUserEmail" type="email" placeholder="trainee@email.com" />
-          </label>
-          <label>
-            Cohort
-            <select id="analyticsCohortSelect">
-              <option value="">Select cohort</option>
-            </select>
-          </label>
-          <label>
-            Time Window
-            <select id="analyticsDays">
-              <option value="7">Last 7 days</option>
-              <option value="14">Last 14 days</option>
-              <option value="30" selected>Last 30 days</option>
-              <option value="60">Last 60 days</option>
-            </select>
-          </label>
-        </div>
-        <div class="panel-actions">
-          <button id="loadUserAnalyticsBtn" class="primary-btn" type="button">Load User Analytics</button>
-          <button id="loadBatchAnalyticsBtn" class="ghost-btn" type="button">Load Batch Analytics</button>
-          <button id="loadDrillRecommendationsBtn" class="ghost-btn" type="button">Recommend Daily Drill</button>
-          <button id="shareTrendEmailBtn" class="ghost-btn" type="button">Share Trend by Email</button>
-        </div>
-        <p id="analyticsStatus" class="status"></p>
-        <section class="dashboard analytics-summary">
-          <div class="metric">
-            <span class="metric-label">Analyzed Attempts</span>
-            <strong id="analyticsAttempted">0</strong>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Correct</span>
-            <strong id="analyticsCorrect">0</strong>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Wrong</span>
-            <strong id="analyticsWrong">0</strong>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Overall Score</span>
-            <strong id="analyticsScore">0%</strong>
-          </div>
-        </section>
-
-        <p class="status"><strong>Recommended Tags:</strong> <span id="analyticsRecommendedTags">--</span></p>
-
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Tag</th>
-                <th>Attempted</th>
-                <th>Correct</th>
-                <th>Wrong</th>
-                <th>Accuracy</th>
-              </tr>
-            </thead>
-            <tbody id="analyticsTagBody">
-              <tr>
-                <td colspan="5">No analytics loaded.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Attempted</th>
-                <th>Correct</th>
-                <th>Wrong</th>
-                <th>Accuracy</th>
-              </tr>
-            </thead>
-            <tbody id="analyticsTrendBody">
-              <tr>
-                <td colspan="5">No trend loaded.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
     </section>
   </main>
 
-  <a id="floatingWhatsappBtn" class="floating-whatsapp" href="#" aria-label="WhatsApp us">Chat For Full Access</a>
+  <a id="floatingWhatsappBtn" class="floating-whatsapp" href="#" aria-label="Chat with us on WhatsApp">Questions? Chat with us</a>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
