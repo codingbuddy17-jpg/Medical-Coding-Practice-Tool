@@ -1427,13 +1427,18 @@ function startExam() {
   let candidateCards = source; // Default to current filtered deck (e.g. from main category buttons)
 
   const mode = dom.examModeSelect.value;
+  console.log(`[ExamDebug] Starting Exam. Mode: ${mode}`);
+
   if (mode === "topic") {
     const topic = dom.examTopicSelect.value;
+    console.log(`[ExamDebug] Topic Selected: "${topic}"`);
     if (!topic) {
+      console.warn("[ExamDebug] No topic selected!");
       setStatus(dom.examStatus, "Select a topic for Topic Master mode.", "error");
       return;
     }
     candidateCards = state.deck.filter(c => normalizeTagKey(c.tag) === normalizeTagKey(topic));
+    console.log(`[ExamDebug] Filtered cards for topic: ${candidateCards.length}`);
   } else if (mode === "weakness") {
     // Filter for cards with accuracy < 50%
     candidateCards = state.deck.filter(c => {
