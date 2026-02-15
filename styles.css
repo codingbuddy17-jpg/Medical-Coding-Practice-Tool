@@ -934,3 +934,11 @@ code {
   font-weight: 600;
   letter-spacing: 0.02em;
 }
+
+/* Navigation Fix Additions */
+#examPanel {
+  border: 1px solid var(--accent); /* Highlight border for Mock Exam */
+  background: #f0fdfa; /* Light Teal Tint */
+  overflow: hidden; /* Ensure header stays inside */
+  margin-top: 0.5rem;
+}

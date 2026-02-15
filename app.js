@@ -3772,43 +3772,54 @@ function handleTabSwitch(tabName) {
     else btn.classList.remove("active");
   });
 
-  // 2. Hide All Views
+  // 2. Hide All Views first
   if (navDom.viewPractice) navDom.viewPractice.classList.remove("active");
   if (navDom.viewMentor) navDom.viewMentor.classList.remove("active");
 
-  // 3. Show Target View
+  // 3. Show Target View & Handle Logic
   if (tabName === "practice") {
     if (navDom.viewPractice) navDom.viewPractice.classList.add("active");
+    // Ensure we are at the top
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
   else if (tabName === "mentor") {
     if (navDom.viewMentor) navDom.viewMentor.classList.add("active");
+    // Ensure we are at the top of mentor view
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
   else if (tabName === "exam") {
-    // For now, exam is inside practice view.
+    // Exam is inside practice view
     if (navDom.viewPractice) navDom.viewPractice.classList.add("active");
-    // Scroll to exam controls if needed
+
+    // Ensure exam panel is stored in a variable or fetched fresh
     const examPanel = document.getElementById("examPanel");
-    if (examPanel && examPanel.classList.contains("hidden")) {
-      document.getElementById("toggleExamPanelBtn").click();
+    if (examPanel) {
+      // If hidden, simulate toggle click or just remove hidden class? 
+      // Safer to click toggle if logic is attached to it, but direct manipulation is cleaner here.
+      if (examPanel.classList.contains("hidden")) {
+        // Trigger the button to ensure state sync (e.g. icon rotation if any)
+        const toggleBtn = document.getElementById("toggleExamPanelBtn");
+        if (toggleBtn) toggleBtn.click();
+        else examPanel.classList.remove("hidden");
+      }
+      examPanel.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-    examPanel.scrollIntoView({ behavior: "smooth" });
   }
   else if (tabName === "analytics") {
-    // Determine context
+    // Determine context based on role
     if (state.role === "trainer") {
+      // Go to Mentor View -> Analytics Section
       if (navDom.viewMentor) navDom.viewMentor.classList.add("active");
-      // Scroll to mentor analytics? (Weak-Topic Analytics)
-      const analyticsSection = document.querySelector("#trainerZone .panel:nth-child(2)"); // Rough guess
+      const analyticsSection = document.getElementById("categoryScoreBody")?.closest(".panel");
+      // Fallback if specific ID not found, just scroll to bottom
       if (analyticsSection) analyticsSection.scrollIntoView({ behavior: "smooth" });
+      else window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
     } else {
+      // Go to Practice View -> Dashboard Section
       if (navDom.viewPractice) navDom.viewPractice.classList.add("active");
-      // Scroll to dashboard
       const dashboard = document.querySelector(".dashboard");
-      if (dashboard) dashboard.scrollIntoView({ behavior: "smooth" });
+      if (dashboard) dashboard.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-  } else if (tabName === "practice") {
-    if (navDom.viewPractice) navDom.viewPractice.classList.add("active");
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 }
 
