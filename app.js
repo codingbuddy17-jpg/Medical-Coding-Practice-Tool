@@ -3776,7 +3776,13 @@ function handleTabSwitch(tabName) {
   if (navDom.viewPractice) navDom.viewPractice.classList.remove("active");
   if (navDom.viewMentor) navDom.viewMentor.classList.remove("active");
 
-  // 3. Show Target View & Handle Logic
+  // 3. Auto-Close Mock Exam Panel if not on Exam tab
+  if (tabName !== "exam") {
+    const examPanel = document.getElementById("examPanel");
+    if (examPanel) examPanel.classList.add("hidden");
+  }
+
+  // 4. Show Target View & Handle Logic
   if (tabName === "practice") {
     if (navDom.viewPractice) navDom.viewPractice.classList.add("active");
     // Explicit scroll to Flashcard area
@@ -3798,10 +3804,7 @@ function handleTabSwitch(tabName) {
     const examPanel = document.getElementById("examPanel");
     if (examPanel) {
       if (examPanel.classList.contains("hidden")) {
-        // Force show
         examPanel.classList.remove("hidden");
-        // Also update the toggle button state if possible, or just click it if safer
-        // But direct manipulation is guaranteed to show it.
       }
       examPanel.scrollIntoView({ behavior: "smooth", block: "start" });
     }
@@ -3809,20 +3812,14 @@ function handleTabSwitch(tabName) {
   else if (tabName === "analytics") {
     if (state.role === "trainer") {
       if (navDom.viewMentor) navDom.viewMentor.classList.add("active");
-      // Trainer Analytics -> "Mentor Session Console" table
-      const sessionTable = document.getElementById("sessionTableBody");
-      if (sessionTable) {
-        const panel = sessionTable.closest(".panel");
-        if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+      // Trainer: Scroll to top (Mentor Console acting as "score blocks")
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       if (navDom.viewPractice) navDom.viewPractice.classList.add("active");
-      // Trainee Analytics -> "Per-Category Scorecards"
-      const catScoreBody = document.getElementById("categoryScoreBody");
-      if (catScoreBody) {
-        const panel = catScoreBody.closest(".panel");
-        if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+      // Trainee: Scroll to Dashboard (Score Blocks)
+      const dashboard = document.querySelector(".dashboard");
+      if (dashboard) dashboard.scrollIntoView({ behavior: "smooth", block: "start" });
+      else window.scrollTo(0, 0);
     }
   }
 }
