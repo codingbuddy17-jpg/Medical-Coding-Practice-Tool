@@ -3980,7 +3980,6 @@ function updateDashboardWidgets() {
 }
 
 // Initialize Sub-Nav Listeners
-// Initialize Sub-Nav Listeners
 document.addEventListener("DOMContentLoaded", () => {
   console.log("DOM loaded, initializing app...");
 
@@ -3992,13 +3991,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Start App
-  init().catch(err => console.error("App init failed:", err));
+  if (typeof init === "function") {
+    init().catch(err => console.error("App init failed:", err));
+  }
 });
-btn.addEventListener("click", () => {
-  handleMentorSubTab(btn.dataset.subtab);
-});
-  });
-});
-
-// Start App (Delayed to ensure all modules loaded)
-if (typeof init === "function") init();
