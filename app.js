@@ -1151,6 +1151,10 @@ function updateMetrics() {
     const name = state.userName || "Session";
     dom.topbarSessionSummary.textContent = `${name} · ${score}%`;
   }
+
+  if (dom.examRemainingNotice && state.role !== "trainer") {
+    dom.examRemainingNotice.textContent = `Remaining session questions: ${remainingSessionLimit()}`;
+  }
 }
 
 function updateExamStatusUI() {
@@ -2134,8 +2138,8 @@ async function skipQuestion() {
     return;
   }
 
-  if (state.exam.inProgress) {
-    handleSkipInExam(card);
+  if (state.exam.inProgress && state.exam.reviewingSkipped) {
+    setStatus(dom.feedback, "Review pass: please answer skipped questions to finish the exam.", "error");
     return;
   }
 
@@ -2156,6 +2160,12 @@ async function skipQuestion() {
     isSkipped: true,
     at: Date.now()
   });
+
+  if (state.exam.inProgress) {
+    handleSkipInExam(card);
+    setStatus(dom.feedback, "Skipped. This will reappear in the review pass.", "neutral");
+    return;
+  }
 
   setStatus(dom.feedback, "Skipped.", "neutral");
   advanceCardAfterAttempt(card);
