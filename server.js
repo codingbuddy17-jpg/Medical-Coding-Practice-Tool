@@ -21,6 +21,7 @@ const supabase = USE_SUPABASE
   : null;
 
 const ROOT = __dirname;
+const MAX_BODY_SIZE = Number(process.env.MAX_BODY_SIZE || 10 * 1024 * 1024); // 10MB default
 const DATA_DIR = path.join(ROOT, "data");
 const SESSION_FILE = path.join(DATA_DIR, "sessions.json");
 const QUESTIONS_FILE = path.join(DATA_DIR, "questions.json");
@@ -307,7 +308,7 @@ function parseBody(req) {
     let body = "";
     req.on("data", (chunk) => {
       body += chunk;
-      if (body.length > 1e6) {
+      if (body.length > MAX_BODY_SIZE) {
         reject(new Error("Payload too large"));
         req.destroy();
       }
@@ -338,15 +339,27 @@ function contentType(filePath) {
 }
 
 function serveFile(reqPath, res) {
-  const safePath = reqPath === "/" ? "/index.html" : reqPath;
-  const filePath = path.join(ROOT, safePath);
+  const safePath = reqPath === "/" ? "index.html" : reqPath.replace(/^\/+/, "");
+  const filePath = path.resolve(ROOT, safePath);
 
-  if (!filePath.startsWith(ROOT)) return notFound(res);
+  if (!filePath.startsWith(ROOT + path.sep)) return notFound(res);
   if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) return notFound(res);
 
   const data = fs.readFileSync(filePath);
   res.writeHead(200, { "Content-Type": contentType(filePath) });
   res.end(data);
+}
+
+function getAdminKey(req, url) {
+  const auth = String(req.headers.authorization || "").trim();
+  if (auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
+  return String(url.searchParams.get("adminKey") || "");
+}
+
+function getTrainerKey(req, url) {
+  const auth = String(req.headers.authorization || "").trim();
+  if (auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
+  return String(url.searchParams.get("trainerKey") || "");
 }
 
 function findSessionIndex(sessions, sessionId) {
@@ -1697,7 +1710,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/admin/access-config" && req.method === "GET") {
-    const key = url.searchParams.get("adminKey");
+    const key = getAdminKey(req, url);
     if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
     const config = readAccessConfig();
     return json(res, 200, {
@@ -1738,7 +1751,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/admin/cohorts" && req.method === "GET") {
-    const key = url.searchParams.get("adminKey");
+    const key = getAdminKey(req, url);
     if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
     return json(res, 200, { cohorts: listCohortsSummary() });
   }
@@ -1804,7 +1817,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/cohorts" && req.method === "GET") {
-    const trainerKey = url.searchParams.get("trainerKey");
+    const trainerKey = getTrainerKey(req, url);
     const access = readAccessConfig();
     if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
     const cohorts = readCohorts().map((cohort) => ({
@@ -1818,7 +1831,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === "/api/analytics/user" && req.method === "GET") {
     try {
-      const trainerKey = url.searchParams.get("trainerKey");
+      const trainerKey = getTrainerKey(req, url);
       const access = readAccessConfig();
       if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
 
@@ -1844,7 +1857,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === "/api/analytics/batch" && req.method === "GET") {
     try {
-      const trainerKey = url.searchParams.get("trainerKey");
+      const trainerKey = getTrainerKey(req, url);
       const access = readAccessConfig();
       if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
 
@@ -1886,7 +1899,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === "/api/analytics/recommendations" && req.method === "GET") {
     try {
-      const trainerKey = url.searchParams.get("trainerKey");
+      const trainerKey = getTrainerKey(req, url);
       const access = readAccessConfig();
       if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
 
@@ -1921,7 +1934,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/exam/templates" && req.method === "GET") {
-    const trainerKey = url.searchParams.get("trainerKey");
+    const trainerKey = getTrainerKey(req, url);
     const access = readAccessConfig();
     if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
     const store = readExamStore();
@@ -2063,7 +2076,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/import/review" && req.method === "GET") {
-    const trainerKey = url.searchParams.get("trainerKey");
+    const trainerKey = getTrainerKey(req, url);
     const access = readAccessConfig();
     if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
     try {
@@ -2106,7 +2119,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/import/batches" && req.method === "GET") {
-    const trainerKey = url.searchParams.get("trainerKey");
+    const trainerKey = getTrainerKey(req, url);
     const access = readAccessConfig();
     if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
     try {
@@ -2188,7 +2201,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/questions/flags" && req.method === "GET") {
-    const trainerKey = url.searchParams.get("trainerKey");
+    const trainerKey = getTrainerKey(req, url);
     const access = readAccessConfig();
     if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
 
@@ -2283,7 +2296,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/cta/events" && req.method === "GET") {
-    const trainerKey = url.searchParams.get("trainerKey");
+    const trainerKey = getTrainerKey(req, url);
     const access = readAccessConfig();
     if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
     const limit = Math.max(1, Math.min(5000, Number(url.searchParams.get("limit") || 500)));
@@ -2367,7 +2380,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/sessions" && req.method === "GET") {
-    const key = url.searchParams.get("trainerKey");
+    const key = getTrainerKey(req, url);
     const access = readAccessConfig();
     if (!access.trainerKey || key !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
 
