@@ -1149,6 +1149,9 @@ function renderCard() {
     updateTrialInfoBannerUI();
     updateUpgradeWallUI();
     dom.categoryStatus.textContent = state.role === "trainer" ? `Showing 0 cards for ${state.selectedTag}.` : "";
+
+    // Hide rationale when no card
+    dom.rationalePlaceholder.classList.add("hidden");
     return;
   }
 
@@ -1162,7 +1165,11 @@ function renderCard() {
     dom.mcqOptions.classList.add("hidden");
     dom.userAnswer.classList.remove("hidden");
     setStatus(dom.feedback, "");
+
+    // Show upgrade message in rationale box
+    dom.rationalePlaceholder.classList.remove("hidden");
     setStatus(dom.rationalePlaceholder, "Unlock full access to continue practicing all questions.");
+
     setAwaitingNext(false);
     dom.flagQuestionBtn.disabled = true;
     updateTrialLockUI();
@@ -1201,7 +1208,11 @@ function renderCard() {
   }
 
   setStatus(dom.feedback, "");
-  setStatus(dom.rationalePlaceholder, String(card.rationale || "").trim() || DEFAULT_RATIONALE_TEXT);
+
+  // Hide rationale initially for new card
+  dom.rationalePlaceholder.classList.add("hidden");
+  setStatus(dom.rationalePlaceholder, "");
+
   setAwaitingNext(false);
   updateTrialLockUI();
   updateTrialInfoBannerUI();
@@ -1932,6 +1943,11 @@ async function validateCurrentAnswer() {
     }
 
     // PRACTICE MODE: Visual Feedback
+    // Reveal Rationale
+    const rationale = String(card.rationale || "").trim() || DEFAULT_RATIONALE_TEXT;
+    dom.rationalePlaceholder.classList.remove("hidden");
+    setStatus(dom.rationalePlaceholder, rationale);
+
     if (result.isCorrect) {
       state.session.correct += 1;
       setStatus(dom.feedback, `Correct. Expected: ${result.primaryAnswer}`, "success");
