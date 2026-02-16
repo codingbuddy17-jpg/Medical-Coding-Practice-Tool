@@ -1800,8 +1800,11 @@ function recordSkipStats(card) {
   cardStat.skipped = (cardStat.skipped || 0) + 1;
 }
 
-async function apiRequest(path, method = "GET", payload = null) {
+async function apiRequest(path, method = "GET", payload = null, authKey = "") {
   const options = { method, headers: {}, cache: "no-store" };
+  if (authKey) {
+    options.headers.Authorization = `Bearer ${authKey}`;
+  }
   if (payload) {
     options.headers["Content-Type"] = "application/json";
     options.body = JSON.stringify(payload);
@@ -2605,10 +2608,10 @@ async function loadImportReviewQueue() {
   const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
   if (!trainerKey) return;
   const status = String(dom.importReviewStatusFilter.value || "");
-  const qs = new URLSearchParams({ trainerKey });
+  const qs = new URLSearchParams();
   if (status) qs.set("status", status);
   try {
-    const data = await apiRequest(`/api/import/review?${qs.toString()}`);
+    const data = await apiRequest(`/api/import/review?${qs.toString()}`, "GET", null, trainerKey);
     state.importAdmin.reviewItems = Array.isArray(data.items) ? data.items : [];
     renderImportReviewQueue();
     setStatus(dom.importReviewStatus, `Loaded ${state.importAdmin.reviewItems.length} review items.`, "success");
@@ -2720,7 +2723,7 @@ async function loadImportBatches() {
   const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
   if (!trainerKey) return;
   try {
-    const data = await apiRequest(`/api/import/batches?trainerKey=${encodeURIComponent(trainerKey)}&limit=100`);
+    const data = await apiRequest(`/api/import/batches?limit=100`, "GET", null, trainerKey);
     state.importAdmin.batches = Array.isArray(data.batches) ? data.batches : [];
     renderImportBatches();
     setStatus(dom.importBatchStatus, `Loaded ${state.importAdmin.batches.length} batches.`, "success");
@@ -2877,7 +2880,7 @@ async function loadSessions() {
     return;
   }
   try {
-    const data = await apiRequest(`/api/sessions?trainerKey=${encodeURIComponent(trainerKey)}`);
+    const data = await apiRequest(`/api/sessions`, "GET", null, trainerKey);
     state.sessionConsole.all = Array.isArray(data.sessions) ? data.sessions : [];
     renderSessionConsoleTable();
     setStatus(dom.sessionLoadStatus, `Loaded ${state.sessionConsole.all.length} sessions.`, "success");
@@ -3173,10 +3176,10 @@ async function loadFlagQueue() {
     return;
   }
   const status = String(dom.flagStatusFilter.value || "");
-  const qs = new URLSearchParams({ trainerKey });
+  const qs = new URLSearchParams();
   if (status) qs.set("status", status);
   try {
-    const data = await apiRequest(`/api/questions/flags?${qs.toString()}`);
+    const data = await apiRequest(`/api/questions/flags?${qs.toString()}`, "GET", null, trainerKey);
     state.reviewQueue.items = Array.isArray(data.flags) ? data.flags : [];
     renderFlagQueue(state.reviewQueue.items);
     setStatus(dom.flagQueueStatus, `Loaded ${state.reviewQueue.items.length} flagged items.`, "success");
@@ -3296,7 +3299,7 @@ function renderAnalyticsCohorts(cohorts) {
 async function loadAnalyticsCohorts() {
   if (state.role !== "trainer" || !state.trainerKey) return;
   try {
-    const data = await apiRequest(`/api/cohorts?trainerKey=${encodeURIComponent(state.trainerKey)}`);
+    const data = await apiRequest(`/api/cohorts`, "GET", null, state.trainerKey);
     renderAnalyticsCohorts(data.cohorts || []);
   } catch {
     renderAnalyticsCohorts([]);
@@ -3310,7 +3313,7 @@ async function loadBlueprintTemplates() {
     return;
   }
   try {
-    const data = await apiRequest(`/api/exam/templates?trainerKey=${encodeURIComponent(state.trainerKey)}`);
+    const data = await apiRequest(`/api/exam/templates`, "GET", null, state.trainerKey);
     state.blueprints.templates = Array.isArray(data.templates) ? data.templates : [];
     renderBlueprintSelectors();
   } catch {
@@ -3420,7 +3423,10 @@ async function loadUserAnalytics() {
   }
   try {
     const data = await apiRequest(
-      `/api/analytics/user?trainerKey=${encodeURIComponent(trainerKey)}&email=${encodeURIComponent(email)}&days=${days}`
+      `/api/analytics/user?email=${encodeURIComponent(email)}&days=${days}`,
+      "GET",
+      null,
+      trainerKey
     );
     const analytics = data.analytics || {};
     renderAnalyticsTables(analytics);
@@ -3451,7 +3457,10 @@ async function loadBatchAnalytics() {
   }
   try {
     const data = await apiRequest(
-      `/api/analytics/batch?trainerKey=${encodeURIComponent(trainerKey)}&cohortId=${encodeURIComponent(cohortId)}&days=${days}`
+      `/api/analytics/batch?cohortId=${encodeURIComponent(cohortId)}&days=${days}`,
+      "GET",
+      null,
+      trainerKey
     );
     const analytics = data.analytics || {};
     renderAnalyticsTables(analytics);
@@ -3482,7 +3491,10 @@ async function loadDrillRecommendations() {
   }
   try {
     const data = await apiRequest(
-      `/api/analytics/recommendations?trainerKey=${encodeURIComponent(trainerKey)}&email=${encodeURIComponent(email)}&days=${days}&limit=15`
+      `/api/analytics/recommendations?email=${encodeURIComponent(email)}&days=${days}&limit=15`,
+      "GET",
+      null,
+      trainerKey
     );
     const tags = data.recommendedTags || [];
     setRecommendedTags(tags);
@@ -3761,8 +3773,8 @@ async function loadAdminData() {
   }
   try {
     const [configRes, cohortRes] = await Promise.all([
-      apiRequest(`/api/admin/access-config?adminKey=${encodeURIComponent(state.adminKey)}`),
-      apiRequest(`/api/admin/cohorts?adminKey=${encodeURIComponent(state.adminKey)}`)
+      apiRequest(`/api/admin/access-config`, "GET", null, state.adminKey),
+      apiRequest(`/api/admin/cohorts`, "GET", null, state.adminKey)
     ]);
 
     dom.adminTraineeCode.value = String(configRes.traineeAccessCode || "");
