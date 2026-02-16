@@ -134,6 +134,12 @@ const state = {
     reviewItems: [],
     batches: []
   },
+  questionBank: {
+    all: []
+  },
+  reviewQueue: {
+    items: []
+  },
   importPreview: {
     active: false,
     rows: [],
@@ -243,6 +249,7 @@ function cacheDOM() {
     loadStarterBtn: document.getElementById("loadStarterBtn"),
     exportBtn: document.getElementById("exportBtn"),
     importStatus: document.getElementById("importStatus"),
+    // importStatus: document.getElementById("importStatus"), // Duplicate, removed
     importPreviewPanel: document.getElementById("importPreviewPanel"),
     importPreviewSummary: document.getElementById("importPreviewSummary"),
     importPreviewBody: document.getElementById("importPreviewBody"),
@@ -252,9 +259,20 @@ function cacheDOM() {
     refreshImportReviewBtn: document.getElementById("refreshImportReviewBtn"),
     resolveAllImportReviewBtn: document.getElementById("resolveAllImportReviewBtn"),
     exportImportReviewBtn: document.getElementById("exportImportReviewBtn"),
+
+    // Question Bank
+    questionBankSearchInput: document.getElementById("questionBankSearchInput"),
+    questionBankTagFilter: document.getElementById("questionBankTagFilter"),
+    refreshQuestionBankBtn: document.getElementById("refreshQuestionBankBtn"),
+    exportQuestionBankBtn: document.getElementById("exportQuestionBankBtn"),
+    questionBankBody: document.getElementById("questionBankBody"),
+    questionBankStatus: document.getElementById("questionBankStatus"),
+
+    // Import Batches
+    refreshImportBatchesBtn: document.getElementById("refreshImportBatchesBtn"),
     importReviewBody: document.getElementById("importReviewBody"),
     importReviewStatus: document.getElementById("importReviewStatus"),
-    refreshImportBatchesBtn: document.getElementById("refreshImportBatchesBtn"),
+    // refreshImportBatchesBtn: document.getElementById("refreshImportBatchesBtn"), // Duplicate, removed
     rollbackBatchIdInput: document.getElementById("rollbackBatchIdInput"),
     rollbackBatchBtn: document.getElementById("rollbackBatchBtn"),
     importBatchBody: document.getElementById("importBatchBody"),
@@ -2262,9 +2280,52 @@ function renderImportPreview() {
       const status = String(row.status || "pass");
       const reason = Array.isArray(row.reasons) && row.reasons.length ? row.reasons.join("; ") : "-";
       const question = String(row.question || "").slice(0, 140);
-      return `<tr><td>${row.rowNumber}</td><td><span class="import-status-pill import-status-${escapeHtml(status)}">${escapeHtml(status)}</span></td><td>${escapeHtml(row.tag || "")}</td><td>${escapeHtml(question)}</td><td>${escapeHtml(reason)}</td></tr>`;
+      return `<tr>
+        <td>${row.rowNumber}</td>
+        <td><span class="import-status-pill import-status-${escapeHtml(status)}">${escapeHtml(status)}</span></td>
+        <td>${escapeHtml(row.tag || "")}</td>
+        <td>${escapeHtml(question)}</td>
+        <td>${escapeHtml(reason)}</td>
+        <td><button class="ghost-btn danger-btn" onclick="discardPreviewRow(${row.rowNumber})">Discard</button></td>
+      </tr>`;
     })
     .join("");
+}
+
+function discardPreviewRow(rowId) {
+  const rowIdx = state.importPreview.rows.findIndex(r => r.rowNumber === rowId);
+  if (rowIdx > -1) {
+    // Remove from rows
+    state.importPreview.rows.splice(rowIdx, 1);
+
+    // Update summary
+    const summary = state.importPreview.summary;
+    if (summary) {
+      summary.total--;
+      // We don't track per-status counts in rows easily without re-calc, so just re-calc summary
+    }
+
+    // Re-calc summary based on remaining rows
+    const newSummary = { total: 0, pass: 0, warn: 0, skip: 0, fail: 0 };
+    state.importPreview.rows.forEach(r => {
+      newSummary.total++;
+      if (r.status === 'pass') newSummary.pass++;
+      else if (r.status === 'warn') newSummary.warn++;
+      else if (r.status === 'skip') newSummary.skip++;
+      else if (r.status === 'fail') newSummary.fail++;
+    });
+    state.importPreview.summary = newSummary;
+
+    // Filter cards to remove this one if it was valid/warn
+    // The cards array doesn't have rowNumber directly usually, need to correlate
+    // For now, simpler to just rely on rows being the source of truth for confirmation
+    // Re-generating importCards from rows:
+    state.importPreview.importCards = state.importPreview.rows
+      .filter(r => (r.status === 'pass' || r.status === 'warn') && r.sanitized)
+      .map(r => r.sanitized);
+
+    renderImportPreview();
+  }
 }
 
 function clearImportPreview() {
@@ -2509,12 +2570,16 @@ function renderImportReviewQueue() {
   }
   dom.importReviewBody.innerHTML = items
     .map((item) => {
+      const status = String(item.status || "");
+      const question = String(item.question || "").slice(0, 120);
       const reasons = Array.isArray(item.reasons) && item.reasons.length ? item.reasons.join("; ") : "-";
-      const actionBtn =
-        String(item.status || "") === "open"
-          ? `<button class="ghost-btn" type="button" data-import-review-action="resolve" data-import-review-id="${escapeHtml(item.id)}">Resolve</button>`
-          : `<button class="ghost-btn" type="button" data-import-review-action="reopen" data-import-review-id="${escapeHtml(item.id)}">Reopen</button>`;
-      return `<tr><td>${escapeHtml(item.status)}</td><td>${escapeHtml(item.tag || "")}</td><td>${escapeHtml(String(item.question || "").slice(0, 120))}</td><td>${escapeHtml(reasons)}</td><td>${actionBtn}</td></tr>`;
+      const actions =
+        status === "open"
+          ? `<button class="ghost-btn" data-import-review-action="resolve" data-import-review-id="${escapeHtml(item.id)}">Resolve</button>
+             <button class="ghost-btn danger-btn" data-import-review-action="discard" data-import-review-id="${escapeHtml(item.id)}">Discard</button>`
+          : `<button class="ghost-btn" data-import-review-action="reopen" data-import-review-id="${escapeHtml(item.id)}">Reopen</button>`;
+
+      return `<tr><td><span class="import-status-pill import-status-${escapeHtml(status)}">${escapeHtml(status)}</span></td><td>${escapeHtml(item.tag || "")}</td><td title="${escapeHtml(item.question)}">${escapeHtml(question)}</td><td>${escapeHtml(reasons)}</td><td>${actions}</td></tr>`;
     })
     .join("");
 }
@@ -2796,6 +2861,112 @@ async function loadSessions() {
     setStatus(dom.sessionLoadStatus, `Could not load sessions: ${err.message}`, "error");
     if (dom.sessionConsoleSummary) dom.sessionConsoleSummary.textContent = "";
   }
+}
+
+async function loadQuestionBank() {
+  if (state.role !== "trainer") return;
+  const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
+  if (!trainerKey) {
+    setStatus(dom.questionBankStatus, "Trainer key required.", "error");
+    return;
+  }
+
+  const tag = dom.questionBankTagFilter.value || "";
+  const qs = new URLSearchParams({ trainerKey });
+  if (tag) qs.set("tag", tag);
+
+  try {
+    const data = await apiRequest(`/api/questions?${qs.toString()}`);
+    state.questionBank.all = Array.isArray(data.questions) ? data.questions : [];
+    renderQuestionBankTable();
+    setStatus(dom.questionBankStatus, `Loaded ${state.questionBank.all.length} questions.`, "success");
+  } catch (err) {
+    setStatus(dom.questionBankStatus, `Could not load question bank: ${err.message}`, "error");
+  }
+}
+
+function filteredQuestionsForBank() {
+  const search = String(dom.questionBankSearchInput.value || "").trim().toLowerCase();
+  let questions = state.questionBank.all || [];
+
+  if (search) {
+    questions = questions.filter(q =>
+      String(q.question || "").toLowerCase().includes(search) ||
+      String(q.tag || "").toLowerCase().includes(search)
+    );
+  }
+  return questions;
+}
+
+function renderQuestionBankTable() {
+  const questions = filteredQuestionsForBank();
+  if (!questions.length) {
+    dom.questionBankBody.innerHTML = '<tr><td colspan="5">No active questions found.</td></tr>';
+    return;
+  }
+
+  dom.questionBankBody.innerHTML = questions.slice(0, 100).map(q => {
+    const shortQ = String(q.question || "").slice(0, 80);
+    return `<tr>
+      <td>${escapeHtml(q.tag || "General")}</td>
+      <td title="${escapeHtml(q.question)}">${escapeHtml(shortQ)}</td>
+      <td>${escapeHtml(q.type || "short")}</td>
+      <td>${escapeHtml(q.answer || "")}</td>
+      <td>
+        <button class="ghost-btn danger-btn" type="button" data-bank-action="delete" data-bank-id="${escapeHtml(q.id)}">Delete</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+async function deleteQuestion(questionId) {
+  if (state.role !== "trainer") return;
+  const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
+  if (!trainerKey) {
+    setStatus(dom.questionBankStatus, "Trainer key required.", "error");
+    return;
+  }
+
+  if (!window.confirm("Are you sure you want to delete this question? This action cannot be undone easily.")) {
+    return;
+  }
+
+  try {
+    const qs = new URLSearchParams({ trainerKey, id: questionId });
+    await apiRequest(`/api/questions?${qs.toString()}`, "DELETE");
+    setStatus(dom.questionBankStatus, "Question deleted.", "success");
+    await loadQuestionBank(); // Refresh list
+  } catch (err) {
+    setStatus(dom.questionBankStatus, `Could not delete question: ${err.message}`, "error");
+  }
+}
+
+function exportQuestionBankCsv() {
+  if (state.role !== "trainer") return;
+  const questions = filteredQuestionsForBank();
+  if (!questions.length) {
+    setStatus(dom.questionBankStatus, "No questions to export.", "error");
+    return;
+  }
+
+  const header = "id,tag,type,question,answer";
+  const rows = questions.map(q => [
+    q.id,
+    q.tag || "",
+    q.type || "short",
+    q.question || "",
+    q.answer || ""
+  ].map(v => `"${String(v).replaceAll('"', '""')}"`).join(","));
+
+  const csv = [header, ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "question-bank-export.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+  setStatus(dom.questionBankStatus, "Question bank exported.", "success");
 }
 
 function toAccessTypeLabel(role) {
@@ -3798,7 +3969,33 @@ function bindEvents() {
 
   if (dom.refreshImportReviewBtn) dom.refreshImportReviewBtn.addEventListener("click", loadImportReviewQueue);
   if (dom.resolveAllImportReviewBtn) dom.resolveAllImportReviewBtn.addEventListener("click", resolveAllImportReviewItems);
-  if (dom.exportImportReviewBtn) dom.exportImportReviewBtn.addEventListener("click", exportImportReviewQueueCsv);
+  if (dom.exportImportReviewBtn) {
+    dom.exportImportReviewBtn.addEventListener("click", exportImportReviewQueueCsv);
+  }
+
+  // Question Bank
+  if (dom.refreshQuestionBankBtn) {
+    dom.refreshQuestionBankBtn.addEventListener("click", loadQuestionBank);
+  }
+  if (dom.exportQuestionBankBtn) {
+    dom.exportQuestionBankBtn.addEventListener("click", exportQuestionBankCsv);
+  }
+  if (dom.questionBankSearchInput) {
+    dom.questionBankSearchInput.addEventListener("input", renderQuestionBankTable);
+  }
+  if (dom.questionBankTagFilter) {
+    dom.questionBankTagFilter.addEventListener("change", loadQuestionBank);
+  }
+  if (dom.questionBankBody) {
+    dom.questionBankBody.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-bank-action]");
+      if (!btn) return;
+      const action = btn.dataset.bankAction;
+      const id = btn.dataset.bankId;
+      if (action === "delete") deleteQuestion(id);
+    });
+  }
+
   if (dom.importReviewStatusFilter) dom.importReviewStatusFilter.addEventListener("change", loadImportReviewQueue);
   if (dom.importReviewBody) dom.importReviewBody.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-import-review-action][data-import-review-id]");
@@ -4116,11 +4313,40 @@ function handleMentorSubTab(subTab) {
   document.getElementById("subview-users").classList.add("hidden");
   document.getElementById("subview-kpi").classList.add("hidden");
   document.getElementById("subview-tools").classList.add("hidden");
+  document.getElementById("subview-bank").classList.add("hidden");
 
   // Show target
-  if (subTab === "users") document.getElementById("subview-users").classList.remove("hidden");
-  else if (subTab === "kpi") document.getElementById("subview-kpi").classList.remove("hidden");
-  else if (subTab === "tools") document.getElementById("subview-tools").classList.remove("hidden");
+  if (subTab === "users") {
+    // Show users view
+    document.getElementById("subview-users").classList.remove("hidden");
+    document.getElementById("subview-kpi").classList.add("hidden");
+    document.getElementById("subview-tools").classList.add("hidden");
+    document.getElementById("subview-bank").classList.add("hidden");
+    loadSessions();
+  } else if (subTab === "kpi") {
+    // Show KPI view
+    document.getElementById("subview-users").classList.add("hidden");
+    document.getElementById("subview-kpi").classList.remove("hidden");
+    document.getElementById("subview-tools").classList.add("hidden");
+    document.getElementById("subview-bank").classList.add("hidden");
+    loadFlagQueue();
+  } else if (subTab === "tools") {
+    // Show Tools view
+    document.getElementById("subview-users").classList.add("hidden");
+    document.getElementById("subview-kpi").classList.add("hidden");
+    document.getElementById("subview-tools").classList.remove("hidden");
+    document.getElementById("subview-bank").classList.add("hidden");
+    loadImportBatches();
+    loadImportReviewQueue();
+    loadAdminData();
+  } else if (subTab === "bank") {
+    // Show Bank view
+    document.getElementById("subview-users").classList.add("hidden");
+    document.getElementById("subview-kpi").classList.add("hidden");
+    document.getElementById("subview-tools").classList.add("hidden");
+    document.getElementById("subview-bank").classList.remove("hidden");
+    loadQuestionBank();
+  }
 }
 
 function updateDashboardWidgets() {

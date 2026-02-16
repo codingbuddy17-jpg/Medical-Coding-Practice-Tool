@@ -381,7 +381,8 @@
           <nav class="sub-nav">
             <button class="sub-nav-item active" data-subtab="users">Command Center</button>
             <button class="sub-nav-item" data-subtab="kpi">Quality Review</button>
-            <button class="sub-nav-item" data-subtab="tools">Import Tools</button>
+            <button class="sub-nav-item" data-subtab="bank">Question Bank</button>
+            <button class="sub-nav-item" data-subtab="tools">Admin & Tools</button>
           </nav>
         </div>
 
@@ -516,6 +517,37 @@
           </section>
         </div> <!-- End Sub-View Users -->
 
+        <div id="subview-bank" class="sub-view full-width hidden">
+          <section class="panel">
+            <h3>Question Bank Management</h3>
+            <div class="panel-actions">
+              <input id="questionBankSearchInput" type="text" placeholder="Search questions..." />
+              <input id="questionBankTagFilter" type="text" placeholder="Filter by Tag" />
+              <button id="refreshQuestionBankBtn" class="ghost-btn" type="button">Refresh Bank</button>
+              <button id="exportQuestionBankBtn" class="ghost-btn" type="button">Export Active API CSV</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tag</th>
+                    <th>Question</th>
+                    <th>Type</th>
+                    <th>Answer</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="questionBankBody">
+                  <tr>
+                    <td colspan="5">No active questions loaded.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p id="questionBankStatus" class="status"></p>
+          </section>
+        </div>
+
         <!-- Sub-View: Quality Review (KPI) -->
         <div id="subview-kpi" class="sub-view full-width hidden">
 
@@ -586,6 +618,7 @@
                       <th>Tag</th>
                       <th>Question</th>
                       <th>Reason</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody id="importPreviewBody">

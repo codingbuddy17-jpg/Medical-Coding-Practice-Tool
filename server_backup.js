@@ -1299,66 +1299,41 @@ async function storageResolveImportReviewItem({ reviewId, action, note }) {
   const cleanNote = String(note || "").trim().slice(0, 300);
   if (!cleanId || !cleanAction) throw new Error("reviewId and action are required");
 
-  if (cleanAction === "resolve" || cleanAction === "discard") {
-    const status = cleanAction === "discard" ? "discarded" : "resolved";
-
-    if (!USE_SUPABASE) {
-      const items = readImportReviews();
-      const idx = items.findIndex((i) => String(i.id) === cleanId);
-      if (idx < 0) throw new Error("Review item not found");
-      items[idx].status = status;
-      items[idx].updatedAt = Date.now();
-      items[idx].resolution = {
-        action: cleanAction,
-        note: cleanNote,
-        at: Date.now()
-      };
-      writeImportReviews(items);
-      return items[idx];
-    }
-
-    const { data, error } = await supabase
-      .from("import_review_queue")
-      .update({
-        status: status,
-        resolution_action: cleanAction,
-        resolution_note: cleanNote,
-        resolved_at: toIso(Date.now())
-      })
-      .eq("id", cleanId)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+  if (!USE_SUPABASE) {
+    const items = readImportReviews();
+    const idx = items.findIndex((item) => String(item.id) === cleanId);
+    if (idx < 0) throw new Error("Review item not found");
+    items[idx].status = cleanAction === "reopen" ? "open" : "resolved";
+    items[idx].updatedAt = Date.now();
+    items[idx].resolution = {
+      action: cleanAction,
+      note: cleanNote,
+      at: Date.now()
+    };
+    writeImportReviews(items);
+    return items[idx];
   }
 
-  // Handle "reopen"
-  if (cleanAction === "reopen") {
-    if (!USE_SUPABASE) {
-      const items = readImportReviews();
-      const idx = items.findIndex((i) => String(i.id) === cleanId);
-      if (idx < 0) throw new Error("Review item not found");
-      items[idx].status = "open";
-      items[idx].updatedAt = Date.now();
-      items[idx].resolution = null;
-      writeImportReviews(items);
-      return items[idx];
-    }
-
-    const { data, error } = await supabase
-      .from("import_review_queue")
-      .update({
+  const payload =
+    cleanAction === "reopen"
+      ? {
         status: "open",
         resolution_action: null,
         resolution_note: null,
         resolved_at: null
-      })
-      .eq("id", cleanId)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
-  }
+      }
+      : {
+        status: "resolved",
+        resolution_action: cleanAction,
+        resolution_note: cleanNote,
+        resolved_at: toIso(Date.now())
+      };
+  const { error } = await supabase.from("import_review_queue").update(payload).eq("id", cleanId);
+  if (error) throw error;
+  const items = await storageListImportReviewItems("");
+  const found = items.find((item) => String(item.id) === cleanId);
+  if (!found) throw new Error("Review item not found");
+  return found;
 }
 
 async function storageResolveAllImportReviewItems(note = "") {
@@ -1535,21 +1510,6 @@ async function storageReplaceQuestion({ questionId, tag, question, answer, origi
   const { error: updateErr } = await supabase.from("questions").update(payload).eq("id", questionId);
   if (updateErr) throw updateErr;
   return { id: questionId, tag: payload.tag, question: payload.question };
-}
-
-async function storageDeleteQuestion(questionId) {
-  if (!USE_SUPABASE) {
-    const questions = readQuestions();
-    const idx = questions.findIndex((q) => String(q.id) === String(questionId));
-    if (idx < 0) throw new Error("Question not found");
-    questions[idx].is_active = false; // Soft delete
-    writeQuestions(questions);
-    return { id: questionId, status: "deleted" };
-  }
-
-  const { error } = await supabase.from("questions").update({ is_active: false }).eq("id", questionId);
-  if (error) throw error;
-  return { id: questionId, status: "deleted" };
 }
 
 const server = http.createServer(async (req, res) => {
@@ -1994,24 +1954,6 @@ const server = http.createServer(async (req, res) => {
       const tag = url.searchParams.get("tag");
       const questions = await storageListQuestions(tag || "");
       return json(res, 200, { questions });
-    } catch (err) {
-      return json(res, 400, { error: err.message });
-    }
-  }
-
-  if (url.pathname === "/api/questions" && req.method === "DELETE") {
-    try {
-      const qs = new URLSearchParams(url.search); // Parse query params for DELETE
-      const trainerKey = qs.get("trainerKey");
-      const questionId = qs.get("id");
-
-      const access = readAccessConfig();
-      if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
-
-      if (!questionId) return json(res, 400, { error: "Missing question ID" });
-
-      const result = await storageDeleteQuestion(questionId);
-      return json(res, 200, result);
     } catch (err) {
       return json(res, 400, { error: err.message });
     }
