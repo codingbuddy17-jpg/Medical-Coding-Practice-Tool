@@ -655,19 +655,26 @@ textarea {
   font-weight: 600;
 }
 
-/* Medium Check Button */
-#checkBtn {
-  padding: 0.4rem 1rem;
-  font-size: 0.9rem;
+/* Equalized action buttons */
+.answer-row .action-btn {
+  flex: 1;
+  min-height: 40px;
+  font-size: 0.95rem;
+  padding: 0.55rem 0.9rem;
+  border: none;
+  color: #fff;
 }
 
-/* Larger Next Button */
-#nextBtn {
-  padding: 0.5rem 1.5rem;
-  /* Wider hit area */
-  font-size: 0.95rem;
-  min-width: 100px;
-  /* Ensure substantive look */
+.btn-gradient-check {
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+}
+
+.btn-gradient-skip {
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+}
+
+.btn-gradient-next {
+  background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%);
 }
 
 .mcq-options {

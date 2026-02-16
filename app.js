@@ -96,7 +96,10 @@ const state = {
     wrong: 0,
     passThreshold: 80,
     strictTiming: true,
-    blueprintName: ""
+    blueprintName: "",
+    skippedIds: [],
+    reviewingSkipped: false,
+    shuffleSeed: ""
   },
   awaitingNext: false,
   selectedMcqOption: "",
@@ -106,6 +109,7 @@ const state = {
   },
   accessConfig: {
     trialQuestionLimit: 20,
+    maxSessionQuestions: 250,
     contactMessage: "For full access, contact PracticeBuddy Lab by CodingBuddy360 on WhatsApp at +91 8309661352."
   },
   adminPanel: {
@@ -192,6 +196,7 @@ function cacheDOM() {
     pauseExamBtn: document.getElementById("pauseExamBtn"),
     examStatus: document.getElementById("examStatus"),
     examTimer: document.getElementById("examTimer"),
+    examRemainingNotice: document.getElementById("examRemainingNotice"),
 
     examTopicSelectLabel: document.getElementById("examTopicSelectLabel"),
     examBlueprintSelectLabel: document.getElementById("examBlueprintSelectLabel"),
@@ -211,6 +216,7 @@ function cacheDOM() {
     mcqOptions: document.getElementById("mcqOptions"),
     userAnswer: document.getElementById("userAnswer"),
     checkBtn: document.getElementById("checkBtn"),
+    skipBtn: document.getElementById("skipBtn"),
     nextBtn: document.getElementById("nextBtn"),
     flagQuestionBtn: document.getElementById("flagQuestionBtn"),
     feedback: document.getElementById("feedback"),
@@ -299,6 +305,7 @@ function cacheDOM() {
     adminTraineeCode: document.getElementById("adminTraineeCode"),
     adminTrainerKey: document.getElementById("adminTrainerKey"),
     adminTrialLimit: document.getElementById("adminTrialLimit"),
+    adminMaxSessionLimit: document.getElementById("adminMaxSessionLimit"),
     adminTraineeActive: document.getElementById("adminTraineeActive"),
     adminTraineeExpiry: document.getElementById("adminTraineeExpiry"),
     saveAccessConfigBtn: document.getElementById("saveAccessConfigBtn"),
@@ -516,12 +523,20 @@ function isTrialUser() {
 
 function activeSessionLimit() {
   const limit = Number(state.session.questionLimit || 0);
-  if (limit > 0 && Number.isFinite(limit)) return limit;
-  return isTrialUser() ? Number(state.accessConfig.trialQuestionLimit || 20) : 1000000;
+  const base = limit > 0 && Number.isFinite(limit)
+    ? limit
+    : (isTrialUser() ? Number(state.accessConfig.trialQuestionLimit || 20) : 1000000);
+  const cap = Number(state.accessConfig.maxSessionQuestions || 0);
+  if (cap > 0 && Number.isFinite(cap) && state.role !== "trainer") return Math.min(base, cap);
+  return base;
 }
 
 function hasSessionLimitReached() {
   return state.session.attempted >= activeSessionLimit();
+}
+
+function remainingSessionLimit() {
+  return Math.max(0, activeSessionLimit() - Number(state.session.attempted || 0));
 }
 
 function trialUpgradeMessage() {
@@ -914,7 +929,9 @@ function resetStudyOrder(tagKey = null) {
 
 function buildStudyQueueForTag(tagKey) {
   const ids = getCardsForTag(tagKey).map((card) => card.id);
-  state.studyOrder.queues[tagKey] = shuffledCopy(ids);
+  const seed = state.session.shuffleSeed ? `${state.session.shuffleSeed}|practice|${tagKey || "ALL"}` : "";
+  const rng = seed ? createSeededRng(seed) : null;
+  state.studyOrder.queues[tagKey] = shuffledCopy(ids, rng);
   state.studyOrder.cursors[tagKey] = 0;
 }
 
@@ -1050,6 +1067,9 @@ function updateRoleUI() {
     setStatus(dom.adminStatus, "");
   }
   dom.examTrialContactWrap.classList.add("hidden");
+  if (dom.examRemainingNotice) {
+    dom.examRemainingNotice.classList.toggle("hidden", isTrainer);
+  }
   dom.flagQuestionBtn.classList.toggle("hidden", isTrainer);
   syncExamControlLock();
   renderResources();
@@ -1110,7 +1130,8 @@ function updateSessionIdentityLock() {
 
 function updateMetrics() {
   const { correct, wrong, attempted } = state.session;
-  const score = attempted === 0 ? 0 : Math.round((correct / attempted) * 100);
+  const gradedAttempted = Math.max(0, attempted - (state.session.skipped || 0));
+  const score = gradedAttempted === 0 ? 0 : Math.round((correct / gradedAttempted) * 100);
 
   dom.correctCount.textContent = String(correct);
   dom.wrongCount.textContent = String(wrong);
@@ -1135,6 +1156,9 @@ function updateMetrics() {
 function updateExamStatusUI() {
   if (!state.exam.inProgress) {
     dom.examTimer.textContent = "Time left: --:--";
+    if (dom.examRemainingNotice && state.role !== "trainer") {
+      dom.examRemainingNotice.textContent = `Remaining session questions: ${remainingSessionLimit()}`;
+    }
     return;
   }
 
@@ -1142,7 +1166,11 @@ function updateExamStatusUI() {
   const answered = state.exam.answered;
   const threshold = Math.min(100, Math.max(1, Number(state.exam.passThreshold || state.examConfig.passThreshold || 80)));
   const name = state.exam.blueprintName ? ` [${state.exam.blueprintName}]` : "";
-  setStatus(dom.examStatus, `Exam running${name}: ${answered}/${total} answered. Pass ${threshold}%.`);
+  const reviewNote = state.exam.reviewingSkipped ? " Review of skipped questions in progress." : "";
+  setStatus(dom.examStatus, `Exam running${name}: ${answered}/${total} answered. Pass ${threshold}%.${reviewNote}`);
+  if (dom.examRemainingNotice && state.role !== "trainer") {
+    dom.examRemainingNotice.textContent = `Remaining session questions: ${remainingSessionLimit()}`;
+  }
   if (!state.exam.strictTiming) {
     dom.examTimer.textContent = "Time left: Untimed";
     return;
@@ -1315,6 +1343,8 @@ function finishExam(reason) {
   clearExamTimer();
   state.exam.queueIds = [];
   state.exam.cursor = 0;
+  state.exam.skippedIds = [];
+  state.exam.reviewingSkipped = false;
 
   // Show Modal
   const resultOverlay = document.createElement("div");
@@ -1343,6 +1373,7 @@ function finishExam(reason) {
   state.exam.passThreshold = state.examConfig.passThreshold;
   state.exam.strictTiming = state.examConfig.strictTiming;
   state.exam.blueprintName = "";
+  state.exam.shuffleSeed = "";
   state.currentCardIndex = 0;
   state.awaitingNext = false;
 
@@ -1396,11 +1427,31 @@ function startExamTimer() {
   }, 1000);
 }
 
-function shuffledCopy(items) {
-  const arr = [...items];
+function hashSeedToInt(seed) {
+  let hash = 2166136261;
+  const text = String(seed || "");
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
 
+function createSeededRng(seed) {
+  let t = hashSeedToInt(seed);
+  return () => {
+    t += 0x6D2B79F5;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffledCopy(items, rng = null) {
+  const arr = [...items];
   const randomIndex = (max) => {
     if (max <= 0) return 0;
+    if (typeof rng === "function") return Math.floor(rng() * max);
     if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
       const buffer = new Uint32Array(1);
       crypto.getRandomValues(buffer);
@@ -1509,8 +1560,9 @@ function buildBlueprintQueue(source, template, total) {
   return shuffledCopy(chosen.slice(0, total));
 }
 
-function shuffleCardsForExam(cards, limit) {
-  return shuffledCopy(cards).slice(0, limit).map(c => c.id);
+function shuffleCardsForExam(cards, limit, seed) {
+  const rng = seed ? createSeededRng(seed) : null;
+  return shuffledCopy(cards, rng).slice(0, limit).map(c => c.id);
 }
 
 function startExam() {
@@ -1570,12 +1622,21 @@ function startExam() {
   const minutes = Math.max(1, Number(dom.examDuration.value) || state.examConfig.durationMinutes);
   const passThreshold = Math.min(100, Math.max(1, Number(dom.examPassThreshold.value) || state.examConfig.passThreshold || 80));
   const strictTiming = dom.examStrictTiming.checked;
-  const total = Math.min(requested, candidateCards.length);
+  const remaining = remainingSessionLimit();
+  if (remaining <= 0) {
+    setStatus(dom.examStatus, `Session limit reached. ${trialUpgradeMessage()}`, "error");
+    return;
+  }
+  const total = Math.min(requested, candidateCards.length, remaining);
+  if (total < requested) {
+    setStatus(dom.examStatus, `Exam length adjusted to ${total} due to session limit.`, "error");
+  }
 
   // For Blueprint/Standard, we might just use random or blueprint logic
   // But for Topic/Weakness we shouldn't use blueprint queue logic unless verified.
   // For now, simple random shuffle for Topic/Weakness/Standard
-  const queue = shuffleCardsForExam(candidateCards, total);
+  state.exam.shuffleSeed = `${state.session.shuffleSeed || ""}|exam|${Date.now()}`;
+  const queue = shuffleCardsForExam(candidateCards, total, state.exam.shuffleSeed);
 
   state.exam.inProgress = true;
   state.exam.queueIds = queue;
@@ -1587,6 +1648,8 @@ function startExam() {
   state.exam.passThreshold = passThreshold;
   state.exam.strictTiming = strictTiming;
   state.exam.blueprintName = selectedTemplate?.name || "";
+  state.exam.skippedIds = [];
+  state.exam.reviewingSkipped = false;
 
   state.examConfig.questionCount = requested;
   state.examConfig.durationMinutes = minutes;
@@ -1639,10 +1702,16 @@ function pickNextWeakCard(cards, currentCardId) {
 function advanceCardAfterAttempt(current) {
   if (state.exam.inProgress) {
     state.exam.cursor += 1;
-    state.exam.answered += 1;
     if (state.exam.cursor >= state.exam.queueIds.length) {
-      finishExam("completed");
-      return;
+      if (state.exam.skippedIds && state.exam.skippedIds.length) {
+        state.exam.queueIds = [...new Set(state.exam.skippedIds)];
+        state.exam.skippedIds = [];
+        state.exam.cursor = 0;
+        state.exam.reviewingSkipped = true;
+      } else {
+        finishExam("completed");
+        return;
+      }
     }
     updateExamStatusUI();
     renderCard();
@@ -1689,6 +1758,23 @@ function recordCategoryAndCardStats(card, isCorrect) {
   else cardStat.wrong += 1;
 }
 
+function recordSkipStats(card) {
+  const tagKey = normalizeTagKey(card.tag);
+  if (!state.session.categoryStats[tagKey]) {
+    state.session.categoryStats[tagKey] = { attempted: 0, correct: 0, wrong: 0, skipped: 0 };
+  }
+  const cat = state.session.categoryStats[tagKey];
+  cat.attempted += 1;
+  cat.skipped = (cat.skipped || 0) + 1;
+
+  if (!state.session.cardStats[card.id]) {
+    state.session.cardStats[card.id] = { attempted: 0, correct: 0, wrong: 0, skipped: 0 };
+  }
+  const cardStat = state.session.cardStats[card.id];
+  cardStat.attempted += 1;
+  cardStat.skipped = (cardStat.skipped || 0) + 1;
+}
+
 async function apiRequest(path, method = "GET", payload = null) {
   const options = { method, headers: {}, cache: "no-store" };
   if (payload) {
@@ -1727,10 +1813,12 @@ async function loadPublicAccessConfig() {
   try {
     const data = await apiRequest("/api/access/config");
     state.accessConfig.trialQuestionLimit = Math.max(1, Number(data.trialQuestionLimit || 20));
+    state.accessConfig.maxSessionQuestions = Math.max(1, Number(data.maxSessionQuestions || 250));
     state.accessConfig.contactMessage =
       String(data.contactMessage || "").trim() || `For full access, contact ${BRAND_NAME} on WhatsApp at +91 8309661352.`;
   } catch {
     state.accessConfig.trialQuestionLimit = 20;
+    state.accessConfig.maxSessionQuestions = 250;
   }
 }
 
@@ -1738,6 +1826,7 @@ function resetSessionTracking() {
   state.session.correct = 0;
   state.session.wrong = 0;
   state.session.attempted = 0;
+  state.session.skipped = 0;
   state.session.categoryStats = createEmptyCategoryStats();
   state.session.cardStats = {};
   renderCategoryScorecards();
@@ -1811,7 +1900,6 @@ async function startSession() {
   }
 
   stopExam();
-  resetStudyOrder();
 
   state.userName = userName;
   state.userEmail = userEmail;
@@ -1823,13 +1911,20 @@ async function startSession() {
   state.session.id = uid("session");
   state.session.startedAt = Date.now();
   state.session.isActive = true;
-  state.session.questionLimit = Math.max(
+  const roleLimit = Math.max(
     1,
     Number(role === "trial" ? state.accessConfig.trialQuestionLimit : verifiedAccess.questionLimit || 1000000)
   );
+  const sessionCap = Number(state.accessConfig.maxSessionQuestions || 0);
+  const cappedLimit = sessionCap > 0 && Number.isFinite(sessionCap) && role !== "trainer"
+    ? Math.min(roleLimit, sessionCap)
+    : roleLimit;
+  state.session.questionLimit = cappedLimit;
   state.session.cohortId = verifiedAccess.cohortId;
   state.session.cohortName = verifiedAccess.cohortName;
+  state.session.shuffleSeed = `${state.session.id}|${state.userEmail || "user"}|${Date.now()}`;
   state.awaitingNext = false;
+  resetStudyOrder();
   resetSessionTracking();
   updateSessionIdentityLock();
 
@@ -1875,11 +1970,12 @@ async function endSession() {
 
   finishExam("stopped");
 
+  const gradedAttempted = Math.max(0, state.session.attempted - (state.session.skipped || 0));
   const summary = {
     correct: state.session.correct,
     wrong: state.session.wrong,
-    attempted: state.session.attempted,
-    score: state.session.attempted ? Math.round((state.session.correct / state.session.attempted) * 100) : 0
+    attempted: gradedAttempted,
+    score: gradedAttempted ? Math.round((state.session.correct / gradedAttempted) * 100) : 0
   };
 
   try {
@@ -2000,6 +2096,7 @@ async function validateCurrentAnswer() {
       acceptedAnswers: result.acceptedAnswers,
       userAnswer: responseValue,
       isCorrect: result.isCorrect,
+      isSkipped: false,
       at: Date.now()
     });
     setAwaitingNext(true);
@@ -2007,6 +2104,61 @@ async function validateCurrentAnswer() {
   } finally {
     state.processingAnswer = false;
   }
+}
+
+function handleSkipInExam(card) {
+  if (!card || !state.exam.inProgress) return;
+  if (!state.exam.reviewingSkipped) {
+    if (!state.exam.skippedIds.includes(card.id)) {
+      state.exam.skippedIds.push(card.id);
+    }
+  }
+  advanceCardAfterAttempt(card);
+}
+
+async function skipQuestion() {
+  if (!state.session.isActive) {
+    setStatus(dom.feedback, "Start a session first.", "error");
+    return;
+  }
+
+  if (hasSessionLimitReached()) {
+    updateTrialLockUI();
+    setStatus(dom.feedback, `Question limit reached. ${trialUpgradeMessage()}`, "error");
+    return;
+  }
+
+  const card = currentCard();
+  if (!card) {
+    setStatus(dom.feedback, "No card available in selected category.", "error");
+    return;
+  }
+
+  if (state.exam.inProgress) {
+    handleSkipInExam(card);
+    return;
+  }
+
+  state.session.attempted += 1;
+  state.session.skipped += 1;
+  recordSkipStats(card);
+  updateMetrics();
+  renderCategoryScorecards();
+
+  await logAnswer({
+    sessionId: state.session.id,
+    cardTag: card.tag,
+    question: card.question,
+    expectedAnswer: "",
+    acceptedAnswers: [],
+    userAnswer: "[SKIPPED]",
+    isCorrect: false,
+    isSkipped: true,
+    at: Date.now()
+  });
+
+  setStatus(dom.feedback, "Skipped.", "neutral");
+  advanceCardAfterAttempt(card);
 }
 
 function nextQuestion() {
@@ -3552,6 +3704,7 @@ async function loadAdminData() {
     dom.adminTraineeCode.value = String(configRes.traineeAccessCode || "");
     dom.adminTrainerKey.value = String(configRes.trainerKey || "");
     dom.adminTrialLimit.value = String(configRes.trialQuestionLimit || state.accessConfig.trialQuestionLimit || 20);
+    dom.adminMaxSessionLimit.value = String(configRes.maxSessionQuestions || state.accessConfig.maxSessionQuestions || 250);
     dom.adminTraineeActive.value = configRes.traineeAccessActive === false ? "false" : "true";
     dom.adminTraineeExpiry.value = toDateInputValue(configRes.traineeAccessExpiresAt);
     state.adminPanel.cohorts = Array.isArray(cohortRes.cohorts) ? cohortRes.cohorts : [];
@@ -3573,6 +3726,7 @@ async function saveAccessConfig() {
   const traineeAccessCode = dom.adminTraineeCode.value.trim();
   const trainerKey = dom.adminTrainerKey.value.trim();
   const trialQuestionLimit = Math.max(1, Number(dom.adminTrialLimit.value || state.accessConfig.trialQuestionLimit || 20));
+  const maxSessionQuestions = Math.max(1, Number(dom.adminMaxSessionLimit.value || state.accessConfig.maxSessionQuestions || 250));
   const traineeAccessActive = dom.adminTraineeActive.value !== "false";
   const traineeAccessExpiresAt = toEpochFromDateInput(dom.adminTraineeExpiry.value);
 
@@ -3583,7 +3737,8 @@ async function saveAccessConfig() {
       trainerKey,
       traineeAccessActive,
       traineeAccessExpiresAt,
-      trialQuestionLimit
+      trialQuestionLimit,
+      maxSessionQuestions
     });
     await loadPublicAccessConfig();
     setStatus(dom.accessConfigStatus, "Access settings saved.", "success");
@@ -3722,6 +3877,7 @@ function bindEvents() {
   if (dom.startBtn) dom.startBtn.addEventListener("click", startSession);
   if (dom.endSessionBtn) dom.endSessionBtn.addEventListener("click", endSession);
   if (dom.checkBtn) dom.checkBtn.addEventListener("click", validateCurrentAnswer);
+  if (dom.skipBtn) dom.skipBtn.addEventListener("click", skipQuestion);
   if (dom.nextBtn) dom.nextBtn.addEventListener("click", nextQuestion);
   if (dom.flagQuestionBtn) dom.flagQuestionBtn.addEventListener("click", flagCurrentQuestion);
 
@@ -4005,6 +4161,7 @@ async function init() {
   dom.adminKeyInput.value = "";
   dom.adminTraineeActive.value = "true";
   dom.adminTraineeExpiry.value = "";
+  dom.adminMaxSessionLimit.value = String(state.accessConfig.maxSessionQuestions || 250);
   dom.cohortActiveInput.value = "true";
   dom.cohortExpiryInput.value = "";
   dom.memberActiveInput.value = "true";

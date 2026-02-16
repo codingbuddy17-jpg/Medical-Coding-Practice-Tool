@@ -226,6 +226,7 @@
                     </div>
                   </div>
                   <p id="examStatus" class="status">Exam mode inactive.</p>
+                  <p id="examRemainingNotice" class="status subtle">Remaining session questions: --</p>
                   <div id="examTrialContactWrap" class="hidden">
                     <button id="examTrialContactBtn" class="ghost-btn cta-secondary" type="button">Contact For Trainee
                       Access</button>
@@ -273,8 +274,9 @@
             <div id="mcqOptions" class="mcq-options hidden" aria-live="polite"></div>
             <div id="shortAnswerRow" class="answer-row">
               <input id="userAnswer" type="text" placeholder="Type diagnosis/procedure code" />
-              <button id="checkBtn" class="primary-btn" type="button">Check</button>
-              <button id="nextBtn" class="ghost-btn" type="button">Next</button>
+              <button id="checkBtn" class="action-btn btn-gradient-check" type="button">Check</button>
+              <button id="skipBtn" class="action-btn btn-gradient-skip" type="button">Skip</button>
+              <button id="nextBtn" class="action-btn btn-gradient-next" type="button">Next</button>
             </div>
             <p id="feedback" class="status" aria-live="polite"></p>
             <div class="rationale-box">
@@ -738,6 +740,10 @@
                 <label>
                   Trial Question Limit
                   <input id="adminTrialLimit" type="number" min="1" step="1" placeholder="20" />
+                </label>
+                <label>
+                  Max Session Questions
+                  <input id="adminMaxSessionLimit" type="number" min="1" step="1" placeholder="250" />
                 </label>
                 <label>
                   Trainee Access Active

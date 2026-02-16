@@ -137,6 +137,7 @@ function readAccessConfig() {
       traineeAccessActive: parsed.traineeAccessActive !== false,
       traineeAccessExpiresAt: parsed.traineeAccessExpiresAt ? Number(parsed.traineeAccessExpiresAt) : null,
       trialQuestionLimit: Number(parsed.trialQuestionLimit || 20),
+      maxSessionQuestions: Number(parsed.maxSessionQuestions || 250),
       updatedAt: Number(parsed.updatedAt || Date.now())
     };
   } catch {
@@ -146,6 +147,7 @@ function readAccessConfig() {
       traineeAccessActive: true,
       traineeAccessExpiresAt: null,
       trialQuestionLimit: 20,
+      maxSessionQuestions: 250,
       updatedAt: Date.now()
     };
   }
@@ -159,6 +161,7 @@ function writeAccessConfig(config) {
     traineeAccessActive: config.traineeAccessActive !== false,
     traineeAccessExpiresAt: config.traineeAccessExpiresAt ? Number(config.traineeAccessExpiresAt) : null,
     trialQuestionLimit: Math.max(1, Number(config.trialQuestionLimit || 20)),
+    maxSessionQuestions: Math.max(1, Number(config.maxSessionQuestions || 250)),
     updatedAt: Date.now()
   };
   fs.writeFileSync(ACCESS_FILE, JSON.stringify(payload, null, 2));
@@ -430,6 +433,7 @@ function getPublicAccessConfig() {
   const config = readAccessConfig();
   return {
     trialQuestionLimit: Math.max(1, Number(config.trialQuestionLimit || 20)),
+    maxSessionQuestions: Math.max(1, Number(config.maxSessionQuestions || 250)),
     contactMessage: "For full access, contact PracticeBuddy Lab by CodingBuddy360 on WhatsApp at +91 8309661352."
   };
 }
@@ -585,20 +589,25 @@ function buildAttemptAnalytics(attempts, days) {
   for (const attempt of filtered) {
     const tag = String(attempt.cardTag || "General").trim() || "General";
     const isCorrect = Boolean(attempt.isCorrect);
+    const isSkipped = Boolean(attempt.isSkipped);
     const day = dayKeyFromTs(attempt.at);
 
     const tagAgg = byTagMap.get(tag) || { tag, attempted: 0, correct: 0, wrong: 0, accuracy: 0 };
-    tagAgg.attempted += 1;
-    if (isCorrect) tagAgg.correct += 1;
-    else tagAgg.wrong += 1;
-    tagAgg.accuracy = tagAgg.attempted ? Math.round((tagAgg.correct / tagAgg.attempted) * 100) : 0;
+    if (!isSkipped) {
+      tagAgg.attempted += 1;
+      if (isCorrect) tagAgg.correct += 1;
+      else tagAgg.wrong += 1;
+      tagAgg.accuracy = tagAgg.attempted ? Math.round((tagAgg.correct / tagAgg.attempted) * 100) : 0;
+    }
     byTagMap.set(tag, tagAgg);
 
     const dayAgg = trendMap.get(day) || { day, attempted: 0, correct: 0, wrong: 0, accuracy: 0 };
-    dayAgg.attempted += 1;
-    if (isCorrect) dayAgg.correct += 1;
-    else dayAgg.wrong += 1;
-    dayAgg.accuracy = dayAgg.attempted ? Math.round((dayAgg.correct / dayAgg.attempted) * 100) : 0;
+    if (!isSkipped) {
+      dayAgg.attempted += 1;
+      if (isCorrect) dayAgg.correct += 1;
+      else dayAgg.wrong += 1;
+      dayAgg.accuracy = dayAgg.attempted ? Math.round((dayAgg.correct / dayAgg.attempted) * 100) : 0;
+    }
     trendMap.set(day, dayAgg);
   }
 
@@ -607,8 +616,8 @@ function buildAttemptAnalytics(attempts, days) {
     return b.attempted - a.attempted;
   });
   const trend = Array.from(trendMap.values()).sort((a, b) => a.day.localeCompare(b.day));
-  const attempted = filtered.length;
-  const correct = filtered.filter((a) => a.isCorrect).length;
+  const attempted = filtered.filter((a) => !a.isSkipped).length;
+  const correct = filtered.filter((a) => a.isCorrect && !a.isSkipped).length;
   const wrong = attempted - correct;
 
   return {
@@ -671,6 +680,7 @@ async function listAttemptsForEmails(emails, sinceTs) {
         attempts.push({
           cardTag: String(answer.cardTag || "General"),
           isCorrect: Boolean(answer.isCorrect),
+          isSkipped: Boolean(answer.isSkipped || String(answer.userAnswer || "") === "[SKIPPED]"),
           at
         });
       }
@@ -691,7 +701,7 @@ async function listAttemptsForEmails(emails, sinceTs) {
 
   const attemptsRes = await supabase
     .from("attempts")
-    .select("session_id,card_tag,is_correct,answered_at")
+    .select("session_id,card_tag,is_correct,user_answer,answered_at")
     .in("session_id", sessionIds)
     .gte("answered_at", sinceIso)
     .limit(20000);
@@ -700,6 +710,7 @@ async function listAttemptsForEmails(emails, sinceTs) {
   return (attemptsRes.data || []).map((row) => ({
     cardTag: String(row.card_tag || "General"),
     isCorrect: Boolean(row.is_correct),
+    isSkipped: String(row.user_answer || "") === "[SKIPPED]",
     at: Date.parse(row.answered_at)
   }));
 }
@@ -792,6 +803,7 @@ async function storageLogAnswer({
   acceptedAnswers,
   userAnswer,
   isCorrect,
+  isSkipped,
   at
 }) {
   if (!USE_SUPABASE) {
@@ -806,11 +818,12 @@ async function storageLogAnswer({
       acceptedAnswers,
       userAnswer,
       isCorrect,
+      isSkipped: Boolean(isSkipped || String(userAnswer || "") === "[SKIPPED]"),
       at: Number(at || Date.now())
     });
 
     const correct = sessions[idx].answers.filter((a) => a.isCorrect).length;
-    const attempted = sessions[idx].answers.length;
+    const attempted = sessions[idx].answers.filter((a) => !a.isSkipped).length;
     const wrong = attempted - correct;
     sessions[idx].summary = { correct, wrong, attempted, score: calcScore(correct, attempted) };
 
@@ -844,14 +857,16 @@ async function storageLogAnswer({
   const attemptedRes = await supabase
     .from("attempts")
     .select("id", { count: "exact", head: true })
-    .eq("session_id", sessionId);
+    .eq("session_id", sessionId)
+    .neq("user_answer", "[SKIPPED]");
   if (attemptedRes.error) throw attemptedRes.error;
 
   const correctRes = await supabase
     .from("attempts")
     .select("id", { count: "exact", head: true })
     .eq("session_id", sessionId)
-    .eq("is_correct", true);
+    .eq("is_correct", true)
+    .neq("user_answer", "[SKIPPED]");
   if (correctRes.error) throw correctRes.error;
 
   const attempted = Number(attemptedRes.count || 0);
@@ -1690,6 +1705,7 @@ const server = http.createServer(async (req, res) => {
       traineeAccessActive: config.traineeAccessActive !== false,
       traineeAccessExpiresAt: config.traineeAccessExpiresAt ? Number(config.traineeAccessExpiresAt) : null,
       trialQuestionLimit: Math.max(1, Number(config.trialQuestionLimit || 20)),
+      maxSessionQuestions: Math.max(1, Number(config.maxSessionQuestions || 250)),
       updatedAt: config.updatedAt
     });
   }
@@ -1710,7 +1726,9 @@ const server = http.createServer(async (req, res) => {
         traineeAccessExpiresAt:
           body.traineeAccessExpiresAt !== undefined ? normalizeExpiryTs(body.traineeAccessExpiresAt) : existing.traineeAccessExpiresAt,
         trialQuestionLimit:
-          body.trialQuestionLimit !== undefined ? Math.max(1, Number(body.trialQuestionLimit || 20)) : existing.trialQuestionLimit
+          body.trialQuestionLimit !== undefined ? Math.max(1, Number(body.trialQuestionLimit || 20)) : existing.trialQuestionLimit,
+        maxSessionQuestions:
+          body.maxSessionQuestions !== undefined ? Math.max(1, Number(body.maxSessionQuestions || 250)) : existing.maxSessionQuestions
       });
       return json(res, 200, next);
     } catch (err) {
@@ -2316,6 +2334,7 @@ const server = http.createServer(async (req, res) => {
         acceptedAnswers: Array.isArray(body.acceptedAnswers) ? body.acceptedAnswers : [],
         userAnswer: String(body.userAnswer || ""),
         isCorrect: Boolean(body.isCorrect),
+        isSkipped: Boolean(body.isSkipped),
         at: Number(body.at || Date.now())
       });
 
