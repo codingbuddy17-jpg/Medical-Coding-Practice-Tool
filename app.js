@@ -223,6 +223,7 @@ function cacheDOM() {
     upgradeWall: document.getElementById("upgradeWall"),
     upgradeStatus: document.getElementById("upgradeStatus"),
     unlockAccessBtn: document.getElementById("unlockAccessBtn"),
+    unlockAccessAdminBtn: document.getElementById("unlockAccessAdminBtn"),
     whatsappUpgradeBtn: document.getElementById("whatsappUpgradeBtn"),
     callUpgradeBtn: document.getElementById("callUpgradeBtn"),
     demoClassBtn: document.getElementById("demoClassBtn"),
@@ -2744,11 +2745,17 @@ function renderQuestionBankTable() {
 
   dom.questionBankBody.innerHTML = questions.slice(0, 100).map(q => {
     const shortQ = String(q.question || "").slice(0, 80);
+    const embedded = decodeEmbeddedCard(q.answer || "");
+    const isMcq = embedded?.type === "mcq" || String(q.type || "").toLowerCase() === "mcq";
+    const typeLabel = isMcq ? "mcq" : (q.type || "short");
+    const answerLabel = isMcq
+      ? `${embedded?.correctOption || ""}`.trim()
+      : String(q.answer || "");
     return `<tr>
       <td>${escapeHtml(q.tag || "General")}</td>
       <td title="${escapeHtml(q.question)}">${escapeHtml(shortQ)}</td>
-      <td>${escapeHtml(q.type || "short")}</td>
-      <td>${escapeHtml(q.answer || "")}</td>
+      <td>${escapeHtml(typeLabel)}</td>
+      <td>${escapeHtml(answerLabel)}</td>
       <td>
         <button class="ghost-btn danger-btn" type="button" data-bank-action="delete" data-bank-id="${escapeHtml(q.id)}">Delete</button>
       </td>
@@ -3700,6 +3707,11 @@ async function enrollSelectedCohortMember() {
 function bindEvents() {
   if (bindEvents.done) return;
   bindEvents.done = true;
+  document.querySelectorAll(".sub-nav-item").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      handleMentorSubTab(btn.dataset.subtab);
+    });
+  });
   if (dom.roleSelect) dom.roleSelect.addEventListener("change", () => {
     state.role = dom.roleSelect.value;
     if (state.role !== "trainer") state.trainerKeyVerified = false;
@@ -3880,6 +3892,12 @@ function bindEvents() {
     openWhatsAppCta(
       "Hello, I have completed the trial and would like to request full access to the complete training program.",
       "cta_unlock_full_access_click"
+    );
+  });
+  if (dom.unlockAccessAdminBtn) dom.unlockAccessAdminBtn.addEventListener("click", () => {
+    openWhatsAppCta(
+      "Hello, I would like to upgrade a learner to full access. Please share next steps.",
+      "cta_admin_upgrade_request_click"
     );
   });
   if (dom.whatsappUpgradeBtn) dom.whatsappUpgradeBtn.addEventListener("click", () => {
@@ -4215,22 +4233,4 @@ function updateDashboardWidgets() {
   if (widgetReviews) widgetReviews.textContent = reviewCount;
 }
 
-// Initialize Sub-Nav Listeners
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("DOM loaded, initializing app...");
-
-  // Sub-nav for Mentor Dashboard
-  document.querySelectorAll(".sub-nav-item").forEach(btn => {
-    btn.addEventListener("click", () => {
-      handleMentorSubTab(btn.dataset.subtab);
-    });
-  });
-});
-
-// Start App
-if (typeof init === "function") {
-  init().catch(err => {
-    console.error("App init failed:", err);
-    alert(`App initialization error: ${err.message}`);
-  });
-}
+// Sub-nav listeners are bound via bindEvents() after cacheDOM()
