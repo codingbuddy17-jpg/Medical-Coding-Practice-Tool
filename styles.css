@@ -165,7 +165,7 @@ h1 {
   margin-top: 0.55rem;
   border: 1px solid #bdd3e6;
   background: linear-gradient(160deg, #ffffff, #f7fbff);
-  max-height: 520px;
+  max-height: 800px;
   opacity: 1;
   transform: translateY(0);
   overflow: hidden;
@@ -1238,6 +1238,10 @@ code {
 
   .dashboard {
     grid-template-columns: 1fr;
+  }
+
+  .landing-panel {
+    max-height: none !important;
   }
 }
 

@@ -2679,13 +2679,22 @@ async function resolveAllImportReviewItems() {
 function renderImportBatches() {
   const items = Array.isArray(state.importAdmin.batches) ? state.importAdmin.batches : [];
   if (!items.length) {
-    dom.importBatchBody.innerHTML = '<tr><td colspan="6">No import batches loaded.</td></tr>';
+    dom.importBatchBody.innerHTML = '<tr><td colspan="7">No import batches loaded.</td></tr>';
     return;
   }
   dom.importBatchBody.innerHTML = items
     .map((item) => {
       const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : "-";
-      return `<tr><td>${escapeHtml(item.id)}</td><td>${Number(item.insertedCount || 0)}</td><td>${Number(item.warnCount || 0)}</td><td>${Number(item.failCount || 0)}</td><td>${Number(item.skippedCount || 0)}</td><td>${escapeHtml(createdAt)}</td></tr>`;
+      const status = item.rolledBackAt ? `<span class="import-status-pill import-status-fail">Rolled Back</span>` : `<span class="import-status-pill import-status-pass">Active</span>`;
+      return `<tr>
+        <td>${escapeHtml(item.id)}</td>
+        <td>${Number(item.insertedCount || 0)}</td>
+        <td>${Number(item.warnCount || 0)}</td>
+        <td>${Number(item.failCount || 0)}</td>
+        <td>${Number(item.skippedCount || 0)}</td>
+        <td>${escapeHtml(createdAt)}</td>
+        <td>${status}</td>
+      </tr>`;
     })
     .join("");
 }
