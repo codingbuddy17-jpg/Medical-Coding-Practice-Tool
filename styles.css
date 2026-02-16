@@ -1183,7 +1183,7 @@ code {
   }
 }
 
-@media (max-width: 580px) {
+@media (max-width: 768px) {
   body {
     padding: 0.5rem;
   }
@@ -1222,15 +1222,16 @@ code {
   .landing-panel .panel-actions,
   .auth .panel-actions,
   .upgrade-wall .panel-actions {
-    flex-direction: column;
-    width: 100%;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
     gap: 0.6rem;
   }
 
   .landing-panel .panel-actions button,
   .auth .panel-actions button,
   .upgrade-wall .panel-actions button {
-    width: 100%;
+    width: 100% !important;
     padding: 0.75rem;
     /* Larger touch target */
   }
