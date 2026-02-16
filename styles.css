@@ -1242,60 +1242,25 @@ code {
 
   .landing-panel {
     max-height: none !important;
-    padding-bottom: 80px;
-    /* Space for sticky footer */
-    transform: none !important;
-    /* Fix: Release fixed children from local coordinate system */
-    overflow: visible !important;
-    /* Fix: Allow fixed children to escape */
   }
 
-  /* Sticky CTA for Mobile */
-  .landing-panel .panel-actions {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: white;
-    /* var(--surface) equivalent */
-    padding: 1rem;
-    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
-    z-index: 999;
-    margin: 0 !important;
-    border-top: 1px solid #e2e8f0;
-    flex-direction: row !important;
-    /* Keep side-by-side or stack? User said sticky Start Trial. */
-    /* Let's keep the stack from previous fix but ensure it fits */
-    gap: 0.75rem;
+  /* Fix for landing page keys/buttons on mobile */
+  .landing-panel .panel-actions,
+  .auth .panel-actions,
+  .upgrade-wall .panel-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    gap: 0.6rem;
   }
 
-  /* Ensure buttons don't get too tall in sticky mode */
-  .landing-panel .panel-actions button {
-    padding: 0.8rem;
+  .landing-panel .panel-actions button,
+  .auth .panel-actions button,
+  .upgrade-wall .panel-actions button {
+    width: 100% !important;
+    padding: 0.75rem;
     margin: 0;
-    flex: 1;
-    /* Equal width */
-    width: auto !important;
-    /* Override 100% width from general mobile rule */
-    font-size: 0.9rem;
-    /* Slightly smaller text for fit */
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* CRITICAL FIX: Hide the panel AND its fixed children when dismissed */
-  .landing-panel.landing-hidden {
-    display: none !important;
-  }
-}
-
-/* Adjust Floating WhatsApp to not overlap sticky footer on mobile */
-@media (max-width: 768px) {
-  .floating-whatsapp {
-    bottom: 150px !important;
-    /* Raise above the sticky footer (approx 120px height) */
-    z-index: 1000;
+    /* Larger touch target */
   }
 }
 
