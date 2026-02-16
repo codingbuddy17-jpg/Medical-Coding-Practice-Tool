@@ -401,6 +401,16 @@
                 <option value="trainee">Learner Access</option>
                 <option value="trainer">Mentor Console</option>
               </select>
+              <select id="sessionWindowFilter">
+                <option value="all">All time</option>
+                <option value="1">Last 24 hours</option>
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+              </select>
+              <label class="inline-toggle compact-toggle">
+                <input id="excludeTrialToggle" type="checkbox" checked />
+                <span>Exclude trial</span>
+              </label>
               <button id="refreshSessionsBtn" class="ghost-btn" type="button">Refresh Sessions</button>
               <button id="exportSessionsBtn" class="ghost-btn" type="button">Export Sessions CSV</button>
             </div>
@@ -707,13 +717,12 @@
             <h3>Access Management <span id="adminActiveIndicator" class="admin-active-badge hidden"
                 aria-live="polite">Admin
                 active</span></h3>
-            <p class="status">Use this single section to manage trainer keys, trainee access, cohort controls, and
-              access
-              lifecycle.</p>
+            <p class="status">Follow the steps below to manage global access, cohorts, and member enrollments.</p>
             <div class="auth-grid">
               <label>
-                Admin Key
+                Step 1: Admin Key
                 <input id="adminKeyInput" type="password" placeholder="Enter admin key" />
+                <span class="helper">Required to unlock all access controls.</span>
               </label>
               <div class="panel-actions">
                 <button id="verifyAdminBtn" class="ghost-btn" type="button">Verify Admin</button>
@@ -727,34 +736,64 @@
             </div>
 
             <div id="adminTools" class="hidden">
-              <h4>Global Access Settings</h4>
+              <div class="admin-summary-card">
+                <div class="admin-summary-title">Access Status Summary</div>
+                <div class="admin-summary-grid">
+                  <div class="admin-summary-item">
+                    <span class="admin-summary-label">Learner Access</span>
+                    <strong id="adminSummaryLearner">--</strong>
+                  </div>
+                  <div class="admin-summary-item">
+                    <span class="admin-summary-label">Trial Limit</span>
+                    <strong id="adminSummaryTrialLimit">--</strong>
+                  </div>
+                  <div class="admin-summary-item">
+                    <span class="admin-summary-label">Max Session</span>
+                    <strong id="adminSummarySessionLimit">--</strong>
+                  </div>
+                  <div class="admin-summary-item">
+                    <span class="admin-summary-label">Active Cohorts</span>
+                    <strong id="adminSummaryCohorts">--</strong>
+                  </div>
+                  <div class="admin-summary-item">
+                    <span class="admin-summary-label">Expiring Soon</span>
+                    <strong id="adminSummaryExpiring">--</strong>
+                  </div>
+                </div>
+              </div>
+              <h4>Step 2: Global Access Settings</h4>
               <div class="auth-grid">
                 <label>
-                  Trainee Access Code
-                  <input id="adminTraineeCode" type="text" placeholder="Set trainee code" />
+                  Global Learner Code
+                  <input id="adminTraineeCode" type="text" placeholder="Set learner access code" />
+                  <span class="helper">Shared with all trainees (unless cohort code is used).</span>
                 </label>
                 <label>
                   Trainer Key
                   <input id="adminTrainerKey" type="text" placeholder="Set trainer key" />
+                  <span class="helper">Required for Mentor HQ access.</span>
                 </label>
                 <label>
-                  Trial Question Limit
+                  Trial Card Limit
                   <input id="adminTrialLimit" type="number" min="1" step="1" placeholder="20" />
+                  <span class="helper">Trial users are capped to this many cards.</span>
                 </label>
                 <label>
-                  Max Session Questions
+                  Max Cards per Session
                   <input id="adminMaxSessionLimit" type="number" min="1" step="1" placeholder="250" />
+                  <span class="helper">Applies to trainees only. Trainers are unlimited.</span>
                 </label>
                 <label>
-                  Trainee Access Active
+                  Learner Access Active
                   <select id="adminTraineeActive">
                     <option value="true">Yes</option>
                     <option value="false">No</option>
                   </select>
                 </label>
                 <label>
-                  Trainee Access Expiry
+                  Learner Access Expiry
                   <input id="adminTraineeExpiry" type="date" />
+                  <span class="helper">After this date, the global learner code stops.</span>
                 </label>
               </div>
               <div class="panel-actions">
@@ -762,7 +801,7 @@
               </div>
               <p id="accessConfigStatus" class="status"></p>
 
-              <h4>Cohort / Class Management</h4>
+              <h4>Step 3: Cohort / Class Management</h4>
               <div class="auth-grid">
                 <label>
                   Cohort Name
@@ -771,13 +810,15 @@
                 <label>
                   Cohort Access Code
                   <input id="cohortCodeInput" type="text" placeholder="CPCJAN2026" />
+                  <span class="helper">Share this code with that specific batch only.</span>
                 </label>
                 <label>
-                  Cohort Question Limit
+                  Cohort Session Limit
                   <input id="cohortLimitInput" type="number" min="1" step="1" placeholder="1000" />
+                  <span class="helper">Overrides the global max session limit for this cohort.</span>
                 </label>
                 <label>
-                  Active
+                  Access Active
                   <select id="cohortActiveInput">
                     <option value="true">Yes</option>
                     <option value="false">No</option>
@@ -786,6 +827,7 @@
                 <label>
                   Cohort Expiry
                   <input id="cohortExpiryInput" type="date" />
+                  <span class="helper">After this date, the cohort code stops.</span>
                 </label>
               </div>
               <div class="panel-actions">
@@ -799,36 +841,39 @@
                 Existing Cohorts
                 <select id="cohortSelect"></select>
               </label>
-              <div class="auth-grid">
-                <label>
-                  Member Name
-                  <input id="memberNameInput" type="text" placeholder="Optional name" />
-                </label>
-                <label>
-                  Member Email
-                  <input id="memberEmailInput" type="email" placeholder="trainee@email.com" />
-                </label>
-                <label>
-                  Member Phone
-                  <input id="memberPhoneInput" type="text" placeholder="+91 xxxxxxxxxx" />
-                </label>
-                <label>
-                  Member Active
-                  <select id="memberActiveInput">
-                    <option value="true">Yes</option>
-                    <option value="false">No</option>
-                  </select>
-                </label>
-                <label>
-                  Member Expiry
-                  <input id="memberExpiryInput" type="date" />
-                </label>
-              </div>
-              <div class="panel-actions">
-                <button id="enrollMemberBtn" class="primary-btn" type="button">Enroll Member</button>
-                <button id="unlockAccessAdminBtn" class="primary-btn" type="button">Request Upgrade (WA)</button>
-              </div>
-              <p id="enrollStatus" class="status"></p>
+              <details id="memberManager" class="details-panel">
+                <summary>Step 4 (Optional): Manage Cohort Members</summary>
+                <div class="auth-grid">
+                  <label>
+                    Member Name
+                    <input id="memberNameInput" type="text" placeholder="Optional name" />
+                  </label>
+                  <label>
+                    Member Email
+                    <input id="memberEmailInput" type="email" placeholder="trainee@email.com" />
+                    <span class="helper">Required if cohort uses email validation.</span>
+                  </label>
+                  <label>
+                    Member Phone
+                    <input id="memberPhoneInput" type="text" placeholder="+91 xxxxxxxxxx" />
+                  </label>
+                  <label>
+                    Member Active
+                    <select id="memberActiveInput">
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </label>
+                  <label>
+                    Member Expiry
+                    <input id="memberExpiryInput" type="date" />
+                  </label>
+                </div>
+                <div class="panel-actions">
+                  <button id="enrollMemberBtn" class="primary-btn" type="button">Enroll Member</button>
+                </div>
+                <p id="enrollStatus" class="status"></p>
+              </details>
 
               <div class="table-wrap">
                 <table>
@@ -849,36 +894,38 @@
                 </table>
               </div>
 
-              <h4>Exam Blueprint Assignment</h4>
-              <div class="auth-grid">
-                <label>
-                  Blueprint Template
-                  <select id="blueprintTemplateSelect">
-                    <option value="">Select template</option>
-                  </select>
-                </label>
-                <label>
-                  Questions
-                  <input id="blueprintQuestionCount" type="number" min="1" step="1" placeholder="50" />
-                </label>
-                <label>
-                  Duration (mins)
-                  <input id="blueprintDuration" type="number" min="1" step="1" placeholder="45" />
-                </label>
-                <label>
-                  Pass Threshold (%)
-                  <input id="blueprintPassThreshold" type="number" min="1" max="100" step="1" placeholder="80" />
-                </label>
-                <label class="inline-toggle">
-                  <input id="blueprintStrictTiming" type="checkbox" checked />
-                  <span>Strict timing</span>
-                </label>
-              </div>
-              <div class="panel-actions">
-                <button id="refreshBlueprintsBtn" class="ghost-btn" type="button">Refresh Blueprints</button>
-                <button id="assignBlueprintBtn" class="primary-btn" type="button">Assign to Selected Cohort</button>
-              </div>
-              <p id="blueprintStatus" class="status"></p>
+              <details id="blueprintManager" class="details-panel">
+                <summary>Optional: Exam Blueprint Assignment</summary>
+                <div class="auth-grid">
+                  <label>
+                    Blueprint Template
+                    <select id="blueprintTemplateSelect">
+                      <option value="">Select template</option>
+                    </select>
+                  </label>
+                  <label>
+                    Questions
+                    <input id="blueprintQuestionCount" type="number" min="1" step="1" placeholder="50" />
+                  </label>
+                  <label>
+                    Duration (mins)
+                    <input id="blueprintDuration" type="number" min="1" step="1" placeholder="45" />
+                  </label>
+                  <label>
+                    Pass Threshold (%)
+                    <input id="blueprintPassThreshold" type="number" min="1" max="100" step="1" placeholder="80" />
+                  </label>
+                  <label class="inline-toggle">
+                    <input id="blueprintStrictTiming" type="checkbox" checked />
+                    <span>Strict timing</span>
+                  </label>
+                </div>
+                <div class="panel-actions">
+                  <button id="refreshBlueprintsBtn" class="ghost-btn" type="button">Refresh Blueprints</button>
+                  <button id="assignBlueprintBtn" class="primary-btn" type="button">Assign to Selected Cohort</button>
+                </div>
+                <p id="blueprintStatus" class="status"></p>
+              </details>
             </div>
 
           </section>

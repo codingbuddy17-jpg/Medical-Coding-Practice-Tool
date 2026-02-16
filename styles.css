@@ -336,6 +336,96 @@ h4 {
   background: #fef2f2 !important;
 }
 
+.helper {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.details-panel {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed rgba(100, 116, 139, 0.35);
+  border-radius: 10px;
+  background: rgba(241, 245, 249, 0.4);
+}
+
+.details-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #0f172a;
+  list-style: none;
+}
+
+.details-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.details-panel summary::before {
+  content: "+";
+  display: inline-block;
+  width: 1.2rem;
+  color: #0ea5e9;
+}
+
+.details-panel[open] summary::before {
+  content: "–";
+}
+
+.compact-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.admin-summary-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.9rem;
+  background: #f8fafc;
+  margin-bottom: 1rem;
+}
+
+.admin-summary-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #0f172a;
+  margin-bottom: 0.6rem;
+}
+
+.admin-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.6rem;
+}
+
+.admin-summary-item {
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.admin-summary-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.admin-summary-item strong {
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
 .panel {
   border: 1px solid var(--line);
   background: #fff;

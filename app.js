@@ -290,6 +290,8 @@ function cacheDOM() {
     exportSessionsBtn: document.getElementById("exportSessionsBtn"),
     sessionSearchInput: document.getElementById("sessionSearchInput"),
     sessionRoleFilter: document.getElementById("sessionRoleFilter"),
+    sessionWindowFilter: document.getElementById("sessionWindowFilter"),
+    excludeTrialToggle: document.getElementById("excludeTrialToggle"),
     sessionTableBody: document.getElementById("sessionTableBody"),
     sessionLoadStatus: document.getElementById("sessionLoadStatus"),
     flagStatusFilter: document.getElementById("flagStatusFilter"),
@@ -301,6 +303,11 @@ function cacheDOM() {
     verifyAdminBtn: document.getElementById("verifyAdminBtn"),
     loadAdminDataBtn: document.getElementById("loadAdminDataBtn"),
     adminStatus: document.getElementById("adminStatus"),
+    adminSummaryLearner: document.getElementById("adminSummaryLearner"),
+    adminSummaryTrialLimit: document.getElementById("adminSummaryTrialLimit"),
+    adminSummarySessionLimit: document.getElementById("adminSummarySessionLimit"),
+    adminSummaryCohorts: document.getElementById("adminSummaryCohorts"),
+    adminSummaryExpiring: document.getElementById("adminSummaryExpiring"),
     adminTools: document.getElementById("adminTools"),
     adminTraineeCode: document.getElementById("adminTraineeCode"),
     adminTrainerKey: document.getElementById("adminTrainerKey"),
@@ -2985,8 +2992,17 @@ function toAccessTypeLabel(role) {
 function filteredSessionsForConsole() {
   const search = String(dom.sessionSearchInput.value || "").trim().toLowerCase();
   const role = String(dom.sessionRoleFilter.value || "");
+  const windowDays = String(dom.sessionWindowFilter?.value || "all");
+  const excludeTrial = Boolean(dom.excludeTrialToggle?.checked);
+  const now = Date.now();
+  const windowMs = windowDays === "all" ? 0 : Number(windowDays) * 24 * 60 * 60 * 1000;
   return (state.sessionConsole.all || []).filter((s) => {
     if (role && String(s.role || "") !== role) return false;
+    if (excludeTrial && String(s.role || "") === "trial") return false;
+    if (windowMs > 0) {
+      const startedAt = Number(new Date(s.startedAt || 0));
+      if (!startedAt || now - startedAt > windowMs) return false;
+    }
     if (search) {
       const name = String(s.userName || "").toLowerCase();
       if (!name.includes(search)) return false;
@@ -3015,6 +3031,22 @@ function renderSessionConsoleTable() {
     .join("");
 
   updateDashboardWidgets();
+}
+
+function renderAdminSummary(config, cohorts) {
+  if (!dom.adminSummaryLearner) return;
+  const accessActive = config?.traineeAccessActive === false ? "Inactive" : "Active";
+  const expiry = config?.traineeAccessExpiresAt ? toDateInputValue(config.traineeAccessExpiresAt) : "None";
+  dom.adminSummaryLearner.textContent = `${accessActive} · Exp: ${expiry}`;
+  dom.adminSummaryTrialLimit.textContent = String(config?.trialQuestionLimit || 20);
+  dom.adminSummarySessionLimit.textContent = String(config?.maxSessionQuestions || 250);
+
+  const list = Array.isArray(cohorts) ? cohorts : [];
+  const activeCount = list.filter((c) => c.isActive).length;
+  dom.adminSummaryCohorts.textContent = `${activeCount}/${list.length}`;
+
+  const soon = list.filter((c) => c.expiresAt && Number(c.expiresAt) < Date.now() + 14 * 24 * 60 * 60 * 1000).length;
+  dom.adminSummaryExpiring.textContent = String(soon);
 }
 
 function exportSessionsCsv() {
@@ -3718,6 +3750,7 @@ async function loadAdminData() {
     dom.adminTraineeActive.value = configRes.traineeAccessActive === false ? "false" : "true";
     dom.adminTraineeExpiry.value = toDateInputValue(configRes.traineeAccessExpiresAt);
     state.adminPanel.cohorts = Array.isArray(cohortRes.cohorts) ? cohortRes.cohorts : [];
+    renderAdminSummary(configRes, state.adminPanel.cohorts);
     renderCohortUI();
     renderAnalyticsCohorts(state.adminPanel.cohorts);
     await loadBlueprintTemplates();
@@ -4026,6 +4059,8 @@ function bindEvents() {
   if (dom.exportSessionsBtn) dom.exportSessionsBtn.addEventListener("click", exportSessionsCsv);
   if (dom.sessionSearchInput) dom.sessionSearchInput.addEventListener("input", renderSessionConsoleTable);
   if (dom.sessionRoleFilter) dom.sessionRoleFilter.addEventListener("change", renderSessionConsoleTable);
+  if (dom.sessionWindowFilter) dom.sessionWindowFilter.addEventListener("change", renderSessionConsoleTable);
+  if (dom.excludeTrialToggle) dom.excludeTrialToggle.addEventListener("change", renderSessionConsoleTable);
   if (dom.refreshFlagsBtn) dom.refreshFlagsBtn.addEventListener("click", loadFlagQueue);
   if (dom.flagStatusFilter) dom.flagStatusFilter.addEventListener("change", loadFlagQueue);
   if (dom.flagQueueBody) dom.flagQueueBody.addEventListener("click", (event) => {
@@ -4372,12 +4407,9 @@ function handleMentorSubTab(subTab) {
 }
 
 function updateDashboardWidgets() {
-  // 1. Active Students: Count rows in session table (excluding "No sessions")
-  const sessionRows = document.querySelectorAll("#sessionTableBody tr");
-  let studentCount = 0;
-  if (sessionRows.length > 0 && !sessionRows[0].innerText.includes("No sessions")) {
-    studentCount = sessionRows.length;
-  }
+  // 1. Active Students: Based on filtered sessions (exclude trainer)
+  const sessions = filteredSessionsForConsole();
+  const studentCount = sessions.filter((s) => String(s.role || "") !== "trainer").length;
   const widgetStudents = document.getElementById("widgetActiveStudents");
   if (widgetStudents) widgetStudents.textContent = studentCount;
 
