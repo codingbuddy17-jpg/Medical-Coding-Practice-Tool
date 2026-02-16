@@ -4400,11 +4400,28 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Start App
-  if (typeof init === "function") {
-    init().catch(err => {
-      console.error("App init failed:", err);
-      alert(`App initialization error: ${err.message}`);
-    });
-  }
+  handleMentorSubTab(btn.dataset.subtab);
 });
+  });
+
+// Start App
+if (typeof init === "function") {
+  init().then(() => {
+    setupInputListeners(); // Add listener for inputs
+  }).catch(err => {
+    console.error("App init failed:", err);
+    alert(`App initialization error: ${err.message}`);
+  });
+}
+});
+
+function setupInputListeners() {
+  const inputs = [dom.userName, dom.userEmail, dom.userPhone];
+  inputs.forEach(input => {
+    if (input) {
+      input.addEventListener("focus", () => {
+        if (dom.preSessionLanding) dom.preSessionLanding.classList.add("landing-hidden");
+      });
+    }
+  });
+}
