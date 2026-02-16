@@ -599,6 +599,8 @@ function buildAttemptAnalytics(attempts, days) {
 
   const byTagMap = new Map();
   const trendMap = new Map();
+  let totalDurationMs = 0;
+  let timedAttemptCount = 0;
 
   for (const attempt of filtered) {
     const tag = String(attempt.cardTag || "General").trim() || "General";
@@ -623,6 +625,11 @@ function buildAttemptAnalytics(attempts, days) {
       dayAgg.accuracy = dayAgg.attempted ? Math.round((dayAgg.correct / dayAgg.attempted) * 100) : 0;
     }
     trendMap.set(day, dayAgg);
+
+    if (!isSkipped && Number(attempt.durationMs || 0) > 0) {
+      totalDurationMs += Number(attempt.durationMs || 0);
+      timedAttemptCount += 1;
+    }
   }
 
   const byTag = Array.from(byTagMap.values()).sort((a, b) => {
@@ -634,12 +641,15 @@ function buildAttemptAnalytics(attempts, days) {
   const correct = filtered.filter((a) => a.isCorrect && !a.isSkipped).length;
   const wrong = attempted - correct;
 
+  const avgSeconds = timedAttemptCount ? totalDurationMs / timedAttemptCount / 1000 : null;
+
   return {
     summary: {
       attempted,
       correct,
       wrong,
       score: attempted ? Math.round((correct / attempted) * 100) : 0,
+      avgSeconds,
       days: Math.max(1, Number(days || 30))
     },
     byTag,
@@ -695,6 +705,7 @@ async function listAttemptsForEmails(emails, sinceTs) {
           cardTag: String(answer.cardTag || "General"),
           isCorrect: Boolean(answer.isCorrect),
           isSkipped: Boolean(answer.isSkipped || String(answer.userAnswer || "") === "[SKIPPED]"),
+          durationMs: Number(answer.durationMs || 0),
           at
         });
       }
@@ -818,6 +829,7 @@ async function storageLogAnswer({
   userAnswer,
   isCorrect,
   isSkipped,
+  durationMs,
   at
 }) {
   if (!USE_SUPABASE) {
@@ -833,6 +845,7 @@ async function storageLogAnswer({
       userAnswer,
       isCorrect,
       isSkipped: Boolean(isSkipped || String(userAnswer || "") === "[SKIPPED]"),
+      durationMs: Number(durationMs || 0),
       at: Number(at || Date.now())
     });
 

@@ -1440,6 +1440,15 @@ code {
 
 .analytics-summary {
   margin: 0.35rem 0 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.analytics-summary .metric-label {
+  font-size: 0.72rem;
+}
+
+.analytics-summary .metric strong {
+  font-size: 0.95rem;
 }
 
 /* -------------------------------------------------------------------------- */

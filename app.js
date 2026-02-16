@@ -62,6 +62,7 @@ const state = {
   adminKey: "",
   selectedTag: "ALL",
   weakDrillEnabled: false,
+  adaptiveEnabled: false,
   examConfig: {
     questionCount: 30,
     durationMinutes: 30,
@@ -81,6 +82,9 @@ const state = {
     correct: 0,
     wrong: 0,
     attempted: 0,
+    questionStartAt: null,
+    totalAnswerTimeMs: 0,
+    recentResults: [],
     isActive: false,
     categoryStats: createEmptyCategoryStats(),
     cardStats: {}
@@ -94,6 +98,8 @@ const state = {
     answered: 0,
     correct: 0,
     wrong: 0,
+    attemptedTotal: 0,
+    totalAnswerTimeMs: 0,
     passThreshold: 80,
     strictTiming: true,
     blueprintName: "",
@@ -180,6 +186,7 @@ function cacheDOM() {
     categoryButtons: document.getElementById("categoryButtons"),
     categoryStatus: document.getElementById("categoryStatus"),
     weakDrillToggle: document.getElementById("weakDrillToggle"),
+    adaptiveToggle: document.getElementById("adaptiveToggle"),
     examQuestionCount: document.getElementById("examQuestionCount"),
     examModeSelect: document.getElementById("examModeSelect"),
     examTopicSelect: document.getElementById("examTopicSelect"),
@@ -360,6 +367,7 @@ function cacheDOM() {
     analyticsCorrect: document.getElementById("analyticsCorrect"),
     analyticsWrong: document.getElementById("analyticsWrong"),
     analyticsScore: document.getElementById("analyticsScore"),
+    analyticsAvgTime: document.getElementById("analyticsAvgTime"),
     analyticsRecommendedTags: document.getElementById("analyticsRecommendedTags"),
     analyticsTagBody: document.getElementById("analyticsTagBody"),
     analyticsTrendBody: document.getElementById("analyticsTrendBody"),
@@ -430,6 +438,13 @@ function setStatus(el, message, mode = "") {
   el.textContent = message;
   el.classList.remove("success", "error");
   if (mode) el.classList.add(mode);
+}
+
+function formatSeconds(seconds) {
+  const total = Math.max(0, Math.round(Number(seconds) || 0));
+  const mm = String(Math.floor(total / 60)).padStart(2, "0");
+  const ss = String(total % 60).padStart(2, "0");
+  return `${mm}:${ss}`;
 }
 
 function normalize(text) {
@@ -764,6 +779,7 @@ function saveLocal() {
     resources: state.resources,
     selectedTag: state.selectedTag,
     weakDrillEnabled: state.weakDrillEnabled,
+    adaptiveEnabled: state.adaptiveEnabled,
     examConfig: state.examConfig
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -787,6 +803,7 @@ function loadLocal() {
     state.resources = Array.isArray(parsed.resources) && parsed.resources.length > 0 ? parsed.resources : [...DEFAULT_RESOURCES];
     state.selectedTag = CATEGORY_OPTIONS.some((item) => item.key === parsed.selectedTag) ? parsed.selectedTag : "ALL";
     state.weakDrillEnabled = Boolean(parsed.weakDrillEnabled);
+    state.adaptiveEnabled = Boolean(parsed.adaptiveEnabled);
     state.examConfig.questionCount = Number(parsed.examConfig?.questionCount) || 30;
     state.examConfig.durationMinutes = Number(parsed.examConfig?.durationMinutes) || 30;
     state.examConfig.passThreshold = Math.min(100, Math.max(1, Number(parsed.examConfig?.passThreshold) || 80));
@@ -1112,7 +1129,9 @@ function updateSessionIdentityLock() {
       const name = state.userName || "Session";
       const attempted = state.session.attempted || 0;
       const score = attempted ? Math.round((state.session.correct / attempted) * 100) : 0;
-      dom.topbarSessionSummary.textContent = `${name} · ${score}%`;
+      const avgSeconds = attempted ? state.session.totalAnswerTimeMs / attempted / 1000 : 0;
+      const avgLabel = attempted ? formatSeconds(avgSeconds) : "--";
+      dom.topbarSessionSummary.textContent = `${name} · ${score}% · Avg/Q ${avgLabel}`;
       dom.topbarSessionSummary.classList.remove("hidden");
       dom.topbarSessionActions.classList.remove("hidden");
 
@@ -1158,7 +1177,9 @@ function updateMetrics() {
 
   if (dom.topbarSessionSummary && state.session.isActive) {
     const name = state.userName || "Session";
-    dom.topbarSessionSummary.textContent = `${name} · ${score}%`;
+    const avgSeconds = attempted ? state.session.totalAnswerTimeMs / attempted / 1000 : 0;
+    const avgLabel = attempted ? formatSeconds(avgSeconds) : "--";
+    dom.topbarSessionSummary.textContent = `${name} · ${score}% · Avg/Q ${avgLabel}`;
   }
 
   if (dom.examRemainingNotice && state.role !== "trainer") {
@@ -1229,6 +1250,7 @@ function renderCard() {
 
     // Hide rationale when no card
     dom.rationalePlaceholder.classList.add("hidden");
+    state.session.questionStartAt = null;
     return;
   }
 
@@ -1257,6 +1279,7 @@ function renderCard() {
     updateTrialInfoBannerUI();
     updateUpgradeWallUI();
     dom.categoryStatus.textContent = state.role === "trainer" ? "Question limit reached for current access." : "";
+    state.session.questionStartAt = null;
     return;
   }
 
@@ -1311,6 +1334,10 @@ function renderCard() {
   if (card.type !== "mcq") dom.userAnswer.focus();
   dom.flagQuestionBtn.disabled = !state.session.isActive || hasSessionLimitReached();
   updateUpgradeWallUI();
+
+  if (state.session.isActive) {
+    state.session.questionStartAt = Date.now();
+  }
 }
 
 function setSelectedTag(tag) {
@@ -1342,6 +1369,10 @@ function finishExam(reason) {
   const passThreshold = Math.min(100, Math.max(1, Number(state.exam.passThreshold || state.examConfig.passThreshold || 80)));
   const passed = score >= passThreshold;
   const blueprintNote = state.exam.blueprintName ? ` (${state.exam.blueprintName})` : "";
+  const avgExamSeconds = state.exam.attemptedTotal
+    ? state.exam.totalAnswerTimeMs / state.exam.attemptedTotal / 1000
+    : 0;
+  const avgExamLabel = state.exam.attemptedTotal ? formatSeconds(avgExamSeconds) : "--";
 
   if (reason === "time") {
     setStatus(
@@ -1380,6 +1411,7 @@ function finishExam(reason) {
       <div class="result-score">${score}%</div>
       <p class="result-status">${passed ? "PASSED" : "FAILED"}</p>
       <p class="result-detail">Correct: ${state.exam.correct} | Wrong: ${state.exam.wrong} | Attempted: ${attempted}</p>
+      <p class="result-detail">Avg Time/Question: ${avgExamLabel}</p>
       <p class="result-note">Threshold: ${passThreshold}%</p>
       <div class="result-actions">
         <button class="primary-btn" onclick="window.location.reload()">Return to Dashboard</button>
@@ -1670,6 +1702,8 @@ function startExam() {
   state.exam.answered = 0;
   state.exam.correct = 0;
   state.exam.wrong = 0;
+  state.exam.attemptedTotal = 0;
+  state.exam.totalAnswerTimeMs = 0;
   state.exam.passThreshold = passThreshold;
   state.exam.strictTiming = strictTiming;
   state.exam.blueprintName = selectedTemplate?.name || "";
@@ -1700,6 +1734,54 @@ function startExam() {
 
 function stopExam() {
   finishExam("stopped");
+}
+
+function consumeQuestionTime() {
+  const start = Number(state.session.questionStartAt || 0);
+  if (!start) return 0;
+  const elapsed = Math.max(0, Date.now() - start);
+  state.session.questionStartAt = null;
+  state.session.totalAnswerTimeMs += elapsed;
+  if (state.exam.inProgress) {
+    state.exam.totalAnswerTimeMs += elapsed;
+  }
+  return elapsed;
+}
+
+function trackRecentResult(isCorrect) {
+  const list = Array.isArray(state.session.recentResults) ? state.session.recentResults : [];
+  list.push(Boolean(isCorrect));
+  while (list.length > 5) list.shift();
+  state.session.recentResults = list;
+}
+
+function computeAdaptiveTarget() {
+  const recent = state.session.recentResults || [];
+  if (!recent.length) return "medium";
+  const correct = recent.filter(Boolean).length;
+  const ratio = correct / recent.length;
+  if (ratio >= 0.8) return "hard";
+  if (ratio <= 0.4) return "easy";
+  return "medium";
+}
+
+function cardDifficulty(card) {
+  const stat = state.session.cardStats[card.id];
+  if (!stat || !stat.attempted) return "medium";
+  const acc = stat.correct / stat.attempted;
+  if (acc >= 0.8) return "easy";
+  if (acc <= 0.5) return "hard";
+  return "medium";
+}
+
+function pickAdaptiveNextCard(cards, currentCardId) {
+  const target = computeAdaptiveTarget();
+  const candidates = cards.filter((c) => c.id !== currentCardId && cardDifficulty(c) === target);
+  if (candidates.length) return candidates[Math.floor(Math.random() * candidates.length)];
+  const fallback = cards.filter((c) => c.id !== currentCardId && cardDifficulty(c) === "medium");
+  if (fallback.length) return fallback[Math.floor(Math.random() * fallback.length)];
+  const any = cards.filter((c) => c.id !== currentCardId);
+  return any[0] || cards[0] || null;
 }
 
 function getWeaknessScore(card) {
@@ -1754,6 +1836,10 @@ function advanceCardAfterAttempt(current) {
     const nextIdxInCards = pickNextWeakCard(cards, current.id);
     const nextCard = cards[nextIdxInCards] || cards[0];
     const nextQueueIdx = queue.indexOf(nextCard.id);
+    state.studyOrder.cursors[state.selectedTag] = nextQueueIdx >= 0 ? nextQueueIdx : 0;
+  } else if (state.adaptiveEnabled) {
+    const nextCard = pickAdaptiveNextCard(cards, current.id);
+    const nextQueueIdx = nextCard ? queue.indexOf(nextCard.id) : -1;
     state.studyOrder.cursors[state.selectedTag] = nextQueueIdx >= 0 ? nextQueueIdx : 0;
   } else {
     const currentCursor = state.studyOrder.cursors[state.selectedTag] || 0;
@@ -1855,6 +1941,9 @@ function resetSessionTracking() {
   state.session.wrong = 0;
   state.session.attempted = 0;
   state.session.skipped = 0;
+  state.session.questionStartAt = null;
+  state.session.totalAnswerTimeMs = 0;
+  state.session.recentResults = [];
   state.session.categoryStats = createEmptyCategoryStats();
   state.session.cardStats = {};
   renderCategoryScorecards();
@@ -1935,6 +2024,7 @@ async function startSession() {
   state.role = role;
   state.trainerKey = trainerKey;
   state.trainerKeyVerified = role === "trainer";
+  state.adaptiveEnabled = role === "trial" || role === "trainee";
   state.currentCardIndex = 0;
   state.session.id = uid("session");
   state.session.startedAt = Date.now();
@@ -1977,6 +2067,7 @@ async function startSession() {
   }
 
   updateRoleUI();
+  if (dom.adaptiveToggle) dom.adaptiveToggle.checked = state.adaptiveEnabled;
   updateMetrics();
   setStatus(dom.examStatus, "Exam mode inactive.");
   updateExamStatusUI();
@@ -2072,10 +2163,12 @@ async function validateCurrentAnswer() {
     }
 
     const result = checkAnswer(responseValue, card.answer, card);
+    const durationMs = consumeQuestionTime();
     state.session.attempted += 1;
 
     if (state.exam.inProgress) {
       // EXAM MODE: Silent Check (No Feedback, Auto-advance)
+      state.exam.attemptedTotal += 1;
       state.exam.answered += 1;
       if (result.isCorrect) {
         state.exam.correct += 1;
@@ -2116,6 +2209,7 @@ async function validateCurrentAnswer() {
       setStatus(dom.feedback, `Not correct. Expected: ${result.primaryAnswer}`, "error");
     }
 
+    trackRecentResult(result.isCorrect);
     recordCategoryAndCardStats(card, result.isCorrect);
     updateMetrics();
     renderCategoryScorecards();
@@ -2129,6 +2223,7 @@ async function validateCurrentAnswer() {
       userAnswer: responseValue,
       isCorrect: result.isCorrect,
       isSkipped: false,
+      durationMs,
       at: Date.now()
     });
     setAwaitingNext(true);
@@ -2171,11 +2266,16 @@ async function skipQuestion() {
     return;
   }
 
+  const durationMs = consumeQuestionTime();
   state.session.attempted += 1;
   state.session.skipped += 1;
   recordSkipStats(card);
   updateMetrics();
   renderCategoryScorecards();
+
+  if (!state.exam.inProgress) {
+    trackRecentResult(false);
+  }
 
   await logAnswer({
     sessionId: state.session.id,
@@ -2186,10 +2286,12 @@ async function skipQuestion() {
     userAnswer: "[SKIPPED]",
     isCorrect: false,
     isSkipped: true,
+    durationMs,
     at: Date.now()
   });
 
   if (state.exam.inProgress) {
+    state.exam.attemptedTotal += 1;
     handleSkipInExam(card);
     setStatus(dom.feedback, "Skipped. This will reappear in the review pass.", "neutral");
     return;
@@ -3259,6 +3361,10 @@ function renderAnalyticsTables(analytics) {
   dom.analyticsCorrect.textContent = String(summary.correct || 0);
   dom.analyticsWrong.textContent = String(summary.wrong || 0);
   dom.analyticsScore.textContent = `${Number(summary.score || 0)}%`;
+  if (dom.analyticsAvgTime) {
+    dom.analyticsAvgTime.textContent =
+      summary.avgSeconds && Number.isFinite(summary.avgSeconds) ? formatSeconds(summary.avgSeconds) : "--";
+  }
 
   if (!byTag.length) {
     dom.analyticsTagBody.innerHTML = '<tr><td colspan="5">No tag analytics for selected filter.</td></tr>';
@@ -3562,6 +3668,8 @@ function exportPdfReport() {
   const correct = state.session.correct || 0;
   const wrong = state.session.wrong || 0;
   const score = attempted ? Math.round((correct / attempted) * 100) : 0;
+  const avgSeconds = attempted ? state.session.totalAnswerTimeMs / attempted / 1000 : 0;
+  const avgLabel = attempted ? formatSeconds(avgSeconds) : "--";
   const started = state.session.startedAt ? new Date(state.session.startedAt).toLocaleString() : new Date().toLocaleString();
   const generated = new Date().toLocaleString();
   const threshold = Math.min(100, Math.max(1, Number(state.exam.passThreshold || state.examConfig.passThreshold || 80)));
@@ -3612,6 +3720,8 @@ function exportPdfReport() {
   doc.text(`Wrong: ${wrong}`, 14, y);
   y += 6;
   doc.text(`Score: ${score}%`, 14, y);
+  y += 6;
+  doc.text(`Avg Time/Question: ${avgLabel}`, 14, y);
   y += 6;
   doc.text(`Exam Threshold: ${threshold}% | Result: ${examResult}`, 14, y);
   y += 10;
@@ -3981,6 +4091,10 @@ function bindEvents() {
     state.weakDrillEnabled = event.target.checked;
     saveLocal();
   });
+  if (dom.adaptiveToggle) dom.adaptiveToggle.addEventListener("change", (event) => {
+    state.adaptiveEnabled = event.target.checked;
+    saveLocal();
+  });
 
   if (dom.examQuestionCount) dom.examQuestionCount.addEventListener("change", () => {
     state.examConfig.questionCount = Number(dom.examQuestionCount.value) || 30;
@@ -4246,6 +4360,7 @@ async function init() {
   dom.memberActiveInput.value = "true";
   dom.memberExpiryInput.value = "";
   dom.weakDrillToggle.checked = state.weakDrillEnabled;
+  dom.adaptiveToggle.checked = state.adaptiveEnabled;
   dom.examQuestionCount.value = String(state.examConfig.questionCount);
   dom.examDuration.value = String(state.examConfig.durationMinutes);
   dom.examPassThreshold.value = String(state.examConfig.passThreshold || 80);
