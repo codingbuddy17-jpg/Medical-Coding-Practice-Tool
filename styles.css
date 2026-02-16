@@ -1283,6 +1283,11 @@ code {
     overflow: hidden;
     text-overflow: ellipsis;
   }
+
+  /* CRITICAL FIX: Hide the panel AND its fixed children when dismissed */
+  .landing-panel.landing-hidden {
+    display: none !important;
+  }
 }
 
 /* Adjust Floating WhatsApp to not overlap sticky footer on mobile */
