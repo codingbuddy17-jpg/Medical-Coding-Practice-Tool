@@ -1269,6 +1269,15 @@ code {
   .landing-panel .panel-actions button {
     padding: 0.8rem;
     margin: 0;
+    flex: 1;
+    /* Equal width */
+    width: auto !important;
+    /* Override 100% width from general mobile rule */
+    font-size: 0.9rem;
+    /* Slightly smaller text for fit */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
