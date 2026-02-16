@@ -220,6 +220,7 @@ function cacheDOM() {
     nextBtn: document.getElementById("nextBtn"),
     flagQuestionBtn: document.getElementById("flagQuestionBtn"),
     feedback: document.getElementById("feedback"),
+    rationaleDetails: document.getElementById("rationaleDetails"),
     rationalePlaceholder: document.getElementById("rationalePlaceholder"),
     trialLockNotice: document.getElementById("trialLockNotice"),
     trialInfoBanner: document.getElementById("trialInfoBanner"),
@@ -308,6 +309,7 @@ function cacheDOM() {
     adminSummarySessionLimit: document.getElementById("adminSummarySessionLimit"),
     adminSummaryCohorts: document.getElementById("adminSummaryCohorts"),
     adminSummaryExpiring: document.getElementById("adminSummaryExpiring"),
+    adminSummaryUpdated: document.getElementById("adminSummaryUpdated"),
     adminTools: document.getElementById("adminTools"),
     adminTraineeCode: document.getElementById("adminTraineeCode"),
     adminTrainerKey: document.getElementById("adminTrainerKey"),
@@ -1214,6 +1216,10 @@ function renderCard() {
     dom.userAnswer.classList.remove("hidden");
     setStatus(dom.feedback, "");
     setStatus(dom.rationalePlaceholder, DEFAULT_RATIONALE_TEXT);
+    if (dom.rationaleDetails) {
+      dom.rationaleDetails.classList.add("hidden");
+      dom.rationaleDetails.open = false;
+    }
     setAwaitingNext(false);
     dom.flagQuestionBtn.disabled = true;
     updateTrialLockUI();
@@ -1240,6 +1246,10 @@ function renderCard() {
     // Show upgrade message in rationale box
     dom.rationalePlaceholder.classList.remove("hidden");
     setStatus(dom.rationalePlaceholder, "Unlock full access to continue practicing all questions.");
+    if (dom.rationaleDetails) {
+      dom.rationaleDetails.classList.remove("hidden");
+      dom.rationaleDetails.open = true;
+    }
 
     setAwaitingNext(false);
     dom.flagQuestionBtn.disabled = true;
@@ -1283,6 +1293,10 @@ function renderCard() {
   // Hide rationale initially for new card
   dom.rationalePlaceholder.classList.add("hidden");
   setStatus(dom.rationalePlaceholder, "");
+  if (dom.rationaleDetails) {
+    dom.rationaleDetails.classList.add("hidden");
+    dom.rationaleDetails.open = false;
+  }
 
   setAwaitingNext(false);
   updateTrialLockUI();
@@ -2086,6 +2100,10 @@ async function validateCurrentAnswer() {
     const rationale = String(card.rationale || "").trim() || DEFAULT_RATIONALE_TEXT;
     dom.rationalePlaceholder.classList.remove("hidden");
     setStatus(dom.rationalePlaceholder, rationale);
+    if (dom.rationaleDetails) {
+      dom.rationaleDetails.classList.remove("hidden");
+      dom.rationaleDetails.open = true;
+    }
 
     if (result.isCorrect) {
       state.session.correct += 1;
@@ -3047,6 +3065,10 @@ function renderAdminSummary(config, cohorts) {
 
   const soon = list.filter((c) => c.expiresAt && Number(c.expiresAt) < Date.now() + 14 * 24 * 60 * 60 * 1000).length;
   dom.adminSummaryExpiring.textContent = String(soon);
+  if (dom.adminSummaryUpdated) {
+    const updated = config?.updatedAt ? new Date(Number(config.updatedAt)).toLocaleDateString() : "—";
+    dom.adminSummaryUpdated.textContent = updated;
+  }
 }
 
 function exportSessionsCsv() {

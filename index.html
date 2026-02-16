@@ -260,10 +260,11 @@
             </div>
           </section>
 
+          <div class="section-divider"><span>Practice Flow</span></div>
           <section class="question-quarter">
-            <h3>Question</h3>
-            <p class="card-meta" id="cardTag">General</p>
+            <h3>Question <span id="cardTag" class="category-badge">General</span></h3>
             <p id="cardPrompt">Start session to begin.</p>
+            <p id="practiceHint" class="practice-hint">Type answer → Check → Review rationale → Next.</p>
           </section>
 
           <section class="answer-quarter">
@@ -279,13 +280,14 @@
               <button id="nextBtn" class="action-btn btn-gradient-next" type="button">Next</button>
             </div>
             <p id="feedback" class="status" aria-live="polite"></p>
-            <div class="rationale-box">
+            <details id="rationaleDetails" class="rationale-box">
+              <summary>Rationale</summary>
               <p id="rationalePlaceholder" class="status">Rationale section reserved for future explanation details.</p>
-              <p id="trialLockNotice" class="status hidden"></p>
-            </div>
+            </details>
             <div id="trialInfoBanner" class="trial-info hidden">
               <p class="status">You are using the Trial Version. <strong>Unlock full bank + exam mode.</strong> For full
                 access, contact us.</p>
+              <p id="trialLockNotice" class="status hidden"></p>
               <button id="trialInfoWhatsappBtn" class="ghost-btn cta-secondary" type="button">Contact On
                 WhatsApp</button>
             </div>
@@ -335,6 +337,7 @@
         </article>
       </section>
 
+      <div class="section-divider"><span>Session Analytics</span></div>
       <section class="panel">
         <h3>Per-Category Scorecards</h3>
         <div class="table-wrap">
@@ -712,6 +715,7 @@
             <p id="importBatchStatus" class="status"></p>
           </section>
 
+          <div class="section-divider section-divider-tight"><span>Admin Controls</span></div>
           <!-- Moved Access Management Here (renamed subtab to Admin & Tools) -->
           <section class="panel">
             <h3>Access Management <span id="adminActiveIndicator" class="admin-active-badge hidden"
@@ -758,6 +762,10 @@
                   <div class="admin-summary-item">
                     <span class="admin-summary-label">Expiring Soon</span>
                     <strong id="adminSummaryExpiring">--</strong>
+                  </div>
+                  <div class="admin-summary-item">
+                    <span class="admin-summary-label">Last Updated</span>
+                    <strong id="adminSummaryUpdated">--</strong>
                   </div>
                 </div>
               </div>
