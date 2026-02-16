@@ -1244,6 +1244,10 @@ code {
     max-height: none !important;
     padding-bottom: 80px;
     /* Space for sticky footer */
+    transform: none !important;
+    /* Fix: Release fixed children from local coordinate system */
+    overflow: visible !important;
+    /* Fix: Allow fixed children to escape */
   }
 
   /* Sticky CTA for Mobile */
