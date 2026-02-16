@@ -4082,6 +4082,8 @@ function bindEvents() {
     updateRoleUI();
     saveLocal();
     trackCtaEvent("landing_start_trial_click");
+    // CRITICAL FIX: Explicitly hide the landing panel so sticky footer goes away
+    if (dom.preSessionLanding) dom.preSessionLanding.classList.add("landing-hidden");
     dom.userName.focus();
   });
   if (dom.landingFullAccessBtn) dom.landingFullAccessBtn.addEventListener("click", () => {
