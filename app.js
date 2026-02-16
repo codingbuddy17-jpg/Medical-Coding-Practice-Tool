@@ -11,7 +11,7 @@ const CONTACT_PHONE_RAW = "+91 8309661352";
 const CONTACT_PHONE_DIAL = "918309661352";
 const WHATSAPP_NUMBER = "918309661352";
 const BROCHURE_URL = "";
-const SYLLABUS_URL = "";
+const SYLLABUS_URL = "/assets/curriculum.pdf";
 
 const CATEGORY_OPTIONS = [
   { key: "ALL", label: "All Topics" },

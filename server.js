@@ -333,6 +333,7 @@ function contentType(filePath) {
   if (ext === ".svg") return "image/svg+xml";
   if (ext === ".png") return "image/png";
   if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".pdf") return "application/pdf";
   return "text/plain; charset=utf-8";
 }
 
