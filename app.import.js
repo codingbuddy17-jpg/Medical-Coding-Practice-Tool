@@ -146,11 +146,17 @@ window.PBL_IMPORT = (() => {
   function parseExcelArrayBuffer(buffer) {
     if (!window.XLSX) throw new Error("Excel parser unavailable");
     const workbook = window.XLSX.read(buffer, { type: "array" });
-    const firstSheetName = workbook.SheetNames[0];
-    if (!firstSheetName) return [];
-    const sheet = workbook.Sheets[firstSheetName];
-    const rows = window.XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" });
-    return parseRowsMatrix(rows);
+    const sheetNames = Array.isArray(workbook.SheetNames) ? workbook.SheetNames : [];
+    if (!sheetNames.length) return [];
+    const allCards = [];
+    sheetNames.forEach((name) => {
+      const sheet = workbook.Sheets[name];
+      if (!sheet) return;
+      const rows = window.XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" });
+      const cards = parseRowsMatrix(rows);
+      if (cards.length) allCards.push(...cards);
+    });
+    return allCards;
   }
 
   function formatCardsForTextarea(cards) {

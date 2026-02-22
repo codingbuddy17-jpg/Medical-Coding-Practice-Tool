@@ -25,7 +25,8 @@ const CATEGORY_OPTIONS = [
   { key: "CDIP", label: "CDIP" },
   { key: "SURGERY-CODING", label: "Surgery Coding" },
   { key: "IP-DRG-CODING", label: "IP-DRG Coding" },
-  { key: "MEDICINE", label: "Medicine" }
+  { key: "MEDICINE", label: "Medicine" },
+  { key: "PRACTICE-CASES", label: "Practice Cases" }
 ];
 
 const TRACKED_CATEGORY_KEYS = CATEGORY_OPTIONS.filter((item) => item.key !== "ALL").map((item) => item.key);
@@ -475,6 +476,7 @@ function normalizeTagKey(tag) {
   if (cleaned.includes("IPDRGCODING")) return "IP-DRG-CODING";
   if (cleaned.includes("IPDRG")) return "IP-DRG-CODING";
   if (cleaned.includes("MEDICINE")) return "MEDICINE";
+  if (cleaned.includes("PRACTICECASES")) return "PRACTICE-CASES";
   return "OTHER";
 }
 
