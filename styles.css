@@ -261,6 +261,11 @@ h4 {
   color: var(--muted);
 }
 
+.subtle {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .panel-badge {
   font-size: 0.75rem;
   font-weight: 600;

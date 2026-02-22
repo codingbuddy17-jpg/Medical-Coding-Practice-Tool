@@ -146,7 +146,8 @@ const state = {
     batches: []
   },
   questionBank: {
-    all: []
+    all: [],
+    selectedIds: new Set()
   },
   reviewQueue: {
     items: []
@@ -279,6 +280,10 @@ function cacheDOM() {
     // Question Bank
     questionBankSearchInput: document.getElementById("questionBankSearchInput"),
     questionBankTagFilter: document.getElementById("questionBankTagFilter"),
+    questionBankSelectAll: document.getElementById("questionBankSelectAll"),
+    questionBankBulkTag: document.getElementById("questionBankBulkTag"),
+    questionBankBulkApplyBtn: document.getElementById("questionBankBulkApplyBtn"),
+    questionBankSelectedCount: document.getElementById("questionBankSelectedCount"),
     refreshQuestionBankBtn: document.getElementById("refreshQuestionBankBtn"),
     exportQuestionBankBtn: document.getElementById("exportQuestionBankBtn"),
     questionBankBody: document.getElementById("questionBankBody"),
@@ -3010,6 +3015,7 @@ async function loadQuestionBank() {
   try {
     const data = await apiRequest(`/api/questions?${qs.toString()}`);
     state.questionBank.all = Array.isArray(data.questions) ? data.questions : [];
+    state.questionBank.selectedIds = new Set();
     renderQuestionBankTable();
     setStatus(dom.questionBankStatus, `Loaded ${state.questionBank.all.length} questions.`, "success");
   } catch (err) {
@@ -3030,14 +3036,35 @@ function filteredQuestionsForBank() {
   return questions;
 }
 
+function updateQuestionBankSelectionUI(visibleIds = []) {
+  const selected = state.questionBank.selectedIds || new Set();
+  const selectedCount = selected.size;
+  if (dom.questionBankSelectedCount) {
+    dom.questionBankSelectedCount.textContent = `${selectedCount} selected`;
+  }
+  if (dom.questionBankSelectAll) {
+    if (!visibleIds.length) {
+      dom.questionBankSelectAll.checked = false;
+      dom.questionBankSelectAll.indeterminate = false;
+      return;
+    }
+    const selectedVisible = visibleIds.filter((id) => selected.has(id)).length;
+    dom.questionBankSelectAll.checked = selectedVisible > 0 && selectedVisible === visibleIds.length;
+    dom.questionBankSelectAll.indeterminate = selectedVisible > 0 && selectedVisible < visibleIds.length;
+  }
+}
+
 function renderQuestionBankTable() {
   const questions = filteredQuestionsForBank();
   if (!questions.length) {
-    dom.questionBankBody.innerHTML = '<tr><td colspan="5">No active questions found.</td></tr>';
+    dom.questionBankBody.innerHTML = '<tr><td colspan="6">No active questions found.</td></tr>';
+    updateQuestionBankSelectionUI([]);
     return;
   }
 
-  dom.questionBankBody.innerHTML = questions.slice(0, 100).map(q => {
+  const visible = questions.slice(0, 100);
+  const selected = state.questionBank.selectedIds || new Set();
+  dom.questionBankBody.innerHTML = visible.map(q => {
     const shortQ = String(q.question || "").slice(0, 80);
     const embedded = decodeEmbeddedCard(q.answer || "");
     const isMcq = embedded?.type === "mcq" || String(q.type || "").toLowerCase() === "mcq";
@@ -3046,6 +3073,7 @@ function renderQuestionBankTable() {
       ? `${embedded?.correctOption || ""}`.trim()
       : String(q.answer || "");
     return `<tr>
+      <td><input type="checkbox" data-bank-select="${escapeHtml(q.id)}" ${selected.has(q.id) ? "checked" : ""}></td>
       <td>${escapeHtml(q.tag || "General")}</td>
       <td title="${escapeHtml(q.question)}">${escapeHtml(shortQ)}</td>
       <td>${escapeHtml(typeLabel)}</td>
@@ -3055,6 +3083,8 @@ function renderQuestionBankTable() {
       </td>
     </tr>`;
   }).join("");
+
+  updateQuestionBankSelectionUI(visible.map((q) => q.id));
 }
 
 async function deleteQuestion(questionId) {
@@ -3073,9 +3103,44 @@ async function deleteQuestion(questionId) {
     const qs = new URLSearchParams({ trainerKey, id: questionId });
     await apiRequest(`/api/questions?${qs.toString()}`, "DELETE");
     setStatus(dom.questionBankStatus, "Question deleted.", "success");
+    if (state.questionBank.selectedIds) state.questionBank.selectedIds.delete(questionId);
     await loadQuestionBank(); // Refresh list
   } catch (err) {
     setStatus(dom.questionBankStatus, `Could not delete question: ${err.message}`, "error");
+  }
+}
+
+async function bulkUpdateQuestionTags() {
+  if (state.role !== "trainer") return;
+  const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
+  if (!trainerKey) {
+    setStatus(dom.questionBankStatus, "Trainer key required.", "error");
+    return;
+  }
+  const ids = Array.from(state.questionBank.selectedIds || []);
+  const nextTag = String(dom.questionBankBulkTag?.value || "").trim();
+  if (!ids.length) {
+    setStatus(dom.questionBankStatus, "Select at least one question.", "error");
+    return;
+  }
+  if (!nextTag) {
+    setStatus(dom.questionBankStatus, "Select a tag to apply.", "error");
+    return;
+  }
+  if (!window.confirm(`Update tag to "${nextTag}" for ${ids.length} questions?`)) return;
+
+  try {
+    await apiRequest("/api/questions/tag/bulk", "POST", {
+      trainerKey,
+      ids,
+      tag: nextTag
+    });
+    setStatus(dom.questionBankStatus, `Updated ${ids.length} questions to ${nextTag}.`, "success");
+    state.questionBank.selectedIds = new Set();
+    if (dom.questionBankSelectAll) dom.questionBankSelectAll.checked = false;
+    await loadQuestionBank();
+  } catch (err) {
+    setStatus(dom.questionBankStatus, `Bulk update failed: ${err.message}`, "error");
   }
 }
 
@@ -4184,6 +4249,22 @@ function bindEvents() {
   if (dom.questionBankTagFilter) {
     dom.questionBankTagFilter.addEventListener("change", loadQuestionBank);
   }
+  if (dom.questionBankSelectAll) {
+    dom.questionBankSelectAll.addEventListener("change", () => {
+      const questions = filteredQuestionsForBank().slice(0, 100);
+      const selected = state.questionBank.selectedIds || new Set();
+      if (dom.questionBankSelectAll.checked) {
+        questions.forEach((q) => selected.add(q.id));
+      } else {
+        questions.forEach((q) => selected.delete(q.id));
+      }
+      state.questionBank.selectedIds = selected;
+      renderQuestionBankTable();
+    });
+  }
+  if (dom.questionBankBulkApplyBtn) {
+    dom.questionBankBulkApplyBtn.addEventListener("click", bulkUpdateQuestionTags);
+  }
   if (dom.questionBankBody) {
     dom.questionBankBody.addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-bank-action]");
@@ -4191,6 +4272,17 @@ function bindEvents() {
       const action = btn.dataset.bankAction;
       const id = btn.dataset.bankId;
       if (action === "delete") deleteQuestion(id);
+    });
+    dom.questionBankBody.addEventListener("change", (e) => {
+      const checkbox = e.target.closest("input[data-bank-select]");
+      if (!checkbox) return;
+      const id = checkbox.dataset.bankSelect;
+      if (!id) return;
+      const selected = state.questionBank.selectedIds || new Set();
+      if (checkbox.checked) selected.add(id);
+      else selected.delete(id);
+      state.questionBank.selectedIds = selected;
+      updateQuestionBankSelectionUI(filteredQuestionsForBank().slice(0, 100).map((q) => q.id));
     });
   }
 

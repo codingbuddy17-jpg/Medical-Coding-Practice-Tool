@@ -2076,6 +2076,41 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (url.pathname === "/api/questions/tag/bulk" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const trainerKey = String(body.trainerKey || "");
+      const access = readAccessConfig();
+      if (!access.trainerKey || trainerKey !== access.trainerKey) {
+        return json(res, 403, { error: "Forbidden" });
+      }
+
+      const ids = Array.isArray(body.ids) ? body.ids.map((id) => String(id || "").trim()).filter(Boolean) : [];
+      const tag = String(body.tag || "").trim();
+      if (!ids.length) return json(res, 400, { error: "No question ids provided" });
+      if (!tag) return json(res, 400, { error: "Tag is required" });
+
+      if (!USE_SUPABASE) {
+        const questions = readQuestions();
+        let updated = 0;
+        questions.forEach((q) => {
+          if (ids.includes(String(q.id))) {
+            q.tag = tag;
+            updated += 1;
+          }
+        });
+        writeQuestions(questions);
+        return json(res, 200, { updated });
+      }
+
+      const { error } = await supabase.from("questions").update({ tag }).in("id", ids);
+      if (error) throw error;
+      return json(res, 200, { updated: ids.length });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
   if (url.pathname === "/api/questions/import" && req.method === "POST") {
     try {
       const body = await parseBody(req);

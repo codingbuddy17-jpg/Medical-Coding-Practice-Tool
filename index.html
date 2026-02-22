@@ -548,10 +548,30 @@
               <button id="refreshQuestionBankBtn" class="ghost-btn" type="button">Refresh Bank</button>
               <button id="exportQuestionBankBtn" class="ghost-btn" type="button">Export Active API CSV</button>
             </div>
+            <div class="panel-actions">
+              <span id="questionBankSelectedCount" class="status subtle">0 selected</span>
+              <select id="questionBankBulkTag">
+                <option value="">Change tag to...</option>
+                <option value="ICD-10-CM">ICD 10 CM</option>
+                <option value="ICD-10-PCS">ICD 10 PCS</option>
+                <option value="CPT">CPT</option>
+                <option value="MODIFIERS">Modifiers</option>
+                <option value="GUIDELINES">Guidelines</option>
+                <option value="CCS">CCS</option>
+                <option value="CPC">CPC</option>
+                <option value="CDIP">CDIP</option>
+                <option value="SURGERY-CODING">Surgery Coding</option>
+                <option value="IP-DRG-CODING">IP-DRG Coding</option>
+                <option value="MEDICINE">Medicine</option>
+                <option value="PRACTICE-CASES">Practice Cases</option>
+              </select>
+              <button id="questionBankBulkApplyBtn" class="ghost-btn" type="button">Apply to Selected</button>
+            </div>
             <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
+                    <th><input id="questionBankSelectAll" type="checkbox" /></th>
                     <th>Tag</th>
                     <th>Question</th>
                     <th>Type</th>
@@ -561,7 +581,7 @@
                 </thead>
                 <tbody id="questionBankBody">
                   <tr>
-                    <td colspan="5">No active questions loaded.</td>
+                    <td colspan="6">No active questions loaded.</td>
                   </tr>
                 </tbody>
               </table>
