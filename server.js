@@ -1523,11 +1523,25 @@ async function storageListQuestions(tag) {
     return tag ? questions.filter((q) => q.tag === tag) : questions;
   }
 
-  let query = supabase.from("questions").select("id,tag,question,answer").eq("is_active", true).order("created_at", { ascending: true });
-  if (tag) query = query.eq("tag", tag);
-  const { data, error } = await query;
-  if (error) throw error;
-  return data || [];
+  const batchSize = 1000;
+  let from = 0;
+  const all = [];
+  while (true) {
+    let query = supabase
+      .from("questions")
+      .select("id,tag,question,answer")
+      .eq("is_active", true)
+      .order("created_at", { ascending: true })
+      .range(from, from + batchSize - 1);
+    if (tag) query = query.eq("tag", tag);
+    const { data, error } = await query;
+    if (error) throw error;
+    const rows = data || [];
+    all.push(...rows);
+    if (rows.length < batchSize) break;
+    from += batchSize;
+  }
+  return all;
 }
 
 async function storageReplaceQuestion({ questionId, tag, question, answer, originalTag, originalQuestion, originalAnswer }) {
