@@ -112,7 +112,8 @@ const state = {
   selectedMcqOption: "",
   studyOrder: {
     queues: {},
-    cursors: {}
+    cursors: {},
+    seeds: {}
   },
   accessConfig: {
     trialQuestionLimit: 20,
@@ -954,15 +955,19 @@ function resetStudyOrder(tagKey = null) {
   if (tagKey) {
     delete state.studyOrder.queues[tagKey];
     delete state.studyOrder.cursors[tagKey];
+    delete state.studyOrder.seeds[tagKey];
     return;
   }
   state.studyOrder.queues = {};
   state.studyOrder.cursors = {};
+  state.studyOrder.seeds = {};
 }
 
 function buildStudyQueueForTag(tagKey) {
   const ids = getCardsForTag(tagKey).map((card) => card.id);
-  const seed = state.session.shuffleSeed ? `${state.session.shuffleSeed}|practice|${tagKey || "ALL"}` : "";
+  const seed =
+    state.studyOrder.seeds[tagKey] ||
+    (state.session.shuffleSeed ? `${state.session.shuffleSeed}|practice|${tagKey || "ALL"}` : "");
   const rng = seed ? createSeededRng(seed) : null;
   state.studyOrder.queues[tagKey] = shuffledCopy(ids, rng);
   state.studyOrder.cursors[tagKey] = 0;
@@ -1791,6 +1796,12 @@ function pickAdaptiveNextCard(cards, currentCardId) {
   return any[0] || cards[0] || null;
 }
 
+function reshufflePracticeQueue(tagKey, reason = "") {
+  if (!tagKey) return;
+  state.studyOrder.seeds[tagKey] = `${state.session.shuffleSeed}|practice|${tagKey}|${Date.now()}|${reason}`;
+  buildStudyQueueForTag(tagKey);
+}
+
 function getWeaknessScore(card) {
   const tagKey = normalizeTagKey(card.tag);
   const category = state.session.categoryStats[tagKey] || state.session.categoryStats.OTHER;
@@ -1839,6 +1850,10 @@ function advanceCardAfterAttempt(current) {
     return;
   }
 
+  if (state.session.attempted > 0 && state.session.attempted % 25 === 0) {
+    reshufflePracticeQueue(state.selectedTag, "interval");
+  }
+
   if (state.weakDrillEnabled) {
     const nextIdxInCards = pickNextWeakCard(cards, current.id);
     const nextCard = cards[nextIdxInCards] || cards[0];
@@ -1850,7 +1865,12 @@ function advanceCardAfterAttempt(current) {
     state.studyOrder.cursors[state.selectedTag] = nextQueueIdx >= 0 ? nextQueueIdx : 0;
   } else {
     const currentCursor = state.studyOrder.cursors[state.selectedTag] || 0;
-    state.studyOrder.cursors[state.selectedTag] = (currentCursor + 1) % queue.length;
+    const nextCursor = (currentCursor + 1) % queue.length;
+    if (nextCursor === 0) {
+      reshufflePracticeQueue(state.selectedTag, "wrap");
+    } else {
+      state.studyOrder.cursors[state.selectedTag] = nextCursor;
+    }
   }
 
   renderCard();
@@ -1923,6 +1943,7 @@ async function loadDeckFromCloud() {
     if (!questions.length) return false;
     state.deck = hydrateCards(questions);
     resetStudyOrder();
+    if (state.selectedTag) reshufflePracticeQueue(state.selectedTag, "import");
     saveLocal();
     return true;
   } catch {
