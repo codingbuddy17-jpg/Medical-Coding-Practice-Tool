@@ -157,7 +157,9 @@ const state = {
     active: false,
     rows: [],
     summary: null,
-    importCards: []
+    importCards: [],
+    page: 1,
+    pageSize: 120
   }
 };
 
@@ -271,6 +273,10 @@ function cacheDOM() {
     importPreviewPanel: document.getElementById("importPreviewPanel"),
     importPreviewSummary: document.getElementById("importPreviewSummary"),
     importPreviewBody: document.getElementById("importPreviewBody"),
+    importPreviewPrevBtn: document.getElementById("importPreviewPrevBtn"),
+    importPreviewNextBtn: document.getElementById("importPreviewNextBtn"),
+    importPreviewPageInfo: document.getElementById("importPreviewPageInfo"),
+    importPreviewPageInput: document.getElementById("importPreviewPageInput"),
     confirmImportBtn: document.getElementById("confirmImportBtn"),
     cancelImportPreviewBtn: document.getElementById("cancelImportPreviewBtn"),
     importReviewStatusFilter: document.getElementById("importReviewStatusFilter"),
@@ -2408,8 +2414,12 @@ function renderImportPreview() {
   }
   if (!active) {
     if (dom.importPreviewSummary) dom.importPreviewSummary.textContent = "";
-    dom.importPreviewBody.innerHTML = '<tr><td colspan="5">No preview yet.</td></tr>';
+    dom.importPreviewBody.innerHTML = '<tr><td colspan="6">No preview yet.</td></tr>';
     dom.confirmImportBtn.disabled = true;
+    if (dom.importPreviewPageInfo) dom.importPreviewPageInfo.textContent = "Page 1 of 1";
+    if (dom.importPreviewPageInput) dom.importPreviewPageInput.value = "";
+    if (dom.importPreviewPrevBtn) dom.importPreviewPrevBtn.disabled = true;
+    if (dom.importPreviewNextBtn) dom.importPreviewNextBtn.disabled = true;
     return;
   }
 
@@ -2418,9 +2428,18 @@ function renderImportPreview() {
   dom.confirmImportBtn.disabled = !state.importPreview.importCards.length;
 
   const rows = Array.isArray(state.importPreview.rows) ? state.importPreview.rows : [];
-  const topRows = rows.slice(0, 120);
+  const pageSize = Math.max(1, Number(state.importPreview.pageSize || 120));
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const currentPage = Math.min(Math.max(1, Number(state.importPreview.page || 1)), totalPages);
+  state.importPreview.page = currentPage;
+  const start = (currentPage - 1) * pageSize;
+  const topRows = rows.slice(start, start + pageSize);
   if (!topRows.length) {
-    dom.importPreviewBody.innerHTML = '<tr><td colspan="5">No rows available.</td></tr>';
+    dom.importPreviewBody.innerHTML = '<tr><td colspan="6">No rows available.</td></tr>';
+    if (dom.importPreviewPageInfo) dom.importPreviewPageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    if (dom.importPreviewPageInput) dom.importPreviewPageInput.value = String(currentPage);
+    if (dom.importPreviewPrevBtn) dom.importPreviewPrevBtn.disabled = currentPage <= 1;
+    if (dom.importPreviewNextBtn) dom.importPreviewNextBtn.disabled = currentPage >= totalPages;
     return;
   }
 
@@ -2439,6 +2458,11 @@ function renderImportPreview() {
       </tr>`;
     })
     .join("");
+
+  if (dom.importPreviewPageInfo) dom.importPreviewPageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+  if (dom.importPreviewPageInput) dom.importPreviewPageInput.value = String(currentPage);
+  if (dom.importPreviewPrevBtn) dom.importPreviewPrevBtn.disabled = currentPage <= 1;
+  if (dom.importPreviewNextBtn) dom.importPreviewNextBtn.disabled = currentPage >= totalPages;
 }
 
 function discardPreviewRow(rowId) {
@@ -2473,6 +2497,9 @@ function discardPreviewRow(rowId) {
       .filter(r => (r.status === 'pass' || r.status === 'warn') && r.sanitized)
       .map(r => r.sanitized);
 
+    const totalPages = Math.max(1, Math.ceil(state.importPreview.rows.length / Number(state.importPreview.pageSize || 120)));
+    if (state.importPreview.page > totalPages) state.importPreview.page = totalPages;
+
     renderImportPreview();
   }
 }
@@ -2482,6 +2509,7 @@ function clearImportPreview() {
   state.importPreview.rows = [];
   state.importPreview.summary = null;
   state.importPreview.importCards = [];
+  state.importPreview.page = 1;
   renderImportPreview();
 }
 
@@ -2633,6 +2661,7 @@ async function prepareImportPreview(parsed) {
   state.importPreview.rows = mergedRows;
   state.importPreview.summary = summary;
   state.importPreview.importCards = importCards;
+  state.importPreview.page = 1;
   renderImportPreview();
 
   if (!importCards.length) {
@@ -4250,6 +4279,31 @@ function bindEvents() {
     clearImportPreview();
     setStatus(dom.importStatus, "Import preview cleared.");
   });
+  if (dom.importPreviewPrevBtn) {
+    dom.importPreviewPrevBtn.addEventListener("click", () => {
+      if (state.importPreview.page > 1) {
+        state.importPreview.page -= 1;
+        renderImportPreview();
+      }
+    });
+  }
+  if (dom.importPreviewNextBtn) {
+    dom.importPreviewNextBtn.addEventListener("click", () => {
+      const totalPages = Math.max(1, Math.ceil(state.importPreview.rows.length / Number(state.importPreview.pageSize || 120)));
+      if (state.importPreview.page < totalPages) {
+        state.importPreview.page += 1;
+        renderImportPreview();
+      }
+    });
+  }
+  if (dom.importPreviewPageInput) {
+    dom.importPreviewPageInput.addEventListener("change", () => {
+      const totalPages = Math.max(1, Math.ceil(state.importPreview.rows.length / Number(state.importPreview.pageSize || 120)));
+      const next = Math.max(1, Math.min(totalPages, Number(dom.importPreviewPageInput.value || 1)));
+      state.importPreview.page = next;
+      renderImportPreview();
+    });
+  }
 
   if (dom.refreshImportReviewBtn) dom.refreshImportReviewBtn.addEventListener("click", loadImportReviewQueue);
   if (dom.resolveAllImportReviewBtn) dom.resolveAllImportReviewBtn.addEventListener("click", resolveAllImportReviewItems);

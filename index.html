@@ -665,10 +665,19 @@
                   </thead>
                   <tbody id="importPreviewBody">
                     <tr>
-                      <td colspan="5">No preview yet.</td>
+                      <td colspan="6">No preview yet.</td>
                     </tr>
                   </tbody>
                 </table>
+              </div>
+              <div class="panel-actions">
+                <button id="importPreviewPrevBtn" class="ghost-btn" type="button">Prev</button>
+                <span id="importPreviewPageInfo" class="status subtle">Page 1 of 1</span>
+                <label class="inline-toggle">
+                  <span>Go to</span>
+                  <input id="importPreviewPageInput" type="number" min="1" step="1" />
+                </label>
+                <button id="importPreviewNextBtn" class="ghost-btn" type="button">Next</button>
               </div>
               <div class="panel-actions">
                 <button id="confirmImportBtn" class="primary-btn" type="button">Confirm Import</button>
