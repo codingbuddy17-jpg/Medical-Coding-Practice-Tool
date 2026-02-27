@@ -1092,6 +1092,24 @@ button {
   transition: box-shadow 180ms ease, border-color 180ms ease, transform 180ms ease;
 }
 
+.auth input,
+.auth select,
+.auth .primary-btn,
+.auth .ghost-btn,
+.auth .google-auth-btn {
+  min-height: 42px;
+}
+
+.auth #googleAuthWrap,
+.auth .auth-start-actions {
+  justify-content: flex-start;
+}
+
+.auth .google-auth-btn,
+.auth .auth-start-actions .primary-btn {
+  min-width: 240px;
+}
+
 .google-auth-btn:hover {
   border-color: #c4c9d1;
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
