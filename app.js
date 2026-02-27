@@ -12,6 +12,8 @@ const CONTACT_PHONE_DIAL = "918309661352";
 const WHATSAPP_NUMBER = "918309661352";
 const BROCHURE_URL = "";
 const SYLLABUS_URL = "/assets/curriculum.pdf";
+const APP_CONFIG = window.APP_CONFIG || {};
+const REQUIRE_GOOGLE_FOR_TRIAL_TRAINEE = APP_CONFIG.REQUIRE_GOOGLE_FOR_TRIAL_TRAINEE !== false;
 
 const CATEGORY_OPTIONS = [
   { key: "ALL", label: "All Topics" },
@@ -160,11 +162,17 @@ const state = {
     importCards: [],
     page: 1,
     pageSize: 120
+  },
+  auth: {
+    googleUser: null,
+    accessToken: "",
+    ready: false
   }
 };
 
 // DOM Cache (populated on init)
 let dom = {};
+let supabaseAuthClient = null;
 
 function cacheDOM() {
   dom = {
@@ -176,6 +184,9 @@ function cacheDOM() {
     traineeCode: document.getElementById("traineeCode"),
     trainerKeyWrap: document.getElementById("trainerKeyWrap"),
     trainerKey: document.getElementById("trainerKey"),
+    googleAuthWrap: document.getElementById("googleAuthWrap"),
+    googleAuthBtn: document.getElementById("googleAuthBtn"),
+    googleAuthStatus: document.getElementById("googleAuthStatus"),
     startBtn: document.getElementById("startBtn"),
     endSessionBtn: document.getElementById("endSessionBtn"),
     sessionStatus: document.getElementById("sessionStatus"),
@@ -451,6 +462,86 @@ function setStatus(el, message, mode = "") {
   el.textContent = message;
   el.classList.remove("success", "error");
   if (mode) el.classList.add(mode);
+}
+
+function roleNeedsGoogleAuth() {
+  return state.role === "trial" || state.role === "trainee";
+}
+
+function normalizePhoneDigits(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function isValidMobile(value) {
+  const digits = normalizePhoneDigits(value);
+  return digits.length >= 10 && digits.length <= 15;
+}
+
+function updateGoogleAuthUI() {
+  if (!dom.googleAuthWrap || !dom.googleAuthStatus || !dom.googleAuthBtn) return;
+  const required = REQUIRE_GOOGLE_FOR_TRIAL_TRAINEE && roleNeedsGoogleAuth();
+  dom.googleAuthWrap.classList.toggle("hidden", !required);
+  if (!required) {
+    dom.googleAuthStatus.textContent = "";
+    dom.googleAuthBtn.textContent = "Continue with Google";
+    dom.userEmail.disabled = false;
+    return;
+  }
+
+  if (state.auth.googleUser?.email) {
+    dom.googleAuthStatus.textContent = `Signed in as ${state.auth.googleUser.email}`;
+    dom.googleAuthBtn.textContent = "Google Connected";
+    dom.userEmail.value = state.auth.googleUser.email;
+    dom.userEmail.disabled = true;
+  } else {
+    dom.googleAuthStatus.textContent = "Google sign-in required for Trial/Learner.";
+    dom.googleAuthBtn.textContent = "Continue with Google";
+    dom.userEmail.disabled = false;
+  }
+}
+
+async function initGoogleAuthClient() {
+  try {
+    if (!window.supabase?.createClient) return;
+    const url = String(APP_CONFIG.SUPABASE_URL || "").trim();
+    const anon = String(APP_CONFIG.SUPABASE_ANON_KEY || "").trim();
+    if (!url || !anon) return;
+    supabaseAuthClient = window.supabase.createClient(url, anon);
+    state.auth.ready = true;
+    const { data, error } = await supabaseAuthClient.auth.getSession();
+    if (error) return;
+    const session = data?.session;
+    if (!session?.access_token) return;
+    state.auth.accessToken = session.access_token;
+    const { data: userData } = await supabaseAuthClient.auth.getUser();
+    if (userData?.user) {
+      state.auth.googleUser = userData.user;
+      if (roleNeedsGoogleAuth()) {
+        state.userEmail = userData.user.email || state.userEmail;
+      }
+    }
+  } catch {
+    // keep legacy flow if auth client init fails
+  } finally {
+    updateGoogleAuthUI();
+  }
+}
+
+async function startGoogleAuth() {
+  if (!supabaseAuthClient) {
+    setStatus(dom.sessionStatus, "Google auth is not configured yet.", "error");
+    return;
+  }
+  try {
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+    const { error } = await supabaseAuthClient.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo }
+    });
+    if (error) throw error;
+  } catch (err) {
+    setStatus(dom.sessionStatus, `Google sign-in failed: ${err.message}`, "error");
+  }
 }
 
 function formatSeconds(seconds) {
@@ -1130,6 +1221,7 @@ function updateRoleUI() {
   updateTrialInfoBannerUI();
   updateUpgradeWallUI();
   updatePreSessionLandingUI();
+  updateGoogleAuthUI();
 }
 
 function updateSessionIdentityLock() {
@@ -2007,6 +2099,25 @@ async function startSession() {
     return;
   }
 
+  if (role === "trial" || role === "trainee") {
+    if (!isValidMobile(userPhone)) {
+      setStatus(dom.sessionStatus, "Enter a valid mobile number (10-15 digits).", "error");
+      return;
+    }
+    if (REQUIRE_GOOGLE_FOR_TRIAL_TRAINEE) {
+      const googleEmail = String(state.auth.googleUser?.email || "").trim().toLowerCase();
+      if (!googleEmail || !state.auth.accessToken) {
+        setStatus(dom.sessionStatus, "Google sign-in is required for Trial/Learner access.", "error");
+        return;
+      }
+      if (String(userEmail || "").trim().toLowerCase() !== googleEmail) {
+        dom.userEmail.value = state.auth.googleUser.email || "";
+        setStatus(dom.sessionStatus, "Use your Google-authenticated email to continue.", "error");
+        return;
+      }
+    }
+  }
+
   if (role === "trainee") {
     try {
       const verification = await apiRequest("/api/access/verify", "POST", { code: traineeCode, email: userEmail });
@@ -2086,7 +2197,10 @@ async function startSession() {
       userName,
       userEmail,
       userPhone,
-      role
+      role,
+      authProvider: role === "trial" || role === "trainee" ? "google" : "",
+      authAccessToken: role === "trial" || role === "trainee" ? state.auth.accessToken : "",
+      authEmail: role === "trial" || role === "trainee" ? (state.auth.googleUser?.email || "") : ""
     });
     state.session.id = session.id || state.session.id;
     const cohortInfo = state.session.cohortName ? ` Cohort: ${state.session.cohortName}.` : "";
@@ -4179,6 +4293,7 @@ function bindEvents() {
   });
 
   if (dom.startBtn) dom.startBtn.addEventListener("click", startSession);
+  if (dom.googleAuthBtn) dom.googleAuthBtn.addEventListener("click", startGoogleAuth);
   if (dom.endSessionBtn) dom.endSessionBtn.addEventListener("click", endSession);
   if (dom.checkBtn) dom.checkBtn.addEventListener("click", validateCurrentAnswer);
   if (dom.skipBtn) dom.skipBtn.addEventListener("click", skipQuestion);
@@ -4537,6 +4652,10 @@ async function init() {
   dom.floatingWhatsappBtn.href = buildWhatsappLink(
     "Hello, I have completed the trial and would like to request full access to the complete training program."
   );
+  await initGoogleAuthClient();
+  if (state.auth.googleUser?.email && roleNeedsGoogleAuth()) {
+    dom.userEmail.value = state.auth.googleUser.email;
+  }
   setStatus(dom.upgradeStatus, "");
   clearImportPreview();
 

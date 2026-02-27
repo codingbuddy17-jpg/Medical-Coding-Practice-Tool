@@ -384,6 +384,19 @@ function normalizePhone(value) {
   return String(value || "").replace(/\D/g, "");
 }
 
+async function verifyGoogleIdentity(accessToken) {
+  if (!USE_SUPABASE) throw new Error("Google auth verification is unavailable");
+  const token = String(accessToken || "").trim();
+  if (!token) throw new Error("Missing Google access token");
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error) throw new Error("Google auth verification failed");
+  if (!data?.user?.email) throw new Error("Google account email is unavailable");
+  return {
+    id: String(data.user.id || ""),
+    email: normalizeEmail(data.user.email)
+  };
+}
+
 async function hasPriorTrialUsage({ email, phone }) {
   const normalizedEmail = normalizeEmail(email);
   const normalizedPhone = normalizePhone(phone);
@@ -2372,6 +2385,18 @@ const server = http.createServer(async (req, res) => {
       const role = String(body.role || "trainee");
       const userEmail = String(body.userEmail || "");
       const userPhone = String(body.userPhone || "");
+      const normalizedEmail = normalizeEmail(userEmail);
+
+      if (role === "trial" || role === "trainee") {
+        const provider = String(body.authProvider || "").trim().toLowerCase();
+        if (provider !== "google") {
+          return json(res, 403, { error: "Google sign-in is required for trial/learner access." });
+        }
+        const identity = await verifyGoogleIdentity(body.authAccessToken);
+        if (identity.email !== normalizedEmail) {
+          return json(res, 403, { error: "Signed-in Google email does not match session email." });
+        }
+      }
 
       if (role === "trial") {
         const used = await hasPriorTrialUsage({ email: userEmail, phone: userPhone });

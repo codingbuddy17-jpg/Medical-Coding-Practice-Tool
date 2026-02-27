@@ -115,6 +115,10 @@
           </label>
         </div>
       </fieldset>
+      <div id="googleAuthWrap" class="panel-actions">
+        <button id="googleAuthBtn" class="ghost-btn" type="button">Continue with Google</button>
+        <span id="googleAuthStatus" class="status subtle"></span>
+      </div>
       <div class="panel-actions">
         <button id="startBtn" class="primary-btn" type="button">Start</button>
       </div>
@@ -983,6 +987,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.config.js"></script>
   <script src="app.helpers.js"></script>
   <script src="app.import.js"></script>
