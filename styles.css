@@ -1063,6 +1063,40 @@ button {
   transform: translateY(-1px);
 }
 
+.google-auth-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: #fff;
+  color: #1f2937;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 0.58rem 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: box-shadow 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+.google-auth-btn:hover {
+  border-color: #c4c9d1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.google-auth-btn:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.google-auth-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+}
+
 .btn-gradient-teal {
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
   color: white;

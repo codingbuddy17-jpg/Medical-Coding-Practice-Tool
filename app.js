@@ -188,6 +188,7 @@ function cacheDOM() {
     trainerKey: document.getElementById("trainerKey"),
     googleAuthWrap: document.getElementById("googleAuthWrap"),
     googleAuthBtn: document.getElementById("googleAuthBtn"),
+    googleAuthBtnLabel: document.getElementById("googleAuthBtnLabel"),
     googleAuthStatus: document.getElementById("googleAuthStatus"),
     startBtn: document.getElementById("startBtn"),
     endSessionBtn: document.getElementById("endSessionBtn"),
@@ -480,14 +481,15 @@ function isValidMobile(value) {
 }
 
 function updateGoogleAuthUI() {
-  if (!dom.googleAuthWrap || !dom.googleAuthStatus || !dom.googleAuthBtn) return;
+  if (!dom.googleAuthWrap || !dom.googleAuthStatus || !dom.googleAuthBtn || !dom.googleAuthBtnLabel) return;
   const required = REQUIRE_GOOGLE_FOR_TRIAL_TRAINEE && roleNeedsGoogleAuth();
   dom.googleAuthWrap.classList.toggle("hidden", !required);
   if (dom.userEmailWrap) dom.userEmailWrap.classList.add("hidden");
   if (dom.userPhoneWrap) dom.userPhoneWrap.classList.toggle("hidden", !(required && state.auth.googleUser?.email));
   if (!required) {
     dom.googleAuthStatus.textContent = "";
-    dom.googleAuthBtn.textContent = "Continue with Google";
+    dom.googleAuthBtnLabel.textContent = "Continue with Google";
+    dom.googleAuthBtn.disabled = false;
     dom.userEmail.disabled = false;
     if (dom.userPhoneWrap) dom.userPhoneWrap.classList.add("hidden");
     return;
@@ -495,12 +497,14 @@ function updateGoogleAuthUI() {
 
   if (state.auth.googleUser?.email) {
     dom.googleAuthStatus.textContent = `Signed in as ${state.auth.googleUser.email}. Enter mobile number to continue.`;
-    dom.googleAuthBtn.textContent = "Google Connected";
+    dom.googleAuthBtnLabel.textContent = "Google Connected";
+    dom.googleAuthBtn.disabled = true;
     dom.userEmail.value = state.auth.googleUser.email;
     dom.userEmail.disabled = true;
   } else {
     dom.googleAuthStatus.textContent = "Google sign-in required for Trial/Learner.";
-    dom.googleAuthBtn.textContent = "Continue with Google";
+    dom.googleAuthBtnLabel.textContent = "Continue with Google";
+    dom.googleAuthBtn.disabled = false;
     dom.userEmail.disabled = false;
   }
 }
