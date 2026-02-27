@@ -290,6 +290,110 @@ function writeAllowedLearners(learners) {
   fs.writeFileSync(ALLOWED_LEARNERS_FILE, JSON.stringify({ learners }, null, 2));
 }
 
+function toEpochMs(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const parsed = Date.parse(String(value));
+  if (Number.isFinite(parsed)) return parsed;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function mapLearnerRow(row) {
+  return {
+    email: normalizeEmail(row.email),
+    isActive: row.is_active !== false,
+    expiresAt: row.expires_at ? toEpochMs(row.expires_at) : null,
+    createdAt: toEpochMs(row.created_at) || Date.now(),
+    updatedAt: toEpochMs(row.updated_at) || Date.now()
+  };
+}
+
+function isMissingLearnerTable(error) {
+  const msg = String(error?.message || "").toLowerCase();
+  return error?.code === "42P01" || msg.includes("learner_access") && msg.includes("does not exist");
+}
+
+async function readAllowedLearnersStore() {
+  if (USE_SUPABASE) {
+    const { data, error } = await supabase
+      .from("learner_access")
+      .select("email,is_active,expires_at,created_at,updated_at")
+      .order("updated_at", { ascending: false });
+    if (!error) return (data || []).map(mapLearnerRow);
+    if (!isMissingLearnerTable(error)) {
+      console.error("Learner access read failed from Supabase, using file fallback:", error.message || error);
+    }
+  }
+  return readAllowedLearners()
+    .map((item) => ({
+      email: normalizeEmail(item.email),
+      isActive: item.isActive !== false,
+      expiresAt: item.expiresAt ? Number(item.expiresAt) : null,
+      createdAt: Number(item.createdAt || Date.now()),
+      updatedAt: Number(item.updatedAt || Date.now())
+    }))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+async function upsertAllowedLearnerStore({ email, isActive, expiresAt }) {
+  const normalizedEmail = normalizeEmail(email);
+  const now = Date.now();
+  const normalizedExpiry = normalizeExpiryTs(expiresAt);
+
+  if (USE_SUPABASE) {
+    const payload = {
+      email: normalizedEmail,
+      is_active: isActive !== false,
+      expires_at: normalizedExpiry ? toIso(normalizedExpiry) : null
+    };
+    const { data, error } = await supabase
+      .from("learner_access")
+      .upsert(payload, { onConflict: "email" })
+      .select("email,is_active,expires_at,created_at,updated_at")
+      .single();
+    if (!error) return mapLearnerRow(data);
+    if (!isMissingLearnerTable(error)) {
+      console.error("Learner access write failed to Supabase, using file fallback:", error.message || error);
+    }
+  }
+
+  const learners = readAllowedLearners();
+  const idx = learners.findIndex((item) => normalizeEmail(item.email) === normalizedEmail);
+  const next = {
+    email: normalizedEmail,
+    isActive: isActive !== false,
+    expiresAt: normalizedExpiry,
+    updatedAt: now
+  };
+  if (idx >= 0) {
+    learners[idx] = { ...learners[idx], ...next };
+  } else {
+    learners.unshift({ ...next, createdAt: now });
+  }
+  writeAllowedLearners(learners);
+  return idx >= 0 ? learners[idx] : learners[0];
+}
+
+async function removeAllowedLearnerStore(email) {
+  const normalizedEmail = normalizeEmail(email);
+  if (USE_SUPABASE) {
+    const { error, count } = await supabase
+      .from("learner_access")
+      .delete({ count: "exact" })
+      .eq("email", normalizedEmail);
+    if (!error) return Number(count || 0);
+    if (!isMissingLearnerTable(error)) {
+      console.error("Learner access delete failed in Supabase, using file fallback:", error.message || error);
+    }
+  }
+
+  const learners = readAllowedLearners();
+  const next = learners.filter((item) => normalizeEmail(item.email) !== normalizedEmail);
+  writeAllowedLearners(next);
+  return learners.length - next.length;
+}
+
 function sanitizeTemplate(input) {
   const id = String(input.id || "").trim();
   const name = String(input.name || "").trim();
@@ -505,10 +609,10 @@ function isExpired(expiryTs) {
   return ts > 0 && Date.now() > ts;
 }
 
-function getLearnerAccessRecord(email) {
+async function getLearnerAccessRecord(email) {
   const target = normalizeEmail(email);
   if (!target) return null;
-  const learners = readAllowedLearners();
+  const learners = await readAllowedLearnersStore();
   return learners.find((item) => normalizeEmail(item.email) === target) || null;
 }
 
@@ -1662,7 +1766,7 @@ const server = http.createServer(async (req, res) => {
       const body = await parseBody(req);
       const email = normalizeEmail(body.email || "");
       if (!email) return json(res, 200, { valid: false, reason: "email_required_for_learner_access" });
-      const learner = getLearnerAccessRecord(email);
+      const learner = await getLearnerAccessRecord(email);
       if (!learner) return json(res, 200, { valid: false, reason: "email_not_allowlisted" });
       if (learner.isActive === false) return json(res, 200, { valid: false, reason: "learner_inactive" });
       if (isExpired(learner.expiresAt)) return json(res, 200, { valid: false, reason: "learner_access_expired" });
@@ -1856,15 +1960,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === "/api/admin/learners" && req.method === "GET") {
     const key = getAdminKey(req, url);
     if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
-    const learners = readAllowedLearners()
-      .map((item) => ({
-        email: normalizeEmail(item.email),
-        isActive: item.isActive !== false,
-        expiresAt: item.expiresAt ? Number(item.expiresAt) : null,
-        createdAt: Number(item.createdAt || Date.now()),
-        updatedAt: Number(item.updatedAt || Date.now())
-      }))
-      .sort((a, b) => b.updatedAt - a.updatedAt);
+    const learners = await readAllowedLearnersStore();
     return json(res, 200, { learners });
   }
 
@@ -1875,24 +1971,12 @@ const server = http.createServer(async (req, res) => {
       if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
       const email = normalizeEmail(body.email || "");
       if (!email) return json(res, 400, { error: "Valid email is required" });
-
-      const learners = readAllowedLearners();
-      const idx = learners.findIndex((item) => normalizeEmail(item.email) === email);
-      const now = Date.now();
-      const next = {
+      const learner = await upsertAllowedLearnerStore({
         email,
         isActive: body.isActive !== undefined ? Boolean(body.isActive) : true,
-        expiresAt: body.expiresAt ? Number(body.expiresAt) : null,
-        updatedAt: now
-      };
-
-      if (idx >= 0) {
-        learners[idx] = { ...learners[idx], ...next };
-      } else {
-        learners.unshift({ ...next, createdAt: now });
-      }
-      writeAllowedLearners(learners);
-      return json(res, 200, { learner: idx >= 0 ? learners[idx] : learners[0] });
+        expiresAt: body.expiresAt ? Number(body.expiresAt) : null
+      });
+      return json(res, 200, { learner });
     } catch (err) {
       return json(res, 400, { error: err.message });
     }
@@ -1905,10 +1989,8 @@ const server = http.createServer(async (req, res) => {
       if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
       const email = normalizeEmail(body.email || "");
       if (!email) return json(res, 400, { error: "Valid email is required" });
-      const learners = readAllowedLearners();
-      const next = learners.filter((item) => normalizeEmail(item.email) !== email);
-      writeAllowedLearners(next);
-      return json(res, 200, { removed: learners.length - next.length });
+      const removed = await removeAllowedLearnerStore(email);
+      return json(res, 200, { removed });
     } catch (err) {
       return json(res, 400, { error: err.message });
     }

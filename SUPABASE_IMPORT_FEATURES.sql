@@ -64,3 +64,28 @@ drop trigger if exists trg_import_review_queue_updated_at on import_review_queue
 create trigger trg_import_review_queue_updated_at
 before update on import_review_queue
 for each row execute function set_updated_at_import_review_queue();
+
+-- Learner allowlist for durable access control (survives redeploy/restart)
+create table if not exists learner_access (
+  email text primary key,
+  is_active boolean not null default true,
+  expires_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_learner_access_active on learner_access(is_active);
+create index if not exists idx_learner_access_expires_at on learner_access(expires_at);
+
+create or replace function set_updated_at_learner_access()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_learner_access_updated_at on learner_access;
+create trigger trg_learner_access_updated_at
+before update on learner_access
+for each row execute function set_updated_at_learner_access();
