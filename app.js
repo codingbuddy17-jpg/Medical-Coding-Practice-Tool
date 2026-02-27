@@ -197,6 +197,7 @@ function cacheDOM() {
 
     topbarSessionSummary: document.getElementById("topbarSessionSummary"),
     topbarSessionActions: document.getElementById("topbarSessionActions"),
+    googleSignOutBtn: document.getElementById("googleSignOutBtn"),
     metricScoreCard: document.getElementById("metricScoreCard"),
     correctCount: document.getElementById("correctCount"),
     wrongCount: document.getElementById("wrongCount"),
@@ -485,12 +486,15 @@ function normalizePhoneDigits(value) {
 
 function isValidMobile(value) {
   const digits = normalizePhoneDigits(value);
-  return digits.length >= 10 && digits.length <= 15;
+  return /^\d{10}$/.test(digits);
 }
 
 function updateGoogleAuthUI() {
   if (!dom.googleAuthWrap || !dom.googleAuthStatus || !dom.googleAuthBtn || !dom.googleAuthBtnLabel) return;
   const required = REQUIRE_GOOGLE_FOR_TRIAL_TRAINEE && roleNeedsGoogleAuth();
+  if (dom.googleSignOutBtn) {
+    dom.googleSignOutBtn.classList.toggle("hidden", !state.auth.googleUser?.email);
+  }
   dom.googleAuthWrap.classList.toggle("hidden", !required);
   if (dom.userEmailWrap) dom.userEmailWrap.classList.add("hidden");
   if (dom.userPhoneWrap) dom.userPhoneWrap.classList.toggle("hidden", !(required && state.auth.googleUser?.email));
@@ -515,6 +519,23 @@ function updateGoogleAuthUI() {
     dom.googleAuthBtn.disabled = false;
     dom.userEmail.disabled = false;
   }
+}
+
+async function signOutGoogleAuth() {
+  if (!supabaseAuthClient) return;
+  try {
+    await supabaseAuthClient.auth.signOut();
+  } catch {
+    // ignore and continue local cleanup
+  }
+  state.auth.googleUser = null;
+  state.auth.accessToken = "";
+  if (!state.session.isActive && roleNeedsGoogleAuth()) {
+    dom.userEmail.value = "";
+    dom.userPhone.value = "";
+  }
+  updateGoogleAuthUI();
+  setStatus(dom.sessionStatus, "Logged out from Google.", "success");
 }
 
 async function initGoogleAuthClient() {
@@ -1260,6 +1281,9 @@ function updateSessionIdentityLock() {
       dom.topbarSessionSummary.textContent = `${name} · ${score}% · Avg/Q ${avgLabel}`;
       dom.topbarSessionSummary.classList.remove("hidden");
       dom.topbarSessionActions.classList.remove("hidden");
+      if (dom.exportReportBtn) dom.exportReportBtn.classList.remove("hidden");
+      if (dom.endSessionBtn) dom.endSessionBtn.classList.remove("hidden");
+      if (dom.googleSignOutBtn) dom.googleSignOutBtn.classList.toggle("hidden", !state.auth.googleUser?.email);
 
       // Show Practice View
       const practiceTab = document.getElementById("view-practice");
@@ -1270,7 +1294,14 @@ function updateSessionIdentityLock() {
     } else {
       dom.topbarSessionSummary.textContent = "";
       dom.topbarSessionSummary.classList.add("hidden");
-      dom.topbarSessionActions.classList.add("hidden");
+      if (state.auth.googleUser?.email) {
+        dom.topbarSessionActions.classList.remove("hidden");
+        if (dom.exportReportBtn) dom.exportReportBtn.classList.add("hidden");
+        if (dom.endSessionBtn) dom.endSessionBtn.classList.add("hidden");
+        if (dom.googleSignOutBtn) dom.googleSignOutBtn.classList.remove("hidden");
+      } else {
+        dom.topbarSessionActions.classList.add("hidden");
+      }
 
       // Hide Practice View
       const practiceTab = document.getElementById("view-practice");
@@ -2118,7 +2149,7 @@ async function startSession() {
 
   if (role === "trial" || role === "trainee") {
     if (!isValidMobile(userPhone)) {
-      setStatus(dom.sessionStatus, "Enter a valid mobile number (10-15 digits).", "error");
+      setStatus(dom.sessionStatus, "Enter a valid 10-digit mobile number.", "error");
       return;
     }
     if (REQUIRE_GOOGLE_FOR_TRIAL_TRAINEE) {
@@ -4420,6 +4451,7 @@ function bindEvents() {
 
   if (dom.startBtn) dom.startBtn.addEventListener("click", startSession);
   if (dom.googleAuthBtn) dom.googleAuthBtn.addEventListener("click", startGoogleAuth);
+  if (dom.googleSignOutBtn) dom.googleSignOutBtn.addEventListener("click", signOutGoogleAuth);
   if (dom.endSessionBtn) dom.endSessionBtn.addEventListener("click", endSession);
   if (dom.checkBtn) dom.checkBtn.addEventListener("click", validateCurrentAnswer);
   if (dom.skipBtn) dom.skipBtn.addEventListener("click", skipQuestion);
