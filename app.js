@@ -124,7 +124,8 @@ const state = {
   },
   adminPanel: {
     verified: false,
-    cohorts: []
+    cohorts: [],
+    learners: []
   },
   analytics: {
     lastScope: "",
@@ -352,6 +353,13 @@ function cacheDOM() {
     adminTraineeActive: document.getElementById("adminTraineeActive"),
     adminTraineeExpiry: document.getElementById("adminTraineeExpiry"),
     saveAccessConfigBtn: document.getElementById("saveAccessConfigBtn"),
+    learnerEmailInput: document.getElementById("learnerEmailInput"),
+    learnerActiveInput: document.getElementById("learnerActiveInput"),
+    learnerExpiryInput: document.getElementById("learnerExpiryInput"),
+    saveLearnerBtn: document.getElementById("saveLearnerBtn"),
+    refreshLearnersBtn: document.getElementById("refreshLearnersBtn"),
+    learnerAccessStatus: document.getElementById("learnerAccessStatus"),
+    learnerAccessBody: document.getElementById("learnerAccessBody"),
     clearCacheBtn: document.getElementById("clearCacheBtn"),
     accessConfigStatus: document.getElementById("accessConfigStatus"),
     cohortNameInput: document.getElementById("cohortNameInput"),
@@ -1183,16 +1191,15 @@ function renderCategoryScorecards() {
 function updateRoleUI() {
   const isTrainer = state.role === "trainer";
   const trainerKeyVerified = isTrainer && state.trainerKeyVerified;
-  const isTrainee = state.role === "trainee";
   console.log("updateRoleUI called. Role:", state.role);
-  const canUseExam = isTrainer || isTrainee;
+  const canUseExam = isTrainer || state.role === "trainee";
   dom.trainerZone.classList.toggle("hidden", !trainerKeyVerified);
   dom.resourceManager.classList.toggle("hidden", !trainerKeyVerified);
 
   // Force visibility via inline style to prevent CSS conflicts
   if (dom.traineeCodeWrap) {
-    dom.traineeCodeWrap.classList.toggle("hidden", !isTrainee);
-    dom.traineeCodeWrap.style.display = isTrainee ? "block" : "none";
+    dom.traineeCodeWrap.classList.add("hidden");
+    dom.traineeCodeWrap.style.display = "none";
   }
   if (dom.trainerKeyWrap) {
     dom.trainerKeyWrap.classList.toggle("hidden", !isTrainer);
@@ -2091,7 +2098,6 @@ async function startSession() {
     ? String(state.auth.googleUser?.email || dom.userEmail.value || "").trim()
     : dom.userEmail.value.trim();
   const userPhone = dom.userPhone.value.trim();
-  const traineeCode = dom.traineeCode.value.trim();
   const trainerKey = dom.trainerKey.value.trim();
   let verifiedAccess = {
     accessType: role,
@@ -2131,14 +2137,13 @@ async function startSession() {
 
   if (role === "trainee") {
     try {
-      const verification = await apiRequest("/api/access/verify", "POST", { code: traineeCode, email: userEmail });
+      const verification = await apiRequest("/api/access/verify", "POST", { email: userEmail });
       if (!verification.valid) {
-        let msg = "Invalid trainee access code.";
-        if (verification.reason === "trainee_access_inactive_or_expired") msg = "Learner access is inactive or expired. Contact admin.";
-        if (verification.reason === "not_enrolled_in_cohort") msg = "This email is not enrolled in the selected cohort access.";
-        else if (verification.reason === "member_inactive_or_expired") msg = "Your cohort access is inactive or expired. Contact trainer.";
-        else if (verification.reason === "cohort_inactive_or_expired") msg = "This cohort access code is inactive or expired.";
-        else if (verification.reason === "email_required_for_cohort") msg = "Email is required for cohort access verification.";
+        let msg = "Learner access is not enabled for this email.";
+        if (verification.reason === "email_required_for_learner_access") msg = "Google email is required for learner access.";
+        if (verification.reason === "email_not_allowlisted") msg = "This email is not allowlisted. Contact mentor/admin.";
+        else if (verification.reason === "learner_inactive") msg = "Learner access is inactive. Contact mentor/admin.";
+        else if (verification.reason === "learner_access_expired") msg = "Learner access has expired. Contact mentor/admin.";
         setStatus(dom.sessionStatus, msg, "error");
         return;
       }
@@ -4081,6 +4086,113 @@ function renderCohortUI() {
   syncCohortFormFromSelection();
 }
 
+function renderLearnerAccessTable() {
+  const items = Array.isArray(state.adminPanel.learners) ? state.adminPanel.learners : [];
+  if (!items.length) {
+    dom.learnerAccessBody.innerHTML = '<tr><td colspan="5">No learner emails loaded.</td></tr>';
+    return;
+  }
+
+  dom.learnerAccessBody.innerHTML = items
+    .map((item) => {
+      const email = String(item.email || "");
+      const active = item.isActive !== false;
+      const expiry = item.expiresAt ? toDateInputValue(item.expiresAt) : "-";
+      const updated = item.updatedAt ? new Date(Number(item.updatedAt)).toLocaleString() : "-";
+      return `<tr>
+        <td>${escapeHtml(email)}</td>
+        <td>${active ? "Yes" : "No"}</td>
+        <td>${escapeHtml(expiry)}</td>
+        <td>${escapeHtml(updated)}</td>
+        <td>
+          <button class="ghost-btn" type="button" data-learner-action="${active ? "deactivate" : "activate"}" data-learner-email="${escapeHtml(email)}">${active ? "Deactivate" : "Activate"}</button>
+          <button class="ghost-btn" type="button" data-learner-action="extend30" data-learner-email="${escapeHtml(email)}">+30d</button>
+          <button class="ghost-btn danger-btn" type="button" data-learner-action="remove" data-learner-email="${escapeHtml(email)}">Remove</button>
+        </td>
+      </tr>`;
+    })
+    .join("");
+}
+
+async function loadLearnerAccessList() {
+  if (!state.adminPanel.verified || !state.adminKey) return;
+  try {
+    const data = await apiRequest(`/api/admin/learners`, "GET", null, state.adminKey);
+    state.adminPanel.learners = Array.isArray(data.learners) ? data.learners : [];
+    renderLearnerAccessTable();
+  } catch (err) {
+    setStatus(dom.learnerAccessStatus, `Could not load learner access list: ${err.message}`, "error");
+  }
+}
+
+async function saveLearnerAccess() {
+  if (!state.adminPanel.verified || !state.adminKey) {
+    setStatus(dom.learnerAccessStatus, "Verify admin key first.", "error");
+    return;
+  }
+  const email = String(dom.learnerEmailInput.value || "").trim().toLowerCase();
+  const isActive = dom.learnerActiveInput.value !== "false";
+  const expiresAt = toEpochFromDateInput(dom.learnerExpiryInput.value);
+  if (!email) {
+    setStatus(dom.learnerAccessStatus, "Learner email is required.", "error");
+    return;
+  }
+
+  try {
+    await apiRequest("/api/admin/learners", "POST", {
+      adminKey: state.adminKey,
+      email,
+      isActive,
+      expiresAt
+    });
+    dom.learnerEmailInput.value = "";
+    dom.learnerExpiryInput.value = "";
+    dom.learnerActiveInput.value = "true";
+    await loadLearnerAccessList();
+    setStatus(dom.learnerAccessStatus, "Learner access saved.", "success");
+  } catch (err) {
+    setStatus(dom.learnerAccessStatus, `Could not save learner access: ${err.message}`, "error");
+  }
+}
+
+async function handleLearnerAccessAction(action, email) {
+  if (!state.adminPanel.verified || !state.adminKey) return;
+  const current = (state.adminPanel.learners || []).find((item) => String(item.email || "") === String(email || ""));
+  if (!current) return;
+
+  try {
+    if (action === "remove") {
+      await apiRequest("/api/admin/learners/remove", "POST", {
+        adminKey: state.adminKey,
+        email
+      });
+      await loadLearnerAccessList();
+      setStatus(dom.learnerAccessStatus, "Learner removed.", "success");
+      return;
+    }
+
+    let nextIsActive = current.isActive !== false;
+    let nextExpiresAt = current.expiresAt ? Number(current.expiresAt) : null;
+    if (action === "activate") nextIsActive = true;
+    if (action === "deactivate") nextIsActive = false;
+    if (action === "extend30") {
+      const base = nextExpiresAt && nextExpiresAt > Date.now() ? nextExpiresAt : Date.now();
+      nextExpiresAt = base + 30 * 24 * 60 * 60 * 1000;
+    }
+
+    await apiRequest("/api/admin/learners", "POST", {
+      adminKey: state.adminKey,
+      email,
+      isActive: nextIsActive,
+      expiresAt: nextExpiresAt
+    });
+    await loadLearnerAccessList();
+    setStatus(dom.learnerAccessStatus, "Learner access updated.", "success");
+  } catch (err) {
+    setStatus(dom.learnerAccessStatus, `Could not update learner access: ${err.message}`, "error");
+  }
+}
+
 function syncCohortFormFromSelection() {
   const selectedId = dom.cohortSelect.value;
   const cohort = (state.adminPanel.cohorts || []).find((item) => item.id === selectedId);
@@ -4124,9 +4236,10 @@ async function loadAdminData() {
     return;
   }
   try {
-    const [configRes, cohortRes] = await Promise.all([
+    const [configRes, cohortRes, learnerRes] = await Promise.all([
       apiRequest(`/api/admin/access-config`, "GET", null, state.adminKey),
-      apiRequest(`/api/admin/cohorts`, "GET", null, state.adminKey)
+      apiRequest(`/api/admin/cohorts`, "GET", null, state.adminKey),
+      apiRequest(`/api/admin/learners`, "GET", null, state.adminKey)
     ]);
 
     dom.adminTraineeCode.value = String(configRes.traineeAccessCode || "");
@@ -4136,8 +4249,10 @@ async function loadAdminData() {
     dom.adminTraineeActive.value = configRes.traineeAccessActive === false ? "false" : "true";
     dom.adminTraineeExpiry.value = toDateInputValue(configRes.traineeAccessExpiresAt);
     state.adminPanel.cohorts = Array.isArray(cohortRes.cohorts) ? cohortRes.cohorts : [];
+    state.adminPanel.learners = Array.isArray(learnerRes.learners) ? learnerRes.learners : [];
     renderAdminSummary(configRes, state.adminPanel.cohorts);
     renderCohortUI();
+    renderLearnerAccessTable();
     renderAnalyticsCohorts(state.adminPanel.cohorts);
     await loadBlueprintTemplates();
     setStatus(dom.adminStatus, "Admin data loaded.", "success");
@@ -4518,6 +4633,13 @@ function bindEvents() {
   if (dom.loadAdminDataBtn) dom.loadAdminDataBtn.addEventListener("click", loadAdminData);
   if (dom.clearCacheBtn) dom.clearCacheBtn.addEventListener("click", hardReset);
   if (dom.saveAccessConfigBtn) dom.saveAccessConfigBtn.addEventListener("click", saveAccessConfig);
+  if (dom.saveLearnerBtn) dom.saveLearnerBtn.addEventListener("click", saveLearnerAccess);
+  if (dom.refreshLearnersBtn) dom.refreshLearnersBtn.addEventListener("click", loadLearnerAccessList);
+  if (dom.learnerAccessBody) dom.learnerAccessBody.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-learner-action][data-learner-email]");
+    if (!button) return;
+    handleLearnerAccessAction(button.dataset.learnerAction, button.dataset.learnerEmail);
+  });
   if (dom.createCohortBtn) dom.createCohortBtn.addEventListener("click", createCohortFromForm);
   if (dom.updateCohortBtn) dom.updateCohortBtn.addEventListener("click", updateSelectedCohortFromForm);
   if (dom.refreshCohortsBtn) dom.refreshCohortsBtn.addEventListener("click", loadAdminData);
@@ -4649,6 +4771,8 @@ async function init() {
   dom.adminKeyInput.value = "";
   dom.adminTraineeActive.value = "true";
   dom.adminTraineeExpiry.value = "";
+  dom.learnerActiveInput.value = "true";
+  dom.learnerExpiryInput.value = "";
   dom.adminMaxSessionLimit.value = String(state.accessConfig.maxSessionQuestions || 250);
   dom.cohortActiveInput.value = "true";
   dom.cohortExpiryInput.value = "";

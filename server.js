@@ -32,6 +32,7 @@ const FLAGS_FILE = path.join(DATA_DIR, "question-flags.json");
 const CTA_FILE = path.join(DATA_DIR, "cta-events.json");
 const IMPORT_REVIEWS_FILE = path.join(DATA_DIR, "import-reviews.json");
 const IMPORT_BATCHES_FILE = path.join(DATA_DIR, "import-batches.json");
+const ALLOWED_LEARNERS_FILE = path.join(DATA_DIR, "allowed-learners.json");
 
 const DEFAULT_EXAM_TEMPLATES = [
   {
@@ -93,6 +94,7 @@ function ensureDataStore() {
   if (!fs.existsSync(CTA_FILE)) fs.writeFileSync(CTA_FILE, JSON.stringify({ events: [] }, null, 2));
   if (!fs.existsSync(IMPORT_REVIEWS_FILE)) fs.writeFileSync(IMPORT_REVIEWS_FILE, JSON.stringify({ items: [] }, null, 2));
   if (!fs.existsSync(IMPORT_BATCHES_FILE)) fs.writeFileSync(IMPORT_BATCHES_FILE, JSON.stringify({ batches: [] }, null, 2));
+  if (!fs.existsSync(ALLOWED_LEARNERS_FILE)) fs.writeFileSync(ALLOWED_LEARNERS_FILE, JSON.stringify({ learners: [] }, null, 2));
 }
 
 function readSessions() {
@@ -270,6 +272,22 @@ function readImportBatches() {
 function writeImportBatches(batches) {
   ensureDataStore();
   fs.writeFileSync(IMPORT_BATCHES_FILE, JSON.stringify({ batches }, null, 2));
+}
+
+function readAllowedLearners() {
+  ensureDataStore();
+  const raw = fs.readFileSync(ALLOWED_LEARNERS_FILE, "utf8");
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.learners) ? parsed.learners : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeAllowedLearners(learners) {
+  ensureDataStore();
+  fs.writeFileSync(ALLOWED_LEARNERS_FILE, JSON.stringify({ learners }, null, 2));
 }
 
 function sanitizeTemplate(input) {
@@ -485,6 +503,13 @@ function normalizeExpiryTs(value) {
 function isExpired(expiryTs) {
   const ts = Number(expiryTs || 0);
   return ts > 0 && Date.now() > ts;
+}
+
+function getLearnerAccessRecord(email) {
+  const target = normalizeEmail(email);
+  if (!target) return null;
+  const learners = readAllowedLearners();
+  return learners.find((item) => normalizeEmail(item.email) === target) || null;
 }
 
 function listCohortsSummary() {
@@ -1635,48 +1660,20 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === "/api/access/verify" && req.method === "POST") {
     try {
       const body = await parseBody(req);
-      const code = String(body.code || "");
       const email = normalizeEmail(body.email || "");
-      const access = readAccessConfig();
-      if (Boolean(access.traineeAccessCode) && code === access.traineeAccessCode) {
-        if (access.traineeAccessActive === false || isExpired(access.traineeAccessExpiresAt)) {
-          return json(res, 200, { valid: false, reason: "trainee_access_inactive_or_expired" });
-        }
-        return json(res, 200, {
-          valid: true,
-          accessType: "trainee",
-          questionLimit: 1000000,
-          cohortId: null,
-          cohortName: null
-        });
-      }
-
-      const cohort = findCohortByAccessCode(code);
-      if (cohort) {
-        if (cohort.isActive === false || isExpired(cohort.expiresAt)) {
-          return json(res, 200, { valid: false, reason: "cohort_inactive_or_expired" });
-        }
-        if (!email) {
-          return json(res, 200, { valid: false, reason: "email_required_for_cohort" });
-        }
-
-        const members = Array.isArray(cohort.members) ? cohort.members : [];
-        const member = members.find((m) => normalizeEmail(m.email) === email);
-        if (!member) return json(res, 200, { valid: false, reason: "not_enrolled_in_cohort" });
-        if (member.isActive === false || isExpired(member.expiresAt)) {
-          return json(res, 200, { valid: false, reason: "member_inactive_or_expired" });
-        }
-
-        return json(res, 200, {
-          valid: true,
-          accessType: "cohort",
-          questionLimit: Math.max(1, Number(cohort.questionLimit || 1000000)),
-          cohortId: cohort.id,
-          cohortName: cohort.name
-        });
-      }
-
-      return json(res, 200, { valid: false });
+      if (!email) return json(res, 200, { valid: false, reason: "email_required_for_learner_access" });
+      const learner = getLearnerAccessRecord(email);
+      if (!learner) return json(res, 200, { valid: false, reason: "email_not_allowlisted" });
+      if (learner.isActive === false) return json(res, 200, { valid: false, reason: "learner_inactive" });
+      if (isExpired(learner.expiresAt)) return json(res, 200, { valid: false, reason: "learner_access_expired" });
+      return json(res, 200, {
+        valid: true,
+        accessType: "trainee",
+        questionLimit: 1000000,
+        cohortId: null,
+        cohortName: null,
+        learnerEmail: email
+      });
     } catch (err) {
       return json(res, 400, { error: err.message });
     }
@@ -1848,12 +1845,73 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/admin/cohorts/members" && req.method === "GET") {
-    const key = url.searchParams.get("adminKey");
+    const key = getAdminKey(req, url);
     if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
     const cohortId = String(url.searchParams.get("cohortId") || "");
     const cohort = readCohorts().find((c) => c.id === cohortId);
     if (!cohort) return json(res, 404, { error: "Cohort not found" });
     return json(res, 200, { members: Array.isArray(cohort.members) ? cohort.members : [] });
+  }
+
+  if (url.pathname === "/api/admin/learners" && req.method === "GET") {
+    const key = getAdminKey(req, url);
+    if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
+    const learners = readAllowedLearners()
+      .map((item) => ({
+        email: normalizeEmail(item.email),
+        isActive: item.isActive !== false,
+        expiresAt: item.expiresAt ? Number(item.expiresAt) : null,
+        createdAt: Number(item.createdAt || Date.now()),
+        updatedAt: Number(item.updatedAt || Date.now())
+      }))
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+    return json(res, 200, { learners });
+  }
+
+  if (url.pathname === "/api/admin/learners" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const key = String(body.adminKey || "");
+      if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
+      const email = normalizeEmail(body.email || "");
+      if (!email) return json(res, 400, { error: "Valid email is required" });
+
+      const learners = readAllowedLearners();
+      const idx = learners.findIndex((item) => normalizeEmail(item.email) === email);
+      const now = Date.now();
+      const next = {
+        email,
+        isActive: body.isActive !== undefined ? Boolean(body.isActive) : true,
+        expiresAt: body.expiresAt ? Number(body.expiresAt) : null,
+        updatedAt: now
+      };
+
+      if (idx >= 0) {
+        learners[idx] = { ...learners[idx], ...next };
+      } else {
+        learners.unshift({ ...next, createdAt: now });
+      }
+      writeAllowedLearners(learners);
+      return json(res, 200, { learner: idx >= 0 ? learners[idx] : learners[0] });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/admin/learners/remove" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const key = String(body.adminKey || "");
+      if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
+      const email = normalizeEmail(body.email || "");
+      if (!email) return json(res, 400, { error: "Valid email is required" });
+      const learners = readAllowedLearners();
+      const next = learners.filter((item) => normalizeEmail(item.email) !== email);
+      writeAllowedLearners(next);
+      return json(res, 200, { removed: learners.length - next.length });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
   }
 
   if (url.pathname === "/api/cohorts" && req.method === "GET") {

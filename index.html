@@ -859,7 +859,50 @@
               </div>
               <p id="accessConfigStatus" class="status"></p>
 
-              <h4>Step 3: Cohort / Class Management</h4>
+              <h4>Step 3: Learner Access List (Email-based)</h4>
+              <div class="auth-grid">
+                <label>
+                  Learner Email
+                  <input id="learnerEmailInput" type="email" placeholder="learner@email.com" />
+                </label>
+                <label>
+                  Access Active
+                  <select id="learnerActiveInput">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </label>
+                <label>
+                  Access Expiry
+                  <input id="learnerExpiryInput" type="date" />
+                  <span class="helper">Leave empty for no expiry.</span>
+                </label>
+              </div>
+              <div class="panel-actions">
+                <button id="saveLearnerBtn" class="primary-btn" type="button">Add/Update Learner</button>
+                <button id="refreshLearnersBtn" class="ghost-btn" type="button">Refresh Learners</button>
+              </div>
+              <p id="learnerAccessStatus" class="status"></p>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Email</th>
+                      <th>Active</th>
+                      <th>Expiry</th>
+                      <th>Updated</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="learnerAccessBody">
+                    <tr>
+                      <td colspan="5">No learner emails loaded.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <h4>Step 4: Cohort / Class Management</h4>
               <div class="auth-grid">
                 <label>
                   Cohort Name
@@ -900,7 +943,7 @@
                 <select id="cohortSelect"></select>
               </label>
               <details id="memberManager" class="details-panel">
-                <summary>Step 4 (Optional): Manage Cohort Members</summary>
+                <summary>Step 5 (Optional): Manage Cohort Members</summary>
                 <div class="auth-grid">
                   <label>
                     Member Name
