@@ -178,7 +178,9 @@ function cacheDOM() {
   dom = {
     userName: document.getElementById("userName"),
     userEmail: document.getElementById("userEmail"),
+    userEmailWrap: document.getElementById("userEmailWrap"),
     userPhone: document.getElementById("userPhone"),
+    userPhoneWrap: document.getElementById("userPhoneWrap"),
     roleSelect: document.getElementById("roleSelect"),
     traineeCodeWrap: document.getElementById("traineeCodeWrap"),
     traineeCode: document.getElementById("traineeCode"),
@@ -481,15 +483,18 @@ function updateGoogleAuthUI() {
   if (!dom.googleAuthWrap || !dom.googleAuthStatus || !dom.googleAuthBtn) return;
   const required = REQUIRE_GOOGLE_FOR_TRIAL_TRAINEE && roleNeedsGoogleAuth();
   dom.googleAuthWrap.classList.toggle("hidden", !required);
+  if (dom.userEmailWrap) dom.userEmailWrap.classList.add("hidden");
+  if (dom.userPhoneWrap) dom.userPhoneWrap.classList.toggle("hidden", !(required && state.auth.googleUser?.email));
   if (!required) {
     dom.googleAuthStatus.textContent = "";
     dom.googleAuthBtn.textContent = "Continue with Google";
     dom.userEmail.disabled = false;
+    if (dom.userPhoneWrap) dom.userPhoneWrap.classList.add("hidden");
     return;
   }
 
   if (state.auth.googleUser?.email) {
-    dom.googleAuthStatus.textContent = `Signed in as ${state.auth.googleUser.email}`;
+    dom.googleAuthStatus.textContent = `Signed in as ${state.auth.googleUser.email}. Enter mobile number to continue.`;
     dom.googleAuthBtn.textContent = "Google Connected";
     dom.userEmail.value = state.auth.googleUser.email;
     dom.userEmail.disabled = true;
@@ -2077,9 +2082,11 @@ function resetSessionTracking() {
 
 async function startSession() {
   const userName = dom.userName.value.trim();
-  const userEmail = dom.userEmail.value.trim();
-  const userPhone = dom.userPhone.value.trim();
   const role = dom.roleSelect.value;
+  const userEmail = (role === "trial" || role === "trainee")
+    ? String(state.auth.googleUser?.email || dom.userEmail.value || "").trim()
+    : dom.userEmail.value.trim();
+  const userPhone = dom.userPhone.value.trim();
   const traineeCode = dom.traineeCode.value.trim();
   const trainerKey = dom.trainerKey.value.trim();
   let verifiedAccess = {
