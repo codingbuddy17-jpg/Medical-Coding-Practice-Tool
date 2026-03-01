@@ -4083,7 +4083,7 @@ function exportPdfReport() {
   // Score summary box
   doc.setFillColor(237, 247, 245);
   doc.setDrawColor(160, 205, 194);
-  doc.roundedRect(14, y - 2, 182, 46, 3, 3, "FD");
+  doc.roundedRect(14, y - 2, 182, 52, 3, 3, "FD");
   doc.text(`Attempted: ${attempted}`, 14, y);
   y += 6;
   doc.text(`Correct: ${correct}`, 14, y);
@@ -4097,7 +4097,7 @@ function exportPdfReport() {
   doc.text(`Avg Time/Question: ${avgLabel}`, 14, y);
   y += 6;
   doc.text(`Exam Threshold: ${threshold}% | Result: ${examResult}`, 14, y);
-  y += 8;
+  y += 14;
 
   // Professional performance insight block
   doc.setFontSize(11);
