@@ -4093,19 +4093,21 @@ function exportPdfReport() {
   const summaryTop = y - 2;
   const summaryHeight = 46;
   doc.roundedRect(14, summaryTop, 182, summaryHeight, 3, 3, "FD");
-  doc.text(`Attempted: ${attempted}`, 14, y);
-  y += 6;
-  doc.text(`Correct: ${correct}`, 14, y);
-  y += 6;
-  doc.text(`Wrong: ${wrong}`, 14, y);
-  y += 6;
-  doc.text(`Skipped: ${skipped}`, 14, y);
-  y += 6;
-  doc.text(`Score: ${score}%`, 14, y);
-  y += 6;
-  doc.text(`Avg Time/Question: ${avgLabel}`, 14, y);
-  y += 6;
-  doc.text(`Exam Threshold: ${threshold}% | Result: ${examResult}`, 14, y);
+  const summaryTextX = 18;
+  let summaryY = summaryTop + 8;
+  doc.text(`Attempted: ${attempted}`, summaryTextX, summaryY);
+  summaryY += 6;
+  doc.text(`Correct: ${correct}`, summaryTextX, summaryY);
+  summaryY += 6;
+  doc.text(`Wrong: ${wrong}`, summaryTextX, summaryY);
+  summaryY += 6;
+  doc.text(`Skipped: ${skipped}`, summaryTextX, summaryY);
+  summaryY += 6;
+  doc.text(`Score: ${score}%`, summaryTextX, summaryY);
+  summaryY += 6;
+  doc.text(`Avg Time/Question: ${avgLabel}`, summaryTextX, summaryY);
+  summaryY += 6;
+  doc.text(`Exam Threshold: ${threshold}% | Result: ${examResult}`, summaryTextX, summaryY);
   y = summaryTop + summaryHeight + 8;
 
   // Professional performance insight block
