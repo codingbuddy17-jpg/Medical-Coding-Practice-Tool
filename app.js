@@ -590,9 +590,16 @@ async function startGoogleAuth() {
 
 function formatSeconds(seconds) {
   const total = Math.max(0, Math.round(Number(seconds) || 0));
-  const mm = String(Math.floor(total / 60)).padStart(2, "0");
-  const ss = String(total % 60).padStart(2, "0");
-  return `${mm}:${ss}`;
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  const parts = [];
+
+  if (hours > 0) parts.push(`${hours} hour${hours === 1 ? "" : "s"}`);
+  if (minutes > 0) parts.push(`${minutes} minute${minutes === 1 ? "" : "s"}`);
+  if (secs > 0 || !parts.length) parts.push(`${secs} second${secs === 1 ? "" : "s"}`);
+
+  return parts.join(" ");
 }
 
 function normalize(text) {
