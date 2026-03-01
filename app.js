@@ -49,9 +49,9 @@ const STARTER_DECK = [];
 function createEmptyCategoryStats() {
   const stats = {};
   TRACKED_CATEGORY_KEYS.forEach((key) => {
-    stats[key] = { attempted: 0, correct: 0, wrong: 0 };
+    stats[key] = { attempted: 0, correct: 0, wrong: 0, skipped: 0, totalTimeMs: 0, timedCount: 0 };
   });
-  stats.OTHER = { attempted: 0, correct: 0, wrong: 0 };
+  stats.OTHER = { attempted: 0, correct: 0, wrong: 0, skipped: 0, totalTimeMs: 0, timedCount: 0 };
   return stats;
 }
 
@@ -2027,16 +2027,20 @@ function advanceCardAfterAttempt(current) {
   renderCard();
 }
 
-function recordCategoryAndCardStats(card, isCorrect) {
+function recordCategoryAndCardStats(card, isCorrect, durationMs = 0) {
   const tagKey = normalizeTagKey(card.tag);
   if (!state.session.categoryStats[tagKey]) {
-    state.session.categoryStats[tagKey] = { attempted: 0, correct: 0, wrong: 0 };
+    state.session.categoryStats[tagKey] = { attempted: 0, correct: 0, wrong: 0, skipped: 0, totalTimeMs: 0, timedCount: 0 };
   }
 
   const cat = state.session.categoryStats[tagKey];
   cat.attempted += 1;
   if (isCorrect) cat.correct += 1;
   else cat.wrong += 1;
+  if (Number(durationMs || 0) > 0) {
+    cat.totalTimeMs = Number(cat.totalTimeMs || 0) + Number(durationMs || 0);
+    cat.timedCount = Number(cat.timedCount || 0) + 1;
+  }
 
   if (!state.session.cardStats[card.id]) {
     state.session.cardStats[card.id] = { attempted: 0, correct: 0, wrong: 0 };
@@ -2047,14 +2051,18 @@ function recordCategoryAndCardStats(card, isCorrect) {
   else cardStat.wrong += 1;
 }
 
-function recordSkipStats(card) {
+function recordSkipStats(card, durationMs = 0) {
   const tagKey = normalizeTagKey(card.tag);
   if (!state.session.categoryStats[tagKey]) {
-    state.session.categoryStats[tagKey] = { attempted: 0, correct: 0, wrong: 0, skipped: 0 };
+    state.session.categoryStats[tagKey] = { attempted: 0, correct: 0, wrong: 0, skipped: 0, totalTimeMs: 0, timedCount: 0 };
   }
   const cat = state.session.categoryStats[tagKey];
   cat.attempted += 1;
   cat.skipped = (cat.skipped || 0) + 1;
+  if (Number(durationMs || 0) > 0) {
+    cat.totalTimeMs = Number(cat.totalTimeMs || 0) + Number(durationMs || 0);
+    cat.timedCount = Number(cat.timedCount || 0) + 1;
+  }
 
   if (!state.session.cardStats[card.id]) {
     state.session.cardStats[card.id] = { attempted: 0, correct: 0, wrong: 0, skipped: 0 };
@@ -2380,7 +2388,7 @@ async function validateCurrentAnswer() {
       if (result.isCorrect) state.session.correct += 1;
       else state.session.wrong += 1;
 
-      recordCategoryAndCardStats(card, result.isCorrect);
+      recordCategoryAndCardStats(card, result.isCorrect, durationMs);
       updateMetrics(); // Sync top bar stats
 
       // Throttle to prevent double-clicks/execution
@@ -2411,7 +2419,7 @@ async function validateCurrentAnswer() {
     }
 
     trackRecentResult(result.isCorrect);
-    recordCategoryAndCardStats(card, result.isCorrect);
+    recordCategoryAndCardStats(card, result.isCorrect, durationMs);
     updateMetrics();
     renderCategoryScorecards();
 
@@ -2470,7 +2478,7 @@ async function skipQuestion() {
   const durationMs = consumeQuestionTime();
   state.session.attempted += 1;
   state.session.skipped += 1;
-  recordSkipStats(card);
+  recordSkipStats(card, durationMs);
   updateMetrics();
   renderCategoryScorecards();
 
@@ -4003,6 +4011,36 @@ function exportPdfReport() {
   const generated = new Date().toLocaleString();
   const threshold = Math.min(100, Math.max(1, Number(state.exam.passThreshold || state.examConfig.passThreshold || 80)));
   const examResult = score >= threshold ? "PASS" : "FAIL";
+  const skipped = Number(state.session.skipped || 0);
+  const answered = Math.max(0, attempted - skipped);
+  const completionConsistency = attempted ? Math.round((answered / attempted) * 100) : 0;
+  const speedScore = (() => {
+    if (!attempted || !avgSeconds) return 50;
+    const ratio = avgSeconds / 60;
+    if (ratio <= 1) return 100;
+    if (ratio >= 2) return 0;
+    return Math.round((2 - ratio) * 100);
+  })();
+  const mastery = Math.round(score * 0.65 + speedScore * 0.25 + completionConsistency * 0.1);
+
+  const drawMetricBar = (label, value, yPos, color = [14, 116, 144]) => {
+    const safe = Math.max(0, Math.min(100, Number(value || 0)));
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(9);
+    doc.text(`${label}: ${safe}%`, 14, yPos);
+    doc.setDrawColor(203, 213, 225);
+    doc.setFillColor(245, 248, 252);
+    doc.roundedRect(68, yPos - 3.7, 124, 4.4, 1.2, 1.2, "FD");
+    doc.setFillColor(color[0], color[1], color[2]);
+    const width = Math.max(1.5, (124 * safe) / 100);
+    doc.roundedRect(68, yPos - 3.7, width, 4.4, 1.2, 1.2, "F");
+  };
+  const masteryBandMeta = (value) => {
+    const scoreVal = Number(value || 0);
+    if (scoreVal >= 80) return { label: "Strong", fill: [220, 252, 231], stroke: [134, 239, 172], text: [22, 101, 52] };
+    if (scoreVal >= 60) return { label: "Developing", fill: [254, 243, 199], stroke: [252, 211, 77], text: [146, 64, 14] };
+    return { label: "At Risk", fill: [254, 226, 226], stroke: [252, 165, 165], text: [153, 27, 27] };
+  };
 
   // Branded header ribbon
   doc.setFillColor(15, 118, 110);
@@ -4048,16 +4086,30 @@ function exportPdfReport() {
   y += 6;
   doc.text(`Wrong: ${wrong}`, 14, y);
   y += 6;
+  doc.text(`Skipped: ${skipped}`, 14, y);
+  y += 6;
   doc.text(`Score: ${score}%`, 14, y);
   y += 6;
   doc.text(`Avg Time/Question: ${avgLabel}`, 14, y);
   y += 6;
   doc.text(`Exam Threshold: ${threshold}% | Result: ${examResult}`, 14, y);
-  y += 10;
+  y += 8;
+
+  // Professional performance insight block
+  doc.setFontSize(11);
+  doc.setTextColor(0, 126, 167);
+  doc.text("Performance Insights", 14, y);
+  y += 6;
+  drawMetricBar("Mastery (65/25/10)", mastery, y, [30, 136, 229]);
+  y += 6;
+  drawMetricBar("Speed Score", speedScore, y, [15, 118, 110]);
+  y += 6;
+  drawMetricBar("Consistency", completionConsistency, y, [245, 158, 11]);
+  y += 7;
 
   doc.setFontSize(11);
   doc.setTextColor(0, 126, 167);
-  doc.text("Category Breakdown", 14, y);
+  doc.text("Topic Mastery Snapshot", 14, y);
   y += 6;
   doc.setTextColor(15, 23, 42);
   doc.setFontSize(9);
@@ -4067,16 +4119,100 @@ function exportPdfReport() {
     .filter((key) => stats[key]?.attempted > 0)
     .map((key) => {
       const row = stats[key];
-      const acc = row.attempted ? Math.round((row.correct / row.attempted) * 100) : 0;
-      return `${key}: Attempted ${row.attempted}, Correct ${row.correct}, Wrong ${row.wrong}, Accuracy ${acc}%`;
+      const tagAttempted = Number(row.attempted || 0);
+      const tagSkipped = Number(row.skipped || 0);
+      const tagAnswered = Math.max(0, tagAttempted - tagSkipped);
+      const acc = tagAttempted ? Math.round((Number(row.correct || 0) / tagAttempted) * 100) : 0;
+      const avgTagSeconds = Number(row.timedCount || 0) > 0 ? Number(row.totalTimeMs || 0) / Number(row.timedCount || 1) / 1000 : avgSeconds;
+      const tagSpeed = (() => {
+        if (!avgTagSeconds || !Number.isFinite(avgTagSeconds)) return 50;
+        const ratio = avgTagSeconds / 60;
+        if (ratio <= 1) return 100;
+        if (ratio >= 2) return 0;
+        return Math.round((2 - ratio) * 100);
+      })();
+      const tagConsistency = tagAttempted ? Math.round((tagAnswered / tagAttempted) * 100) : 0;
+      const tagMastery = Math.round(acc * 0.65 + tagSpeed * 0.25 + tagConsistency * 0.1);
+      return {
+        tag: key,
+        attempted: tagAttempted,
+        correct: Number(row.correct || 0),
+        wrong: Number(row.wrong || 0),
+        acc,
+        avgTagSeconds,
+        mastery: tagMastery
+      };
     });
-  if (!rows.length) rows.push("No attempts recorded yet.");
+  if (!rows.length) {
+    rows.push({
+      tag: "No attempts recorded yet.",
+      attempted: 0,
+      correct: 0,
+      wrong: 0,
+      acc: 0,
+      avgTagSeconds: 0,
+      mastery: 0
+    });
+  }
 
-  rows.forEach((line) => {
+  const weakTopics = rows
+    .filter((row) => row.attempted >= 2)
+    .sort((a, b) => a.mastery - b.mastery)
+    .slice(0, 3)
+    .map((row) => row.tag);
+
+  if (weakTopics.length) {
+    doc.setTextColor(180, 83, 9);
+    doc.text(`Top Focus Topics: ${weakTopics.join(", ")}`, 14, y);
+    y += 6;
+  }
+  doc.setTextColor(15, 23, 42);
+
+  // Compact color heatmap block (professional visual snapshot)
+  const heatmapRows = rows.filter((row) => row.attempted > 0).sort((a, b) => b.mastery - a.mastery).slice(0, 12);
+  if (heatmapRows.length) {
+    if (y > 256) {
+      doc.addPage();
+      y = 18;
+    }
+    doc.setFontSize(10);
+    doc.setTextColor(0, 126, 167);
+    doc.text("Topic Heatmap", 14, y);
+    y += 6;
+
+    const startX = 14;
+    const cellW = 58;
+    const cellH = 12;
+    const gapX = 4;
+    const gapY = 4;
+    heatmapRows.forEach((row, idx) => {
+      const col = idx % 3;
+      const line = Math.floor(idx / 3);
+      const x = startX + col * (cellW + gapX);
+      const yy = y + line * (cellH + gapY);
+      const band = masteryBandMeta(row.mastery);
+      const title = row.tag.length > 12 ? `${row.tag.slice(0, 11)}…` : row.tag;
+
+      doc.setFillColor(band.fill[0], band.fill[1], band.fill[2]);
+      doc.setDrawColor(band.stroke[0], band.stroke[1], band.stroke[2]);
+      doc.roundedRect(x, yy, cellW, cellH, 2, 2, "FD");
+      doc.setFontSize(8);
+      doc.setTextColor(15, 23, 42);
+      doc.text(title, x + 2, yy + 4.4);
+      doc.setTextColor(band.text[0], band.text[1], band.text[2]);
+      doc.text(`${row.mastery}%`, x + 2, yy + 9.2);
+    });
+    y += Math.ceil(heatmapRows.length / 3) * (cellH + gapY) + 2;
+    doc.setTextColor(15, 23, 42);
+  }
+
+  rows.forEach((row) => {
     if (y > 280) {
       doc.addPage();
       y = 18;
     }
+    const avgTag = row.attempted ? formatSeconds(row.avgTagSeconds || 0) : "--";
+    const line = `${row.tag}: A ${row.attempted}, C ${row.correct}, W ${row.wrong}, Acc ${row.acc}%, Avg ${avgTag}, Mastery ${row.mastery}%`;
     doc.text(line, 14, y);
     y += 5;
   });
