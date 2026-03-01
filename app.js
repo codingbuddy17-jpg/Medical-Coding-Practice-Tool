@@ -479,7 +479,7 @@ function setExamControlsLocked(locked) {
 
 function setStatus(el, message, mode = "") {
   el.textContent = message;
-  el.classList.remove("success", "error");
+  el.classList.remove("success", "error", "neutral");
   if (mode) el.classList.add(mode);
 }
 
