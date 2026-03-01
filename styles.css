@@ -197,6 +197,31 @@ h1 {
   gap: 0.45rem;
 }
 
+.landing-lead {
+  font-size: 0.9rem;
+  color: #0f2742;
+}
+
+.landing-pill-row {
+  margin-top: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.landing-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #c9deef;
+  background: #f8fcff;
+  color: #0f4c81;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 .landing-tile {
   border: 1px solid #d2e1ee;
   background: #fcfeff;
@@ -735,8 +760,8 @@ textarea {
 
 .question-quarter p {
   margin: 0;
-  font-size: 1rem;
-  line-height: 1.45;
+  font-size: 1.04rem;
+  line-height: 1.55;
   overflow-wrap: anywhere;
 }
 
@@ -760,7 +785,7 @@ textarea {
 
 .answer-row button {
   flex: 1;
-  font-size: 1rem;
+  font-size: 0.98rem;
   padding: 0.6rem;
   font-weight: 600;
 }
@@ -769,10 +794,22 @@ textarea {
 .answer-row .action-btn {
   flex: 1;
   min-height: 40px;
-  font-size: 0.95rem;
+  font-size: 0.94rem;
   padding: 0.55rem 0.9rem;
   border: none;
   color: #fff;
+  transition: transform 0.16s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.answer-row .action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
+}
+
+.answer-row .action-btn:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .btn-gradient-check {
@@ -862,18 +899,44 @@ textarea {
 
 #feedback {
   font-weight: 600;
+  border-radius: 8px;
+  padding: 0.28rem 0.46rem;
+  min-height: 1.7rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
 }
 
 #feedback.success {
   color: #16a34a;
+  background: #ecfdf5;
+  border-color: #bbf7d0;
 }
 
 #feedback.error {
   color: #dc2626;
+  background: #fef2f2;
+  border-color: #fecaca;
 }
 
 #feedback.neutral {
   color: #0f172a;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+#answerPanel.feedback-success {
+  border-color: #86efac;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.14);
+}
+
+#answerPanel.feedback-error {
+  border-color: #fca5a5;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.14);
+}
+
+#answerPanel.feedback-neutral {
+  border-color: var(--line);
+  box-shadow: none;
 }
 
 
@@ -938,6 +1001,17 @@ textarea {
   margin-bottom: 0.5rem;
 }
 
+#view-mentor .dashboard-header {
+  position: sticky;
+  top: 0.35rem;
+  z-index: 20;
+  padding: 0.65rem;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(248, 251, 255, 0.96));
+  border: 1px solid #d9e6f2;
+  box-shadow: 0 6px 18px -12px rgba(15, 23, 42, 0.35);
+}
+
 .stats-widget-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -971,6 +1045,18 @@ textarea {
   line-height: 1;
 }
 
+#view-mentor .stats-widget:nth-child(1) {
+  border-left-color: #0ea5e9;
+}
+
+#view-mentor .stats-widget:nth-child(2) {
+  border-left-color: #f59e0b;
+}
+
+#view-mentor .stats-widget:nth-child(3) {
+  border-left-color: #22c55e;
+}
+
 /* Sub Navigation */
 .sub-nav {
   display: flex;
@@ -978,6 +1064,7 @@ textarea {
   margin-top: 0.5rem;
   border-bottom: 1px solid var(--line);
   padding-bottom: 0.8rem;
+  flex-wrap: wrap;
 }
 
 .sub-nav-item {
@@ -1004,6 +1091,54 @@ textarea {
   color: white;
   font-weight: 600;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#view-mentor .sub-nav-item {
+  min-height: 38px;
+}
+
+#view-mentor .sub-view .panel {
+  border-radius: 16px;
+  box-shadow: 0 8px 18px -14px rgba(15, 23, 42, 0.45);
+}
+
+#view-mentor .sub-view .panel h3 {
+  margin-bottom: 0.5rem;
+}
+
+#view-mentor .sub-view .panel .status {
+  margin-bottom: 0.25rem;
+}
+
+#view-mentor .panel-actions input,
+#view-mentor .panel-actions select,
+#view-mentor .panel-actions button {
+  min-height: 40px;
+}
+
+#view-mentor .table-wrap {
+  border-radius: 14px;
+}
+
+#view-mentor .table-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #eff6ff;
+  color: #0f3e6b;
+}
+
+#view-mentor .table-wrap tbody tr:nth-child(even) {
+  background: #fbfdff;
+}
+
+#view-mentor .analytics-summary .metric {
+  border-radius: 10px;
+  border-color: #d7e6f2;
+}
+
+#view-mentor .analytics-summary .metric strong {
+  font-size: 1.18rem;
 }
 
 /* Panel Refinements (Less Clumsy) */

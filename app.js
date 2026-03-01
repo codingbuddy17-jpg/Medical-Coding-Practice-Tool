@@ -243,6 +243,7 @@ function cacheDOM() {
     shortAnswerRow: document.getElementById("shortAnswerRow"),
     mcqOptions: document.getElementById("mcqOptions"),
     userAnswer: document.getElementById("userAnswer"),
+    answerPanel: document.getElementById("answerPanel"),
     checkBtn: document.getElementById("checkBtn"),
     skipBtn: document.getElementById("skipBtn"),
     nextBtn: document.getElementById("nextBtn"),
@@ -480,6 +481,14 @@ function setStatus(el, message, mode = "") {
   el.textContent = message;
   el.classList.remove("success", "error");
   if (mode) el.classList.add(mode);
+}
+
+function setPracticeFeedbackState(mode = "neutral") {
+  if (!dom.answerPanel) return;
+  dom.answerPanel.classList.remove("feedback-success", "feedback-error", "feedback-neutral");
+  if (mode === "success") dom.answerPanel.classList.add("feedback-success");
+  else if (mode === "error") dom.answerPanel.classList.add("feedback-error");
+  else dom.answerPanel.classList.add("feedback-neutral");
 }
 
 function roleNeedsGoogleAuth() {
@@ -1406,6 +1415,7 @@ function renderCard() {
     dom.mcqOptions.classList.add("hidden");
     dom.userAnswer.classList.remove("hidden");
     setStatus(dom.feedback, "");
+    setPracticeFeedbackState("neutral");
     setStatus(dom.rationalePlaceholder, DEFAULT_RATIONALE_TEXT);
     if (dom.rationaleDetails) {
       dom.rationaleDetails.classList.add("hidden");
@@ -1434,6 +1444,7 @@ function renderCard() {
     dom.mcqOptions.classList.add("hidden");
     dom.userAnswer.classList.remove("hidden");
     setStatus(dom.feedback, "");
+    setPracticeFeedbackState("neutral");
 
     // Show upgrade message in rationale box
     dom.rationalePlaceholder.classList.remove("hidden");
@@ -1482,6 +1493,7 @@ function renderCard() {
   }
 
   setStatus(dom.feedback, "");
+  setPracticeFeedbackState("neutral");
 
   // Hide rationale initially for new card
   dom.rationalePlaceholder.classList.add("hidden");
@@ -2420,9 +2432,11 @@ async function validateCurrentAnswer() {
     if (result.isCorrect) {
       state.session.correct += 1;
       setStatus(dom.feedback, `Correct. Expected: ${result.primaryAnswer}`, "success");
+      setPracticeFeedbackState("success");
     } else {
       state.session.wrong += 1;
       setStatus(dom.feedback, `Not correct. Expected: ${result.primaryAnswer}`, "error");
+      setPracticeFeedbackState("error");
     }
 
     trackRecentResult(result.isCorrect);
@@ -2510,10 +2524,12 @@ async function skipQuestion() {
     state.exam.attemptedTotal += 1;
     handleSkipInExam(card);
     setStatus(dom.feedback, "Skipped. This will reappear in the review pass.", "neutral");
+    setPracticeFeedbackState("neutral");
     return;
   }
 
   setStatus(dom.feedback, "Skipped.", "neutral");
+  setPracticeFeedbackState("neutral");
   advanceCardAfterAttempt(card);
 }
 

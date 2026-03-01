@@ -52,21 +52,25 @@
     </section>
 
     <section id="preSessionLanding" class="panel landing-panel">
-      <h2>PracticeBuddy Lab Dashboard</h2>
-      <p class="status">A high-performance environment for coding practice, mock exam preparation, and measurable
-        learner improvement.</p>
+      <h2>Practice Smarter. Perform Better.</h2>
+      <p class="status landing-lead">Focused drills, timed mocks, and actionable analytics designed to improve coding outcomes.</p>
+      <div class="landing-pill-row">
+        <span class="landing-pill">Adaptive Practice</span>
+        <span class="landing-pill">Timed Mock Exams</span>
+        <span class="landing-pill">Mastery Analytics</span>
+      </div>
       <div class="landing-grid">
         <article class="landing-tile">
           <h3>Structured Practice</h3>
-          <p class="status">Tag-based short and MCQ drills with instant validation and rationale-ready flow.</p>
+          <p class="status">Topic-focused short and MCQ practice with instant feedback and rationale.</p>
         </article>
         <article class="landing-tile">
           <h3>Mock Exam Readiness</h3>
-          <p class="status">Blueprint-driven exam practice with timed rules, pass thresholds, and cohort assignment.</p>
+          <p class="status">Timed simulations with pass thresholds and performance review.</p>
         </article>
         <article class="landing-tile">
           <h3>Performance Intelligence</h3>
-          <p class="status">Learner and cohort analytics, weak-topic insights, and mentor action controls.</p>
+          <p class="status">Weak-topic insights, mastery trends, and mentor controls.</p>
         </article>
       </div>
       <div class="panel-actions">
@@ -285,7 +289,7 @@
             <p id="cardPrompt">Start session to begin.</p>
           </section>
 
-          <section class="answer-quarter">
+          <section id="answerPanel" class="answer-quarter">
             <label for="userAnswer" class="answer-label">Your Answer</label>
             <div class="panel-actions">
               <button id="flagQuestionBtn" class="ghost-btn" type="button">Flag This Question</button>
@@ -414,6 +418,7 @@
           <section class="panel">
             <h3>Mentor Session Console <span id="sessionConsoleSummary" class="panel-badge panel-badge-sessions"
                 aria-live="polite"></span></h3>
+            <p class="status">Track learner sessions, filter quickly, and export clean session logs.</p>
             <div class="panel-actions">
               <input id="sessionSearchInput" type="text" placeholder="Search learner" />
               <select id="sessionRoleFilter">
@@ -461,6 +466,7 @@
           <!-- Moved Weak Topic Analytics Here -->
           <section class="panel">
             <h3>Weak-Topic Analytics</h3>
+            <p class="status">Load learner or cohort analytics to identify weak topics and trigger focused drills.</p>
             <div class="auth-grid">
               <label>
                 User Email
@@ -596,6 +602,7 @@
         <div id="subview-bank" class="sub-view full-width hidden">
           <section class="panel">
             <h3>Question Bank Management</h3>
+            <p class="status">Search active questions, bulk update tags, and maintain quality at scale.</p>
             <div class="panel-actions">
               <input id="questionBankSearchInput" type="text" placeholder="Search questions..." />
               <input id="questionBankTagFilter" type="text" placeholder="Filter by Tag" />
@@ -649,6 +656,7 @@
 
           <section class="panel">
             <h3>Question Review Queue <span id="flagQueueOpenCount" class="panel-badge" aria-live="polite"></span></h3>
+            <p class="status">Resolve flagged questions quickly to keep quality and learner trust high.</p>
             <div class="panel-actions">
               <select id="flagStatusFilter">
                 <option value="open">Open</option>
@@ -686,6 +694,7 @@
 
           <section class="panel">
             <h3>Mentor Deck Manager</h3>
+            <p class="status">Import and validate question banks with preview, paging, and rollback support.</p>
             <p>CSV/XLSX headers (order can vary):
               <code>tag/tags,type,question,answer,rationale,option_a,option_b,option_c,option_d,correct_option</code>.
             </p>
