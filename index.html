@@ -510,9 +510,46 @@
                 <span class="metric-label">Avg Time/Question</span>
                 <strong id="analyticsAvgTime">--</strong>
               </div>
+              <div class="metric">
+                <span class="metric-label">Mastery Score</span>
+                <strong id="analyticsMastery">0</strong>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Speed Score</span>
+                <strong id="analyticsSpeedScore">0</strong>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Consistency</span>
+                <strong id="analyticsConsistency">0</strong>
+              </div>
             </section>
 
             <p class="status"><strong>Recommended Tags:</strong> <span id="analyticsRecommendedTags">--</span></p>
+            <div class="panel-actions">
+              <span class="status"><strong>Top Weak Topics:</strong> <span id="analyticsTopWeakTopics">--</span></span>
+              <button id="analyticsWeakDrillCta" class="ghost-btn" type="button">Start Weak Topic Drill</button>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Topic</th>
+                    <th>Mastery</th>
+                    <th>Band</th>
+                    <th>Accuracy</th>
+                    <th>Speed</th>
+                    <th>Consistency</th>
+                    <th>Avg Time</th>
+                  </tr>
+                </thead>
+                <tbody id="analyticsHeatmapBody">
+                  <tr>
+                    <td colspan="7">No mastery heatmap loaded.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             <div class="table-wrap">
               <table>
@@ -523,11 +560,13 @@
                     <th>Correct</th>
                     <th>Wrong</th>
                     <th>Accuracy</th>
+                    <th>Mastery</th>
+                    <th>Band</th>
                   </tr>
                 </thead>
                 <tbody id="analyticsTagBody">
                   <tr>
-                    <td colspan="5">No analytics loaded.</td>
+                    <td colspan="7">No analytics loaded.</td>
                   </tr>
                 </tbody>
               </table>

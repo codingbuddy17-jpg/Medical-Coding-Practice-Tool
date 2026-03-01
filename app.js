@@ -404,7 +404,13 @@ function cacheDOM() {
     analyticsWrong: document.getElementById("analyticsWrong"),
     analyticsScore: document.getElementById("analyticsScore"),
     analyticsAvgTime: document.getElementById("analyticsAvgTime"),
+    analyticsMastery: document.getElementById("analyticsMastery"),
+    analyticsSpeedScore: document.getElementById("analyticsSpeedScore"),
+    analyticsConsistency: document.getElementById("analyticsConsistency"),
     analyticsRecommendedTags: document.getElementById("analyticsRecommendedTags"),
+    analyticsTopWeakTopics: document.getElementById("analyticsTopWeakTopics"),
+    analyticsWeakDrillCta: document.getElementById("analyticsWeakDrillCta"),
+    analyticsHeatmapBody: document.getElementById("analyticsHeatmapBody"),
     analyticsTagBody: document.getElementById("analyticsTagBody"),
     analyticsTrendBody: document.getElementById("analyticsTrendBody"),
     adminActiveIndicator: document.getElementById("adminActiveIndicator"),
@@ -3634,6 +3640,8 @@ async function handleFlagQueueAction(action, flagId) {
 function renderAnalyticsTables(analytics) {
   const byTag = Array.isArray(analytics?.byTag) ? analytics.byTag : [];
   const trend = Array.isArray(analytics?.trend) ? analytics.trend : [];
+  const heatmap = Array.isArray(analytics?.heatmap) ? analytics.heatmap : [];
+  const mastery = analytics?.mastery || {};
   const summary = analytics?.summary || {};
   dom.analyticsAttempted.textContent = String(summary.attempted || 0);
   dom.analyticsCorrect.textContent = String(summary.correct || 0);
@@ -3643,15 +3651,42 @@ function renderAnalyticsTables(analytics) {
     dom.analyticsAvgTime.textContent =
       summary.avgSeconds && Number.isFinite(summary.avgSeconds) ? formatSeconds(summary.avgSeconds) : "--";
   }
+  if (dom.analyticsMastery) dom.analyticsMastery.textContent = `${Number(summary.mastery || mastery.overall || 0)}%`;
+  if (dom.analyticsSpeedScore) dom.analyticsSpeedScore.textContent = `${Number(summary.speedScore || mastery.speedScore || 0)}%`;
+  if (dom.analyticsConsistency) dom.analyticsConsistency.textContent = `${Number(summary.consistencyScore || mastery.consistencyScore || 0)}%`;
+  if (dom.analyticsTopWeakTopics) {
+    const weak = Array.isArray(mastery.topWeakTags) ? mastery.topWeakTags : [];
+    dom.analyticsTopWeakTopics.textContent = weak.length ? weak.join(", ") : "--";
+  }
 
   if (!byTag.length) {
-    dom.analyticsTagBody.innerHTML = '<tr><td colspan="5">No tag analytics for selected filter.</td></tr>';
+    dom.analyticsTagBody.innerHTML = '<tr><td colspan="7">No tag analytics for selected filter.</td></tr>';
   } else {
     dom.analyticsTagBody.innerHTML = byTag
       .map(
         (row) =>
-          `<tr><td>${escapeHtml(row.tag)}</td><td>${row.attempted}</td><td>${row.correct}</td><td>${row.wrong}</td><td>${row.accuracy}%</td></tr>`
+          `<tr><td>${escapeHtml(row.tag)}</td><td>${row.attempted}</td><td>${row.correct}</td><td>${row.wrong}</td><td>${row.accuracy}%</td><td>${Number(row.mastery || 0)}%</td><td><span class="analytics-band analytics-band-${String(row.band || "").toLowerCase().replace(/\s+/g, "-")}">${escapeHtml(row.band || "--")}</span></td></tr>`
       )
+      .join("");
+  }
+
+  if (!heatmap.length) {
+    if (dom.analyticsHeatmapBody) dom.analyticsHeatmapBody.innerHTML = '<tr><td colspan="7">No mastery heatmap for selected filter.</td></tr>';
+  } else if (dom.analyticsHeatmapBody) {
+    dom.analyticsHeatmapBody.innerHTML = heatmap
+      .map((row) => {
+        const bandClass = `analytics-band-${String(row.band || "").toLowerCase().replace(/\s+/g, "-")}`;
+        const avg = row.avgSeconds && Number.isFinite(row.avgSeconds) ? formatSeconds(row.avgSeconds) : "--";
+        return `<tr>
+          <td>${escapeHtml(row.tag || "General")}</td>
+          <td>${Number(row.mastery || 0)}%</td>
+          <td><span class="analytics-band ${bandClass}">${escapeHtml(row.band || "--")}</span></td>
+          <td>${Number(row.accuracy || 0)}%</td>
+          <td>${Number(row.speedScore || 0)}%</td>
+          <td>${Number(row.consistencyScore || 0)}%</td>
+          <td>${avg}</td>
+        </tr>`;
+      })
       .join("");
   }
 
@@ -3665,6 +3700,22 @@ function renderAnalyticsTables(analytics) {
       )
       .join("");
   }
+}
+
+function startWeakTopicDrillFromAnalytics() {
+  const analytics = state.analytics.lastData || {};
+  const weak = Array.isArray(analytics?.mastery?.topWeakTags) ? analytics.mastery.topWeakTags : [];
+  const fallback = Array.isArray(state.analytics.lastRecommendations) ? state.analytics.lastRecommendations : [];
+  const nextTag = String((weak[0] || fallback[0] || "")).trim();
+  if (!nextTag) {
+    setStatus(dom.analyticsStatus, "No weak topic available yet. Load analytics with more attempts.", "error");
+    return;
+  }
+  setSelectedTag(nextTag);
+  state.weakDrillEnabled = true;
+  if (dom.weakDrillToggle) dom.weakDrillToggle.checked = true;
+  handleTabSwitch("practice");
+  setStatus(dom.analyticsStatus, `Weak drill activated for ${nextTag}.`, "success");
 }
 
 function renderAnalyticsCohorts(cohorts) {
@@ -4684,6 +4735,7 @@ function bindEvents() {
   if (dom.loadBatchAnalyticsBtn) dom.loadBatchAnalyticsBtn.addEventListener("click", loadBatchAnalytics);
   if (dom.loadDrillRecommendationsBtn) dom.loadDrillRecommendationsBtn.addEventListener("click", loadDrillRecommendations);
   if (dom.shareTrendEmailBtn) dom.shareTrendEmailBtn.addEventListener("click", shareTrendByEmail);
+  if (dom.analyticsWeakDrillCta) dom.analyticsWeakDrillCta.addEventListener("click", startWeakTopicDrillFromAnalytics);
   if (dom.exportReportBtn) dom.exportReportBtn.addEventListener("click", exportPdfReport);
 
   if (dom.unlockAccessBtn) dom.unlockAccessBtn.addEventListener("click", () => {

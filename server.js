@@ -33,6 +33,7 @@ const CTA_FILE = path.join(DATA_DIR, "cta-events.json");
 const IMPORT_REVIEWS_FILE = path.join(DATA_DIR, "import-reviews.json");
 const IMPORT_BATCHES_FILE = path.join(DATA_DIR, "import-batches.json");
 const ALLOWED_LEARNERS_FILE = path.join(DATA_DIR, "allowed-learners.json");
+let attemptsSupportsDurationMs = true;
 
 const DEFAULT_EXAM_TEMPLATES = [
   {
@@ -735,12 +736,132 @@ function dayKeyFromTs(ts) {
   return `${y}-${m}-${day}`;
 }
 
-function buildAttemptAnalytics(attempts, days) {
+function clampScore(value) {
+  const n = Number(value || 0);
+  if (!Number.isFinite(n)) return 0;
+  if (n < 0) return 0;
+  if (n > 100) return 100;
+  return n;
+}
+
+function speedBandFromMastery(mastery) {
+  const m = Number(mastery || 0);
+  if (m >= 80) return "Strong";
+  if (m >= 60) return "Developing";
+  return "At Risk";
+}
+
+function computeSpeedScore(avgSeconds, targetSeconds) {
+  const avg = Number(avgSeconds || 0);
+  const target = Math.max(1, Number(targetSeconds || 60));
+  if (!Number.isFinite(avg) || avg <= 0) return 50;
+  const ratio = avg / target;
+  if (ratio <= 1) return 100;
+  if (ratio >= 2) return 0;
+  return Math.round((2 - ratio) * 100);
+}
+
+function computeConsistencyScore(trend, windowDays) {
+  const rows = Array.isArray(trend) ? trend : [];
+  const activeRows = rows.filter((row) => Number(row.attempted || 0) > 0);
+  const activeDays = activeRows.length;
+  const window = Math.max(1, Number(windowDays || 30));
+  const frequency = clampScore((activeDays / window) * 100);
+
+  if (activeDays === 0) {
+    return {
+      score: 0,
+      frequencyScore: 0,
+      regularityScore: 0,
+      stabilityScore: 0,
+      activeDays
+    };
+  }
+
+  let regularityScore = 50;
+  let stabilityScore = 50;
+
+  if (activeDays >= 2) {
+    const sortedDays = activeRows.map((row) => row.day).sort();
+    const dayNumbers = sortedDays.map((day) => Math.floor(Date.parse(`${day}T00:00:00Z`) / (24 * 60 * 60 * 1000)));
+    const gaps = [];
+    for (let i = 1; i < dayNumbers.length; i += 1) {
+      gaps.push(Math.max(1, dayNumbers[i] - dayNumbers[i - 1]));
+    }
+    const avgGap = gaps.length ? gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length : window;
+    regularityScore = clampScore(100 - ((avgGap - 1) / Math.max(1, window - 1)) * 100);
+
+    const attemptsPerDay = activeRows.map((row) => Number(row.attempted || 0)).filter((x) => x > 0);
+    const mean = attemptsPerDay.reduce((sum, val) => sum + val, 0) / Math.max(1, attemptsPerDay.length);
+    const variance = attemptsPerDay.reduce((sum, val) => sum + (val - mean) ** 2, 0) / Math.max(1, attemptsPerDay.length);
+    const stdev = Math.sqrt(Math.max(0, variance));
+    const cv = mean > 0 ? stdev / mean : 1;
+    stabilityScore = clampScore(100 - cv * 100);
+  }
+
+  const score = Math.round(frequency * 0.4 + regularityScore * 0.35 + stabilityScore * 0.25);
+  return {
+    score,
+    frequencyScore: Math.round(frequency),
+    regularityScore: Math.round(regularityScore),
+    stabilityScore: Math.round(stabilityScore),
+    activeDays
+  };
+}
+
+async function getTagTargetSecondsMap() {
+  const map = new Map();
+  if (!USE_SUPABASE) {
+    const questions = readQuestions().filter((q) => q.is_active !== false);
+    const agg = new Map();
+    questions.forEach((q) => {
+      const tag = String(q.tag || "General").trim() || "General";
+      const target = Number(q.target_time_sec || 0);
+      if (!Number.isFinite(target) || target <= 0) return;
+      const curr = agg.get(tag) || { total: 0, count: 0 };
+      curr.total += target;
+      curr.count += 1;
+      agg.set(tag, curr);
+    });
+    agg.forEach((value, key) => {
+      map.set(key, Math.max(30, Math.min(120, Math.round(value.total / value.count))));
+    });
+    return map;
+  }
+
+  const { data, error } = await supabase
+    .from("questions")
+    .select("tag,target_time_sec")
+    .eq("is_active", true);
+  if (error) {
+    const msg = String(error.message || "").toLowerCase();
+    if (error.code !== "42703" && !msg.includes("target_time_sec")) throw error;
+    return map;
+  }
+
+  const agg = new Map();
+  (data || []).forEach((row) => {
+    const tag = String(row.tag || "General").trim() || "General";
+    const target = Number(row.target_time_sec || 0);
+    if (!Number.isFinite(target) || target <= 0) return;
+    const curr = agg.get(tag) || { total: 0, count: 0 };
+    curr.total += target;
+    curr.count += 1;
+    agg.set(tag, curr);
+  });
+  agg.forEach((value, key) => {
+    map.set(key, Math.max(30, Math.min(120, Math.round(value.total / value.count))));
+  });
+  return map;
+}
+
+function buildAttemptAnalytics(attempts, days, tagTargetSecondsMap) {
   const since = Date.now() - Math.max(1, Number(days || 30)) * 24 * 60 * 60 * 1000;
   const filtered = attempts.filter((a) => Number(a.at || 0) >= since);
 
   const byTagMap = new Map();
   const trendMap = new Map();
+  const tagDurationMap = new Map();
   let totalDurationMs = 0;
   let timedAttemptCount = 0;
 
@@ -769,8 +890,13 @@ function buildAttemptAnalytics(attempts, days) {
     trendMap.set(day, dayAgg);
 
     if (!isSkipped && Number(attempt.durationMs || 0) > 0) {
-      totalDurationMs += Number(attempt.durationMs || 0);
+      const duration = Number(attempt.durationMs || 0);
+      totalDurationMs += duration;
       timedAttemptCount += 1;
+      const durAgg = tagDurationMap.get(tag) || { total: 0, count: 0 };
+      durAgg.total += duration;
+      durAgg.count += 1;
+      tagDurationMap.set(tag, durAgg);
     }
   }
 
@@ -784,6 +910,40 @@ function buildAttemptAnalytics(attempts, days) {
   const wrong = attempted - correct;
 
   const avgSeconds = timedAttemptCount ? totalDurationMs / timedAttemptCount / 1000 : null;
+  const consistency = computeConsistencyScore(trend, Math.max(1, Number(days || 30)));
+  const targetMap = tagTargetSecondsMap instanceof Map ? tagTargetSecondsMap : new Map();
+
+  const byTagMastery = byTag.map((row) => {
+    const targetSeconds = Number(targetMap.get(row.tag) || 60);
+    const dur = tagDurationMap.get(row.tag);
+    const tagAvgSeconds = dur && dur.count > 0 ? dur.total / dur.count / 1000 : null;
+    const speedScore = computeSpeedScore(tagAvgSeconds, targetSeconds);
+    const mastery = Math.round(row.accuracy * 0.65 + speedScore * 0.25 + consistency.score * 0.1);
+    return {
+      ...row,
+      avgSeconds: tagAvgSeconds,
+      targetSeconds,
+      speedScore,
+      consistencyScore: consistency.score,
+      mastery,
+      band: speedBandFromMastery(mastery)
+    };
+  });
+
+  const weightedTarget =
+    byTagMastery.reduce((sum, row) => sum + Number(row.targetSeconds || 60) * Number(row.attempted || 0), 0) /
+    Math.max(1, byTagMastery.reduce((sum, row) => sum + Number(row.attempted || 0), 0));
+  const overallSpeedScore = computeSpeedScore(avgSeconds, weightedTarget || 60);
+  const overallMastery = Math.round((attempted ? (correct / attempted) * 100 : 0) * 0.65 + overallSpeedScore * 0.25 + consistency.score * 0.1);
+  const weakTags = [...byTagMastery]
+    .filter((row) => Number(row.attempted || 0) >= 3)
+    .sort((a, b) => {
+      if (a.mastery !== b.mastery) return a.mastery - b.mastery;
+      if (a.accuracy !== b.accuracy) return a.accuracy - b.accuracy;
+      return b.attempted - a.attempted;
+    })
+    .slice(0, 3)
+    .map((row) => row.tag);
 
   return {
     summary: {
@@ -792,14 +952,37 @@ function buildAttemptAnalytics(attempts, days) {
       wrong,
       score: attempted ? Math.round((correct / attempted) * 100) : 0,
       avgSeconds,
-      days: Math.max(1, Number(days || 30))
+      days: Math.max(1, Number(days || 30)),
+      speedScore: overallSpeedScore,
+      consistencyScore: consistency.score,
+      mastery: overallMastery
     },
-    byTag,
-    trend
+    byTag: byTagMastery,
+    trend,
+    consistency,
+    mastery: {
+      overall: overallMastery,
+      speedScore: overallSpeedScore,
+      consistencyScore: consistency.score,
+      topWeakTags: weakTags
+    },
+    heatmap: byTagMastery.map((row) => ({
+      tag: row.tag,
+      mastery: row.mastery,
+      band: row.band,
+      accuracy: row.accuracy,
+      speedScore: row.speedScore,
+      consistencyScore: row.consistencyScore,
+      attempted: row.attempted,
+      avgSeconds: row.avgSeconds
+    }))
   };
 }
 
 function makeRecommendationFromAnalytics(analytics, maxTags = 3) {
+  if (analytics?.mastery?.topWeakTags?.length) {
+    return analytics.mastery.topWeakTags.slice(0, maxTags);
+  }
   const weakTags = (analytics.byTag || [])
     .filter((row) => row.attempted >= 2)
     .filter((row) => row.accuracy < 85)
@@ -822,6 +1005,12 @@ function shuffled(items) {
     arr[j] = tmp;
   }
   return arr;
+}
+
+function isMissingColumnError(error, columnName) {
+  const msg = String(error?.message || "").toLowerCase();
+  const hint = String(columnName || "").toLowerCase();
+  return String(error?.code || "") === "42703" || (hint && msg.includes(hint) && msg.includes("column"));
 }
 
 async function listAttemptsForEmails(emails, sinceTs) {
@@ -866,18 +1055,39 @@ async function listAttemptsForEmails(emails, sinceTs) {
   const sessionIds = rows.map((r) => r.session_id).filter(Boolean);
   if (!sessionIds.length) return [];
 
-  const attemptsRes = await supabase
-    .from("attempts")
-    .select("session_id,card_tag,is_correct,user_answer,answered_at")
-    .in("session_id", sessionIds)
-    .gte("answered_at", sinceIso)
-    .limit(20000);
-  if (attemptsRes.error) throw attemptsRes.error;
+  let attemptsRows = [];
+  if (attemptsSupportsDurationMs) {
+    const attemptsResWithDuration = await supabase
+      .from("attempts")
+      .select("session_id,card_tag,is_correct,user_answer,answered_at,duration_ms")
+      .in("session_id", sessionIds)
+      .gte("answered_at", sinceIso)
+      .limit(20000);
+    if (!attemptsResWithDuration.error) {
+      attemptsRows = attemptsResWithDuration.data || [];
+    } else if (isMissingColumnError(attemptsResWithDuration.error, "duration_ms")) {
+      attemptsSupportsDurationMs = false;
+    } else {
+      throw attemptsResWithDuration.error;
+    }
+  }
 
-  return (attemptsRes.data || []).map((row) => ({
+  if (!attemptsRows.length) {
+    const attemptsRes = await supabase
+      .from("attempts")
+      .select("session_id,card_tag,is_correct,user_answer,answered_at")
+      .in("session_id", sessionIds)
+      .gte("answered_at", sinceIso)
+      .limit(20000);
+    if (attemptsRes.error) throw attemptsRes.error;
+    attemptsRows = attemptsRes.data || [];
+  }
+
+  return attemptsRows.map((row) => ({
     cardTag: String(row.card_tag || "General"),
     isCorrect: Boolean(row.is_correct),
     isSkipped: String(row.user_answer || "") === "[SKIPPED]",
+    durationMs: Number(row.duration_ms || 0),
     at: Date.parse(row.answered_at)
   }));
 }
@@ -1017,10 +1227,29 @@ async function storageLogAnswer({
     accepted_answers: Array.isArray(acceptedAnswers) ? acceptedAnswers : [],
     user_answer: userAnswer,
     is_correct: Boolean(isCorrect),
+    duration_ms: Number(durationMs || 0),
     answered_at: toIso(at)
   };
 
-  const { error: insertAttemptErr } = await supabase.from("attempts").insert(attemptPayload);
+  let insertAttemptErr = null;
+  if (attemptsSupportsDurationMs) {
+    const insertWithDuration = await supabase.from("attempts").insert(attemptPayload);
+    insertAttemptErr = insertWithDuration.error || null;
+    if (insertAttemptErr && isMissingColumnError(insertAttemptErr, "duration_ms")) {
+      attemptsSupportsDurationMs = false;
+      insertAttemptErr = null;
+    } else if (!insertAttemptErr) {
+      insertAttemptErr = null;
+    }
+  }
+
+  if (!attemptsSupportsDurationMs) {
+    const fallbackPayload = { ...attemptPayload };
+    delete fallbackPayload.duration_ms;
+    const insertFallback = await supabase.from("attempts").insert(fallbackPayload);
+    insertAttemptErr = insertFallback.error || null;
+  }
+
   if (insertAttemptErr) throw insertAttemptErr;
 
   const attemptedRes = await supabase
@@ -2020,8 +2249,8 @@ const server = http.createServer(async (req, res) => {
       if (!email) return json(res, 400, { error: "Missing email" });
 
       const since = Date.now() - days * 24 * 60 * 60 * 1000;
-      const attempts = await listAttemptsForEmails([email], since);
-      const analytics = buildAttemptAnalytics(attempts, days);
+      const [attempts, tagTargets] = await Promise.all([listAttemptsForEmails([email], since), getTagTargetSecondsMap()]);
+      const analytics = buildAttemptAnalytics(attempts, days, tagTargets);
       const recommendedTags = makeRecommendationFromAnalytics(analytics);
 
       return json(res, 200, {
@@ -2054,14 +2283,14 @@ const server = http.createServer(async (req, res) => {
           cohortId,
           cohortName: cohort.name,
           memberCount: 0,
-          analytics: buildAttemptAnalytics([], days),
+          analytics: buildAttemptAnalytics([], days, new Map()),
           recommendedTags: []
         });
       }
 
       const since = Date.now() - days * 24 * 60 * 60 * 1000;
-      const attempts = await listAttemptsForEmails(emails, since);
-      const analytics = buildAttemptAnalytics(attempts, days);
+      const [attempts, tagTargets] = await Promise.all([listAttemptsForEmails(emails, since), getTagTargetSecondsMap()]);
+      const analytics = buildAttemptAnalytics(attempts, days, tagTargets);
       const recommendedTags = makeRecommendationFromAnalytics(analytics);
 
       return json(res, 200, {
@@ -2089,8 +2318,8 @@ const server = http.createServer(async (req, res) => {
       if (!email) return json(res, 400, { error: "Missing email" });
 
       const since = Date.now() - days * 24 * 60 * 60 * 1000;
-      const attempts = await listAttemptsForEmails([email], since);
-      const analytics = buildAttemptAnalytics(attempts, days);
+      const [attempts, tagTargets] = await Promise.all([listAttemptsForEmails([email], since), getTagTargetSecondsMap()]);
+      const analytics = buildAttemptAnalytics(attempts, days, tagTargets);
       const recommendedTags = makeRecommendationFromAnalytics(analytics);
 
       const allQuestions = await storageListQuestions("");

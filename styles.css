@@ -1512,7 +1512,34 @@ code {
 
 .analytics-summary {
   margin: 0.35rem 0 0;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.analytics-band {
+  display: inline-block;
+  padding: 0.16rem 0.48rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.analytics-band-strong {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.analytics-band-developing {
+  color: #92400e;
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+.analytics-band-at-risk {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fca5a5;
 }
 
 .analytics-summary .metric-label {
