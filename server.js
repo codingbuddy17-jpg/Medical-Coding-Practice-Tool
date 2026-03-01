@@ -916,7 +916,9 @@ function buildAttemptAnalytics(attempts, days, tagTargetSecondsMap) {
   const byTagMastery = byTag.map((row) => {
     const targetSeconds = Number(targetMap.get(row.tag) || 60);
     const dur = tagDurationMap.get(row.tag);
-    const tagAvgSeconds = dur && dur.count > 0 ? dur.total / dur.count / 1000 : null;
+    const derivedAvgSeconds = dur && dur.count > 0 ? dur.total / dur.count / 1000 : null;
+    const fallbackAvgSeconds = Number.isFinite(avgSeconds) && Number(avgSeconds) > 0 ? Number(avgSeconds) : targetSeconds;
+    const tagAvgSeconds = Number.isFinite(derivedAvgSeconds) && Number(derivedAvgSeconds) > 0 ? derivedAvgSeconds : fallbackAvgSeconds;
     const speedScore = computeSpeedScore(tagAvgSeconds, targetSeconds);
     const mastery = Math.round(row.accuracy * 0.65 + speedScore * 0.25 + consistency.score * 0.1);
     return {
