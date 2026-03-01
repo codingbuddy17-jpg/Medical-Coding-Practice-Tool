@@ -2404,7 +2404,7 @@ async function validateCurrentAnswer() {
     // Reveal Rationale
     const rationale = String(card.rationale || "").trim() || DEFAULT_RATIONALE_TEXT;
     dom.rationalePlaceholder.classList.remove("hidden");
-    setStatus(dom.rationalePlaceholder, rationale);
+    setStatus(dom.rationalePlaceholder, rationale, result.isCorrect ? "success" : "error");
     if (dom.rationaleDetails) {
       dom.rationaleDetails.classList.remove("hidden");
       dom.rationaleDetails.open = true;
@@ -4069,7 +4069,11 @@ function exportPdfReport() {
   y += 6;
   doc.text(`Email: ${state.userEmail || "-"}`, 14, y);
   y += 6;
-  doc.text(`Role: ${state.role}`, 14, y);
+  const roleLabel = String(state.role || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^\w/, (ch) => ch.toUpperCase());
+  doc.text(`Role: ${roleLabel || "-"}`, 14, y);
   y += 6;
   doc.text(`Session Started: ${started}`, 14, y);
   y += 6;
@@ -4079,7 +4083,7 @@ function exportPdfReport() {
   // Score summary box
   doc.setFillColor(237, 247, 245);
   doc.setDrawColor(160, 205, 194);
-  doc.roundedRect(14, y - 2, 182, 34, 3, 3, "FD");
+  doc.roundedRect(14, y - 2, 182, 46, 3, 3, "FD");
   doc.text(`Attempted: ${attempted}`, 14, y);
   y += 6;
   doc.text(`Correct: ${correct}`, 14, y);
@@ -4100,7 +4104,7 @@ function exportPdfReport() {
   doc.setTextColor(0, 126, 167);
   doc.text("Performance Insights", 14, y);
   y += 6;
-  drawMetricBar("Mastery (65/25/10)", mastery, y, [30, 136, 229]);
+  drawMetricBar("Mastery", mastery, y, [30, 136, 229]);
   y += 6;
   drawMetricBar("Speed Score", speedScore, y, [15, 118, 110]);
   y += 6;
