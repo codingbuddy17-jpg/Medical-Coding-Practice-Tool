@@ -14,6 +14,7 @@ const BROCHURE_URL = "";
 const SYLLABUS_URL = "/assets/curriculum.pdf";
 const APP_CONFIG = window.APP_CONFIG || {};
 const REQUIRE_GOOGLE_FOR_TRIAL_TRAINEE = APP_CONFIG.REQUIRE_GOOGLE_FOR_TRIAL_TRAINEE !== false;
+const ENTRY_MODE = String(document.body?.dataset?.entryMode || "mixed").trim().toLowerCase();
 
 const CATEGORY_OPTIONS = [
   { key: "ALL", label: "All Topics" },
@@ -175,6 +176,34 @@ const state = {
 let dom = {};
 let supabaseAuthClient = null;
 
+function applyEntryModeDefaults() {
+  if (!dom.roleSelect) return;
+  const options = Array.from(dom.roleSelect.querySelectorAll("option"));
+
+  if (ENTRY_MODE === "mentor") {
+    options.forEach((opt) => {
+      if (opt.value !== "trainer") opt.remove();
+    });
+    state.role = "trainer";
+    dom.roleSelect.value = "trainer";
+    if (dom.preSessionLanding) dom.preSessionLanding.classList.add("landing-hidden");
+    if (dom.brandIntro) dom.brandIntro.classList.add("hidden");
+    if (dom.landingStartTrialBtn) dom.landingStartTrialBtn.classList.add("hidden");
+    if (dom.landingFullAccessBtn) dom.landingFullAccessBtn.classList.add("hidden");
+    if (dom.userName) dom.userName.placeholder = "Mentor name";
+    return;
+  }
+
+  if (ENTRY_MODE === "practice") {
+    options.forEach((opt) => {
+      if (opt.value === "trainer") opt.remove();
+    });
+    if (state.role === "trainer") state.role = "trial";
+    dom.roleSelect.value = state.role || "trial";
+    if (dom.navMentorItem) dom.navMentorItem.classList.add("hidden");
+  }
+}
+
 function cacheDOM() {
   dom = {
     userName: document.getElementById("userName"),
@@ -252,6 +281,7 @@ function cacheDOM() {
     rationalePlaceholder: document.getElementById("rationalePlaceholder"),
     trialLockNotice: document.getElementById("trialLockNotice"),
     trialInfoBanner: document.getElementById("trialInfoBanner"),
+    brandIntro: document.getElementById("brandIntro"),
     preSessionLanding: document.getElementById("preSessionLanding"),
     landingStartTrialBtn: document.getElementById("landingStartTrialBtn"),
     landingFullAccessBtn: document.getElementById("landingFullAccessBtn"),
@@ -5001,6 +5031,7 @@ async function init() {
   dom.userEmail.value = state.userEmail;
   dom.userPhone.value = state.userPhone;
   dom.roleSelect.value = state.role;
+  applyEntryModeDefaults();
   dom.traineeCode.value = "";
   dom.trainerKey.value = "";
   dom.adminKeyInput.value = "";

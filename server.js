@@ -136,7 +136,7 @@ function readAccessConfig() {
   try {
     const parsed = JSON.parse(raw);
     return {
-      trainerKey: String(parsed.trainerKey || TRAINER_KEY || ""),
+      trainerKey: String(parsed.trainerKey || TRAINER_KEY || "").trim(),
       traineeAccessCode: String(parsed.traineeAccessCode || TRAINEE_ACCESS_CODE || ""),
       traineeAccessActive: parsed.traineeAccessActive !== false,
       traineeAccessExpiresAt: parsed.traineeAccessExpiresAt ? Number(parsed.traineeAccessExpiresAt) : null,
@@ -160,7 +160,7 @@ function readAccessConfig() {
 function writeAccessConfig(config) {
   ensureDataStore();
   const payload = {
-    trainerKey: String(config.trainerKey || ""),
+    trainerKey: String(config.trainerKey || "").trim(),
     traineeAccessCode: String(config.traineeAccessCode || ""),
     traineeAccessActive: config.traineeAccessActive !== false,
     traineeAccessExpiresAt: config.traineeAccessExpiresAt ? Number(config.traineeAccessExpiresAt) : null,
@@ -2017,7 +2017,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === "/api/trainer/verify" && req.method === "POST") {
     try {
       const body = await parseBody(req);
-      const key = String(body.trainerKey || "");
+      const key = String(body.trainerKey || "").trim();
       const access = readAccessConfig();
       return json(res, 200, { valid: Boolean(access.trainerKey) && key === access.trainerKey });
     } catch (err) {
