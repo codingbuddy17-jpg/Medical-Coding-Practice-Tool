@@ -34,6 +34,9 @@ const IMPORT_REVIEWS_FILE = path.join(DATA_DIR, "import-reviews.json");
 const IMPORT_BATCHES_FILE = path.join(DATA_DIR, "import-batches.json");
 const ALLOWED_LEARNERS_FILE = path.join(DATA_DIR, "allowed-learners.json");
 let attemptsSupportsDurationMs = true;
+const VERIFY_RATE_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+const VERIFY_RATE_LIMIT = 12; // attempts per window per endpoint+IP
+const verifyRateLimitStore = new Map();
 
 const DEFAULT_EXAM_TEMPLATES = [
   {
@@ -424,6 +427,34 @@ function json(res, status, payload) {
 function notFound(res) {
   res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
   res.end("Not found");
+}
+
+function getClientIp(req) {
+  const forwarded = String(req.headers["x-forwarded-for"] || "").trim();
+  if (forwarded) return forwarded.split(",")[0].trim();
+  const remote = String(req.socket?.remoteAddress || "").trim();
+  return remote || "unknown";
+}
+
+function isVerifyRateLimited(req, bucket) {
+  const now = Date.now();
+  const ip = getClientIp(req);
+  const key = `${bucket}:${ip}`;
+  const existing = verifyRateLimitStore.get(key);
+
+  if (!existing || now > existing.resetAt) {
+    verifyRateLimitStore.set(key, { count: 1, resetAt: now + VERIFY_RATE_WINDOW_MS });
+    return { limited: false, retryAfterSec: 0 };
+  }
+
+  if (existing.count >= VERIFY_RATE_LIMIT) {
+    const retryAfterSec = Math.max(1, Math.ceil((existing.resetAt - now) / 1000));
+    return { limited: true, retryAfterSec };
+  }
+
+  existing.count += 1;
+  verifyRateLimitStore.set(key, existing);
+  return { limited: false, retryAfterSec: 0 };
 }
 
 function parseBody(req) {
@@ -2014,8 +2045,13 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === "/api/trainer/verify" && req.method === "POST") {
     try {
+      const throttle = isVerifyRateLimited(req, "trainer-verify");
+      if (throttle.limited) {
+        res.setHeader("Retry-After", String(throttle.retryAfterSec));
+        return json(res, 429, { error: "Too many verification attempts. Please retry shortly." });
+      }
       const body = await parseBody(req);
-      const key = String(body.trainerKey || "");
+      const key = String(body.trainerKey || "").trim();
       const access = readAccessConfig();
       return json(res, 200, { valid: Boolean(access.trainerKey) && key === access.trainerKey });
     } catch (err) {
@@ -2025,8 +2061,13 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === "/api/admin/verify" && req.method === "POST") {
     try {
+      const throttle = isVerifyRateLimited(req, "admin-verify");
+      if (throttle.limited) {
+        res.setHeader("Retry-After", String(throttle.retryAfterSec));
+        return json(res, 429, { error: "Too many verification attempts. Please retry shortly." });
+      }
       const body = await parseBody(req);
-      const key = String(body.adminKey || "");
+      const key = String(body.adminKey || "").trim();
       return json(res, 200, { valid: isAdminAuthorized(key) });
     } catch (err) {
       return json(res, 400, { error: err.message });
