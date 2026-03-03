@@ -392,6 +392,50 @@ h4 {
   filter: grayscale(0.18);
 }
 
+.badge-theme-volume {
+  border-color: #bfdbfe;
+  background: linear-gradient(160deg, #f5f9ff, #fbfdff);
+  border-top: 3px solid #60a5fa;
+}
+
+.badge-theme-volume .badge-icon {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.badge-theme-accuracy {
+  border-color: #bbf7d0;
+  background: linear-gradient(160deg, #f1fcf5, #fbfffd);
+  border-top: 3px solid #22c55e;
+}
+
+.badge-theme-accuracy .badge-icon {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+}
+
+.badge-theme-streak {
+  border-color: #fde68a;
+  background: linear-gradient(160deg, #fffaf0, #fffdf7);
+  border-top: 3px solid #f59e0b;
+}
+
+.badge-theme-streak .badge-icon {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.badge-theme-mastery {
+  border-color: #ddd6fe;
+  background: linear-gradient(160deg, #f8f5ff, #fdfbff);
+  border-top: 3px solid #8b5cf6;
+}
+
+.badge-theme-mastery .badge-icon {
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+
 .badge-theme-volume.unlocked {
   border-color: #93c5fd;
   background: linear-gradient(160deg, #eaf3ff, #f7fbff);
