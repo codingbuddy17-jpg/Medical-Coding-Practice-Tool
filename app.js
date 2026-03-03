@@ -34,12 +34,12 @@ const CATEGORY_OPTIONS = [
 const TRACKED_CATEGORY_KEYS = CATEGORY_OPTIONS.filter((item) => item.key !== "ALL").map((item) => item.key);
 const DEFAULT_WEEKLY_TARGET = 150;
 const BADGE_DEFINITIONS = [
-  { id: "questions_50", title: "Starter Sprint", icon: "🚀", rule: "Answer 50 questions", check: (g) => Number(g.totalAnswered || 0) >= 50 },
-  { id: "questions_100", title: "Century Club", icon: "💯", rule: "Answer 100 questions", check: (g) => Number(g.totalAnswered || 0) >= 100 },
-  { id: "accuracy_80", title: "Precision Pro", icon: "🎯", rule: "Maintain 80% accuracy (min 30 attempts)", check: (g) => Number(g.totalAnswered || 0) >= 30 && (Number(g.totalCorrect || 0) / Math.max(1, Number(g.totalAnswered || 0))) >= 0.8 },
-  { id: "streak_3", title: "Rhythm Builder", icon: "🔥", rule: "3-day streak", check: (g) => Number(g.streakDays || 0) >= 3 },
-  { id: "streak_7", title: "Consistency Star", icon: "🌟", rule: "7-day streak", check: (g) => Number(g.streakDays || 0) >= 7 },
-  { id: "questions_250", title: "Vault Master", icon: "🏆", rule: "Answer 250 questions", check: (g) => Number(g.totalAnswered || 0) >= 250 }
+  { id: "questions_50", title: "Starter Sprint", icon: "🚀", theme: "volume", rule: "Answer 50 questions", check: (g) => Number(g.totalAnswered || 0) >= 50 },
+  { id: "questions_100", title: "Century Club", icon: "💯", theme: "volume", rule: "Answer 100 questions", check: (g) => Number(g.totalAnswered || 0) >= 100 },
+  { id: "accuracy_80", title: "Precision Pro", icon: "🎯", theme: "accuracy", rule: "Maintain 80% accuracy (min 30 attempts)", check: (g) => Number(g.totalAnswered || 0) >= 30 && (Number(g.totalCorrect || 0) / Math.max(1, Number(g.totalAnswered || 0))) >= 0.8 },
+  { id: "streak_3", title: "Rhythm Builder", icon: "🔥", theme: "streak", rule: "3-day streak", check: (g) => Number(g.streakDays || 0) >= 3 },
+  { id: "streak_7", title: "Consistency Star", icon: "🌟", theme: "streak", rule: "7-day streak", check: (g) => Number(g.streakDays || 0) >= 7 },
+  { id: "questions_250", title: "Vault Master", icon: "🏆", theme: "mastery", rule: "Answer 250 questions", check: (g) => Number(g.totalAnswered || 0) >= 250 }
 ];
 
 const DEFAULT_RESOURCES = [
@@ -711,7 +711,7 @@ function renderGamificationPanel() {
   dom.badgeVault.innerHTML = BADGE_DEFINITIONS.map((badge) => {
     const isUnlocked = Boolean(unlocked[badge.id]);
     const progress = isUnlocked ? "Unlocked" : getBadgeProgressLabel(badge);
-    return `<article class="badge-item ${isUnlocked ? "unlocked" : "locked"}">
+    return `<article class="badge-item badge-theme-${escapeHtml(badge.theme || "volume")} ${isUnlocked ? "unlocked" : "locked"}">
       <span class="badge-icon">${badge.icon}</span>
       <span class="badge-title">${badge.title}</span>
       <span class="badge-sub">${isUnlocked ? badge.rule : `${badge.rule} (${progress})`}</span>

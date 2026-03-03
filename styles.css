@@ -392,6 +392,46 @@ h4 {
   filter: grayscale(0.18);
 }
 
+.badge-theme-volume.unlocked {
+  border-color: #93c5fd;
+  background: linear-gradient(160deg, #eaf3ff, #f7fbff);
+}
+
+.badge-theme-volume.unlocked .badge-icon {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.badge-theme-accuracy.unlocked {
+  border-color: #86efac;
+  background: linear-gradient(160deg, #ecfdf5, #f3fff9);
+}
+
+.badge-theme-accuracy.unlocked .badge-icon {
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.badge-theme-streak.unlocked {
+  border-color: #fcd34d;
+  background: linear-gradient(160deg, #fffbeb, #fffdf5);
+}
+
+.badge-theme-streak.unlocked .badge-icon {
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+.badge-theme-mastery.unlocked {
+  border-color: #c4b5fd;
+  background: linear-gradient(160deg, #f5f3ff, #fbf9ff);
+}
+
+.badge-theme-mastery.unlocked .badge-icon {
+  background: #ede9fe;
+  border-color: #c4b5fd;
+}
+
 .badge-toast {
   position: fixed;
   right: 16px;
