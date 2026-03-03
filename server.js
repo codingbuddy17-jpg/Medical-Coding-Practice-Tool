@@ -473,16 +473,16 @@ function serveFile(reqPath, res) {
   res.end(data);
 }
 
-function getAdminKey(req, url) {
+function getAdminKey(req) {
   const auth = String(req.headers.authorization || "").trim();
   if (auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
-  return String(url.searchParams.get("adminKey") || "");
+  return String(req.headers["x-admin-key"] || "").trim();
 }
 
-function getTrainerKey(req, url) {
+function getTrainerKey(req) {
   const auth = String(req.headers.authorization || "").trim();
   if (auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
-  return String(url.searchParams.get("trainerKey") || "");
+  return String(req.headers["x-trainer-key"] || "").trim();
 }
 
 function findSessionIndex(sessions, sessionId) {
@@ -2080,7 +2080,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/admin/access-config" && req.method === "GET") {
-    const key = getAdminKey(req, url);
+    const key = getAdminKey(req);
     if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
     const config = readAccessConfig();
     return json(res, 200, {
@@ -2121,7 +2121,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/admin/cohorts" && req.method === "GET") {
-    const key = getAdminKey(req, url);
+    const key = getAdminKey(req);
     if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
     return json(res, 200, { cohorts: listCohortsSummary() });
   }
@@ -2178,7 +2178,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/admin/cohorts/members" && req.method === "GET") {
-    const key = getAdminKey(req, url);
+    const key = getAdminKey(req);
     if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
     const cohortId = String(url.searchParams.get("cohortId") || "");
     const cohort = readCohorts().find((c) => c.id === cohortId);
@@ -2187,7 +2187,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/admin/learners" && req.method === "GET") {
-    const key = getAdminKey(req, url);
+    const key = getAdminKey(req);
     if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
     const learners = await readAllowedLearnersStore();
     return json(res, 200, { learners });
@@ -2226,7 +2226,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/cohorts" && req.method === "GET") {
-    const trainerKey = getTrainerKey(req, url);
+    const trainerKey = getTrainerKey(req);
     const access = readAccessConfig();
     if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
     const cohorts = readCohorts().map((cohort) => ({
@@ -2240,7 +2240,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === "/api/analytics/user" && req.method === "GET") {
     try {
-      const trainerKey = getTrainerKey(req, url);
+      const trainerKey = getTrainerKey(req);
       const access = readAccessConfig();
       if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
 
@@ -2266,7 +2266,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === "/api/analytics/batch" && req.method === "GET") {
     try {
-      const trainerKey = getTrainerKey(req, url);
+      const trainerKey = getTrainerKey(req);
       const access = readAccessConfig();
       if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
 
@@ -2308,7 +2308,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === "/api/analytics/recommendations" && req.method === "GET") {
     try {
-      const trainerKey = getTrainerKey(req, url);
+      const trainerKey = getTrainerKey(req);
       const access = readAccessConfig();
       if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
 
@@ -2343,7 +2343,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/exam/templates" && req.method === "GET") {
-    const trainerKey = getTrainerKey(req, url);
+    const trainerKey = getTrainerKey(req);
     const access = readAccessConfig();
     if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
     const store = readExamStore();
@@ -2520,7 +2520,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/import/review" && req.method === "GET") {
-    const trainerKey = getTrainerKey(req, url);
+    const trainerKey = getTrainerKey(req);
     const access = readAccessConfig();
     if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
     try {
@@ -2563,7 +2563,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/import/batches" && req.method === "GET") {
-    const trainerKey = getTrainerKey(req, url);
+    const trainerKey = getTrainerKey(req);
     const access = readAccessConfig();
     if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
     try {
@@ -2645,7 +2645,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/questions/flags" && req.method === "GET") {
-    const trainerKey = getTrainerKey(req, url);
+    const trainerKey = getTrainerKey(req);
     const access = readAccessConfig();
     if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
 
@@ -2740,7 +2740,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/cta/events" && req.method === "GET") {
-    const trainerKey = getTrainerKey(req, url);
+    const trainerKey = getTrainerKey(req);
     const access = readAccessConfig();
     if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
     const limit = Math.max(1, Math.min(5000, Number(url.searchParams.get("limit") || 500)));
@@ -2836,7 +2836,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/sessions" && req.method === "GET") {
-    const key = getTrainerKey(req, url);
+    const key = getTrainerKey(req);
     const access = readAccessConfig();
     if (!access.trainerKey || key !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
 
