@@ -32,6 +32,15 @@ const CATEGORY_OPTIONS = [
 ];
 
 const TRACKED_CATEGORY_KEYS = CATEGORY_OPTIONS.filter((item) => item.key !== "ALL").map((item) => item.key);
+const DEFAULT_WEEKLY_TARGET = 150;
+const BADGE_DEFINITIONS = [
+  { id: "questions_50", title: "Starter Sprint", icon: "🚀", rule: "Answer 50 questions", check: (g) => Number(g.totalAnswered || 0) >= 50 },
+  { id: "questions_100", title: "Century Club", icon: "💯", rule: "Answer 100 questions", check: (g) => Number(g.totalAnswered || 0) >= 100 },
+  { id: "accuracy_80", title: "Precision Pro", icon: "🎯", rule: "Maintain 80% accuracy (min 30 attempts)", check: (g) => Number(g.totalAnswered || 0) >= 30 && (Number(g.totalCorrect || 0) / Math.max(1, Number(g.totalAnswered || 0))) >= 0.8 },
+  { id: "streak_3", title: "Rhythm Builder", icon: "🔥", rule: "3-day streak", check: (g) => Number(g.streakDays || 0) >= 3 },
+  { id: "streak_7", title: "Consistency Star", icon: "🌟", rule: "7-day streak", check: (g) => Number(g.streakDays || 0) >= 7 },
+  { id: "questions_250", title: "Vault Master", icon: "🏆", rule: "Answer 250 questions", check: (g) => Number(g.totalAnswered || 0) >= 250 }
+];
 
 const DEFAULT_RESOURCES = [
   { title: "Online ICD Access", url: "https://www.icd10data.com" },
@@ -135,6 +144,16 @@ const state = {
     lastData: null,
     lastRecommendations: []
   },
+  gamification: {
+    weeklyTarget: DEFAULT_WEEKLY_TARGET,
+    totalAnswered: 0,
+    totalCorrect: 0,
+    streakDays: 0,
+    lastActiveDay: "",
+    dailyAttempts: {},
+    weeklyAttempts: {},
+    unlockedBadges: {}
+  },
   blueprints: {
     templates: [],
     assigned: null
@@ -203,6 +222,12 @@ function cacheDOM() {
     wrongCount: document.getElementById("wrongCount"),
     attemptedCount: document.getElementById("attemptedCount"),
     sessionScore: document.getElementById("sessionScore"),
+    streakValue: document.getElementById("streakValue"),
+    weeklyProgressText: document.getElementById("weeklyProgressText"),
+    weeklyProgressBar: document.getElementById("weeklyProgressBar"),
+    nextBadgeHint: document.getElementById("nextBadgeHint"),
+    badgeVault: document.getElementById("badgeVault"),
+    badgeToast: document.getElementById("badgeToast"),
 
     categoryButtons: document.getElementById("categoryButtons"),
     categoryStatus: document.getElementById("categoryStatus"),
@@ -611,6 +636,127 @@ function formatSeconds(seconds) {
   return parts.join(" ");
 }
 
+function dayKeyFromDate(value = Date.now()) {
+  const d = new Date(value);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function weekKeyFromDate(value = Date.now()) {
+  const d = new Date(value);
+  const day = d.getDay(); // 0 = Sunday
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diffToMonday);
+  return dayKeyFromDate(d.getTime());
+}
+
+function dayDiff(aKey, bKey) {
+  if (!aKey || !bKey) return 0;
+  const a = Date.parse(`${aKey}T00:00:00`);
+  const b = Date.parse(`${bKey}T00:00:00`);
+  return Math.round((a - b) / (24 * 60 * 60 * 1000));
+}
+
+function showBadgeToast(message) {
+  if (!dom.badgeToast) return;
+  dom.badgeToast.textContent = message;
+  dom.badgeToast.classList.remove("hidden");
+  setTimeout(() => {
+    dom.badgeToast.classList.add("hidden");
+  }, 2200);
+}
+
+function evaluateBadges() {
+  const newlyUnlocked = [];
+  const unlocked = state.gamification.unlockedBadges || {};
+  BADGE_DEFINITIONS.forEach((badge) => {
+    if (unlocked[badge.id]) return;
+    if (badge.check(state.gamification)) {
+      unlocked[badge.id] = Date.now();
+      newlyUnlocked.push(badge);
+    }
+  });
+  state.gamification.unlockedBadges = unlocked;
+  return newlyUnlocked;
+}
+
+function getBadgeProgressLabel(badge) {
+  const g = state.gamification || {};
+  if (badge.id === "questions_50") return `${Math.min(50, g.totalAnswered || 0)}/50`;
+  if (badge.id === "questions_100") return `${Math.min(100, g.totalAnswered || 0)}/100`;
+  if (badge.id === "questions_250") return `${Math.min(250, g.totalAnswered || 0)}/250`;
+  if (badge.id === "streak_3") return `${Math.min(3, g.streakDays || 0)}/3 days`;
+  if (badge.id === "streak_7") return `${Math.min(7, g.streakDays || 0)}/7 days`;
+  if (badge.id === "accuracy_80") {
+    const acc = (g.totalCorrect || 0) / Math.max(1, g.totalAnswered || 0);
+    return `${Math.round(acc * 100)}%`;
+  }
+  return "";
+}
+
+function renderGamificationPanel() {
+  if (!dom.badgeVault || !dom.weeklyProgressText || !dom.weeklyProgressBar || !dom.streakValue || !dom.nextBadgeHint) return;
+  const g = state.gamification;
+  const weekKey = weekKeyFromDate();
+  const weekly = Number(g.weeklyAttempts?.[weekKey] || 0);
+  const target = Math.max(1, Number(g.weeklyTarget || DEFAULT_WEEKLY_TARGET));
+  const pct = Math.max(0, Math.min(100, Math.round((weekly / target) * 100)));
+  dom.weeklyProgressText.textContent = `${weekly} / ${target} questions`;
+  dom.weeklyProgressBar.style.width = `${pct}%`;
+  dom.streakValue.textContent = `${Number(g.streakDays || 0)} day${Number(g.streakDays || 0) === 1 ? "" : "s"}`;
+
+  const unlocked = g.unlockedBadges || {};
+  dom.badgeVault.innerHTML = BADGE_DEFINITIONS.map((badge) => {
+    const isUnlocked = Boolean(unlocked[badge.id]);
+    const progress = isUnlocked ? "Unlocked" : getBadgeProgressLabel(badge);
+    return `<article class="badge-item ${isUnlocked ? "unlocked" : "locked"}">
+      <span class="badge-icon">${badge.icon}</span>
+      <span class="badge-title">${badge.title}</span>
+      <span class="badge-sub">${isUnlocked ? badge.rule : `${badge.rule} (${progress})`}</span>
+    </article>`;
+  }).join("");
+
+  const nextBadge = BADGE_DEFINITIONS.find((badge) => !unlocked[badge.id]);
+  dom.nextBadgeHint.textContent = nextBadge
+    ? `Next badge: ${nextBadge.title} — ${nextBadge.rule}.`
+    : "All current badges unlocked. New badge set coming soon.";
+}
+
+function trackGamificationAttempt(isCorrect, at = Date.now()) {
+  const g = state.gamification;
+  const dayKey = dayKeyFromDate(at);
+  const weekKey = weekKeyFromDate(at);
+  const previousDay = g.lastActiveDay || "";
+  const hadAttemptsToday = Number(g.dailyAttempts?.[dayKey] || 0) > 0;
+
+  g.totalAnswered = Number(g.totalAnswered || 0) + 1;
+  if (isCorrect) g.totalCorrect = Number(g.totalCorrect || 0) + 1;
+  g.dailyAttempts = g.dailyAttempts || {};
+  g.weeklyAttempts = g.weeklyAttempts || {};
+  g.dailyAttempts[dayKey] = Number(g.dailyAttempts[dayKey] || 0) + 1;
+  g.weeklyAttempts[weekKey] = Number(g.weeklyAttempts[weekKey] || 0) + 1;
+
+  if (!hadAttemptsToday) {
+    if (!previousDay) {
+      g.streakDays = 1;
+    } else {
+      const diff = dayDiff(dayKey, previousDay);
+      g.streakDays = diff === 1 ? Number(g.streakDays || 0) + 1 : 1;
+    }
+    g.lastActiveDay = dayKey;
+  }
+
+  const unlockedNow = evaluateBadges();
+  if (unlockedNow.length) {
+    showBadgeToast(`Badge unlocked: ${unlockedNow[0].title}`);
+  }
+
+  renderGamificationPanel();
+  saveLocal();
+}
+
 function normalize(text) {
   return String(text || "")
     .toLowerCase()
@@ -945,7 +1091,8 @@ function saveLocal() {
     selectedTag: state.selectedTag,
     weakDrillEnabled: state.weakDrillEnabled,
     adaptiveEnabled: state.adaptiveEnabled,
-    examConfig: state.examConfig
+    examConfig: state.examConfig,
+    gamification: state.gamification
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
@@ -974,6 +1121,20 @@ function loadLocal() {
     state.examConfig.passThreshold = Math.min(100, Math.max(1, Number(parsed.examConfig?.passThreshold) || 80));
     state.examConfig.strictTiming = parsed.examConfig?.strictTiming !== false;
     state.examConfig.blueprintId = String(parsed.examConfig?.blueprintId || "");
+    state.gamification.weeklyTarget = Math.max(1, Number(parsed.gamification?.weeklyTarget || DEFAULT_WEEKLY_TARGET));
+    state.gamification.totalAnswered = Math.max(0, Number(parsed.gamification?.totalAnswered || 0));
+    state.gamification.totalCorrect = Math.max(0, Number(parsed.gamification?.totalCorrect || 0));
+    state.gamification.streakDays = Math.max(0, Number(parsed.gamification?.streakDays || 0));
+    state.gamification.lastActiveDay = String(parsed.gamification?.lastActiveDay || "");
+    state.gamification.dailyAttempts = parsed.gamification?.dailyAttempts && typeof parsed.gamification.dailyAttempts === "object"
+      ? parsed.gamification.dailyAttempts
+      : {};
+    state.gamification.weeklyAttempts = parsed.gamification?.weeklyAttempts && typeof parsed.gamification.weeklyAttempts === "object"
+      ? parsed.gamification.weeklyAttempts
+      : {};
+    state.gamification.unlockedBadges = parsed.gamification?.unlockedBadges && typeof parsed.gamification.unlockedBadges === "object"
+      ? parsed.gamification.unlockedBadges
+      : {};
   } catch {
     state.deck = hydrateCards(STARTER_DECK);
     state.resources = [...DEFAULT_RESOURCES];
@@ -2406,6 +2567,7 @@ async function validateCurrentAnswer() {
       // Update generic session stats too, but silently
       if (result.isCorrect) state.session.correct += 1;
       else state.session.wrong += 1;
+      trackGamificationAttempt(result.isCorrect);
 
       recordCategoryAndCardStats(card, result.isCorrect, durationMs);
       updateMetrics(); // Sync top bar stats
@@ -2438,6 +2600,7 @@ async function validateCurrentAnswer() {
       setStatus(dom.feedback, `Not correct. Expected: ${result.primaryAnswer}`, "error");
       setPracticeFeedbackState("error");
     }
+    trackGamificationAttempt(result.isCorrect);
 
     trackRecentResult(result.isCorrect);
     recordCategoryAndCardStats(card, result.isCorrect, durationMs);
@@ -2499,6 +2662,7 @@ async function skipQuestion() {
   const durationMs = consumeQuestionTime();
   state.session.attempted += 1;
   state.session.skipped += 1;
+  trackGamificationAttempt(false);
   recordSkipStats(card, durationMs);
   updateMetrics();
   renderCategoryScorecards();
@@ -5054,6 +5218,7 @@ async function init() {
   updateSessionIdentityLock();
   updateMetrics();
   renderCategoryScorecards();
+  renderGamificationPanel();
   setStatus(dom.examStatus, "Exam mode inactive.");
   updateExamStatusUI();
   updateTrialInfoBannerUI();

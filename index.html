@@ -160,6 +160,25 @@
         </div>
       </section>
 
+      <section class="panel gamification-panel" id="gamificationPanel">
+        <h3>Achievement Vault</h3>
+        <div class="gamification-strip">
+          <div class="gamification-kpi">
+            <span class="metric-label">Daily Streak</span>
+            <strong id="streakValue">0 days</strong>
+          </div>
+          <div class="gamification-kpi grow">
+            <span class="metric-label">Weekly Target</span>
+            <strong id="weeklyProgressText">0 / 150 questions</strong>
+            <div class="weekly-progress-track">
+              <div id="weeklyProgressBar" class="weekly-progress-fill"></div>
+            </div>
+          </div>
+        </div>
+        <p id="nextBadgeHint" class="status">Start answering questions to unlock your first badge.</p>
+        <div id="badgeVault" class="badge-vault"></div>
+      </section>
+
       <section class="workspace">
         <article class="flashcard" id="flashcard" tabindex="0" aria-live="polite">
           <section class="visual-half">
@@ -1096,6 +1115,7 @@
 
   <a id="floatingWhatsappBtn" class="floating-whatsapp" href="#" aria-label="Chat with us on WhatsApp">Questions? Chat
     with us</a>
+  <div id="badgeToast" class="badge-toast hidden" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>

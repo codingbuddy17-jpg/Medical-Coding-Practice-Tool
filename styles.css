@@ -252,6 +252,123 @@ h4 {
   margin: 0.65rem 0;
 }
 
+.gamification-panel {
+  margin-top: 0.55rem;
+  border: 1px solid #d6e4f0;
+  background: linear-gradient(160deg, #ffffff, #f6fbff);
+}
+
+.gamification-strip {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 0.7rem;
+  margin-top: 0.4rem;
+}
+
+.gamification-kpi {
+  border: 1px solid #d8e5f2;
+  border-radius: 10px;
+  background: #fbfdff;
+  padding: 0.55rem 0.6rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.gamification-kpi.grow {
+  align-content: start;
+}
+
+.weekly-progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: #e5edf5;
+  overflow: hidden;
+  margin-top: 0.2rem;
+}
+
+.weekly-progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0ea5e9, #2563eb);
+  transition: width 220ms ease;
+}
+
+.badge-vault {
+  margin-top: 0.55rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.5rem;
+}
+
+.badge-item {
+  border-radius: 12px;
+  border: 1px solid #d6e3ef;
+  background: #f8fbff;
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.2rem;
+  min-height: 92px;
+}
+
+.badge-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  border: 1px solid transparent;
+}
+
+.badge-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.badge-sub {
+  font-size: 0.72rem;
+  color: #475569;
+}
+
+.badge-item.unlocked {
+  border-color: #a7d9ff;
+  background: linear-gradient(160deg, #eef8ff, #f8fcff);
+  box-shadow: 0 5px 14px -10px rgba(14, 165, 233, 0.7);
+}
+
+.badge-item.unlocked .badge-icon {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+}
+
+.badge-item.locked {
+  opacity: 0.7;
+  filter: grayscale(0.18);
+}
+
+.badge-toast {
+  position: fixed;
+  right: 16px;
+  bottom: 18px;
+  z-index: 3000;
+  max-width: 320px;
+  background: #0f172a;
+  color: #fff;
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  box-shadow: 0 16px 30px -16px rgba(2, 6, 23, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  font-size: 0.82rem;
+}
+
+.badge-toast.hidden {
+  display: none;
+}
+
 .metric {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -1618,6 +1735,10 @@ code {
   }
 
   .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .gamification-strip {
     grid-template-columns: 1fr;
   }
 
