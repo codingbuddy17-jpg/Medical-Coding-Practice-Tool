@@ -33,6 +33,7 @@ const CTA_FILE = path.join(DATA_DIR, "cta-events.json");
 const IMPORT_REVIEWS_FILE = path.join(DATA_DIR, "import-reviews.json");
 const IMPORT_BATCHES_FILE = path.join(DATA_DIR, "import-batches.json");
 const ALLOWED_LEARNERS_FILE = path.join(DATA_DIR, "allowed-learners.json");
+const AUDIT_LOG_FILE = path.join(DATA_DIR, "audit-log.json");
 let attemptsSupportsDurationMs = true;
 const VERIFY_RATE_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 const VERIFY_RATE_LIMIT = 12; // attempts per window per endpoint+IP
@@ -99,6 +100,7 @@ function ensureDataStore() {
   if (!fs.existsSync(IMPORT_REVIEWS_FILE)) fs.writeFileSync(IMPORT_REVIEWS_FILE, JSON.stringify({ items: [] }, null, 2));
   if (!fs.existsSync(IMPORT_BATCHES_FILE)) fs.writeFileSync(IMPORT_BATCHES_FILE, JSON.stringify({ batches: [] }, null, 2));
   if (!fs.existsSync(ALLOWED_LEARNERS_FILE)) fs.writeFileSync(ALLOWED_LEARNERS_FILE, JSON.stringify({ learners: [] }, null, 2));
+  if (!fs.existsSync(AUDIT_LOG_FILE)) fs.writeFileSync(AUDIT_LOG_FILE, JSON.stringify({ events: [] }, null, 2));
 }
 
 function readSessions() {
@@ -292,6 +294,55 @@ function readAllowedLearners() {
 function writeAllowedLearners(learners) {
   ensureDataStore();
   fs.writeFileSync(ALLOWED_LEARNERS_FILE, JSON.stringify({ learners }, null, 2));
+}
+
+const AUDIT_LOG_CAP = 5000;
+
+function readAuditLog() {
+  ensureDataStore();
+  const raw = fs.readFileSync(AUDIT_LOG_FILE, "utf8");
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.events) ? parsed.events : [];
+  } catch {
+    return [];
+  }
+}
+
+async function appendAuditEvent({ action, actor, actorRole, ip, meta }) {
+  const event = {
+    id: `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    ts: Date.now(),
+    action: String(action || "unknown"),
+    actor: String(actor || ""),
+    actorRole: String(actorRole || ""),
+    ip: String(ip || ""),
+    meta: meta && typeof meta === "object" ? meta : {}
+  };
+
+  if (USE_SUPABASE) {
+    try {
+      await supabase.from("audit_log").insert({
+        event_id: event.id,
+        ts: event.ts,
+        action: event.action,
+        actor: event.actor,
+        actor_role: event.actorRole,
+        ip: event.ip,
+        meta: event.meta
+      });
+      return event;
+    } catch {
+      // Table may not exist yet — fall through to file
+    }
+  }
+
+  ensureDataStore();
+  const events = readAuditLog();
+  events.unshift(event);
+  if (events.length > AUDIT_LOG_CAP) events.length = AUDIT_LOG_CAP;
+  fs.writeFileSync(AUDIT_LOG_FILE, JSON.stringify({ events }, null, 2));
+  return event;
 }
 
 function toEpochMs(value) {
@@ -2099,6 +2150,13 @@ const server = http.createServer(async (req, res) => {
         writeCohorts([]);
         writeExamStore({ templates: DEFAULT_EXAM_TEMPLATES, assignments: [] });
         writeFlags([]);
+        appendAuditEvent({
+          action: "data.reset",
+          actor: "admin",
+          actorRole: "admin",
+          ip: getClientIp(req),
+          meta: { mode: "file" }
+        }).catch(() => {});
         return json(res, 200, { success: true, mode: "file" });
       }
 
@@ -2120,6 +2178,14 @@ const server = http.createServer(async (req, res) => {
       if (batchItemsErr) throw batchItemsErr;
       const { error: reviewErr } = await supabase.from("import_review_queue").delete().neq("id", "00000000-0000-0000-0000-000000000000");
       if (reviewErr) throw reviewErr;
+
+      appendAuditEvent({
+        action: "data.reset",
+        actor: "admin",
+        actorRole: "admin",
+        ip: getClientIp(req),
+        meta: { mode: "supabase" }
+      }).catch(() => {});
 
       return json(res, 200, { success: true, mode: "supabase" });
     } catch (err) {
@@ -2162,6 +2228,16 @@ const server = http.createServer(async (req, res) => {
         maxSessionQuestions:
           body.maxSessionQuestions !== undefined ? Math.max(1, Number(body.maxSessionQuestions || 250)) : existing.maxSessionQuestions
       });
+
+      const changedFields = Object.keys(body).filter((k) => k !== "adminKey");
+      appendAuditEvent({
+        action: "access_config.update",
+        actor: "admin",
+        actorRole: "admin",
+        ip: getClientIp(req),
+        meta: { changedFields, trialQuestionLimit: next.trialQuestionLimit, maxSessionQuestions: next.maxSessionQuestions }
+      }).catch(() => {});
+
       return json(res, 200, next);
     } catch (err) {
       return json(res, 400, { error: err.message });
@@ -2189,6 +2265,13 @@ const server = http.createServer(async (req, res) => {
           isActive: body.isActive,
           expiresAt: body.expiresAt
         });
+        appendAuditEvent({
+          action: "cohort.update",
+          actor: "admin",
+          actorRole: "admin",
+          ip: getClientIp(req),
+          meta: { cohortId: String(body.cohortId), name: updated.name }
+        }).catch(() => {});
         return json(res, 200, { cohort: updated });
       }
 
@@ -2199,6 +2282,13 @@ const server = http.createServer(async (req, res) => {
         isActive: body.isActive,
         expiresAt: body.expiresAt
       });
+      appendAuditEvent({
+        action: "cohort.create",
+        actor: "admin",
+        actorRole: "admin",
+        ip: getClientIp(req),
+        meta: { cohortId: created.id, name: created.name }
+      }).catch(() => {});
       return json(res, 201, { cohort: created });
     } catch (err) {
       return json(res, 400, { error: err.message });
@@ -2253,6 +2343,13 @@ const server = http.createServer(async (req, res) => {
         isActive: body.isActive !== undefined ? Boolean(body.isActive) : true,
         expiresAt: body.expiresAt ? Number(body.expiresAt) : null
       });
+      appendAuditEvent({
+        action: "learner.upsert",
+        actor: "admin",
+        actorRole: "admin",
+        ip: getClientIp(req),
+        meta: { email, isActive: learner.isActive }
+      }).catch(() => {});
       return json(res, 200, { learner });
     } catch (err) {
       return json(res, 400, { error: err.message });
@@ -2267,6 +2364,13 @@ const server = http.createServer(async (req, res) => {
       const email = normalizeEmail(body.email || "");
       if (!email) return json(res, 400, { error: "Valid email is required" });
       const removed = await removeAllowedLearnerStore(email);
+      appendAuditEvent({
+        action: "learner.remove",
+        actor: "admin",
+        actorRole: "admin",
+        ip: getClientIp(req),
+        meta: { email, removed }
+      }).catch(() => {});
       return json(res, 200, { removed });
     } catch (err) {
       return json(res, 400, { error: err.message });
@@ -2500,6 +2604,15 @@ const server = http.createServer(async (req, res) => {
       if (!questionId) return json(res, 400, { error: "Missing question ID" });
 
       const result = await storageDeleteQuestion(questionId);
+
+      appendAuditEvent({
+        action: "question.delete",
+        actor: "trainer",
+        actorRole: "trainer",
+        ip: getClientIp(req),
+        meta: { questionId }
+      }).catch(() => {});
+
       return json(res, 200, result);
     } catch (err) {
       return json(res, 400, { error: err.message });
@@ -2554,13 +2667,23 @@ const server = http.createServer(async (req, res) => {
       if (!cards.length) return json(res, 400, { error: "No cards provided" });
       if (cards.length > 10000) return json(res, 400, { error: "Batch too large" });
 
+      const uploadedBy = String(body.uploadedBy || "trainer");
       const result = await storageImportQuestions(cards, {
-        uploadedBy: String(body.uploadedBy || "trainer"),
+        uploadedBy,
         reviewRows: Array.isArray(body.reviewRows) ? body.reviewRows : [],
         batchSummary: body.batchSummary && typeof body.batchSummary === "object" ? body.batchSummary : null,
         sourceName: String(body.sourceName || ""),
         notes: String(body.notes || "")
       });
+
+      appendAuditEvent({
+        action: "questions.import",
+        actor: uploadedBy,
+        actorRole: "trainer",
+        ip: getClientIp(req),
+        meta: { batchId: result.batchId, inserted: result.inserted, total: cards.length, sourceName: String(body.sourceName || "") }
+      }).catch(() => {});
+
       return json(res, 200, result);
     } catch (err) {
       return json(res, 400, { error: err.message });
@@ -2630,6 +2753,13 @@ const server = http.createServer(async (req, res) => {
       const access = readAccessConfig();
       if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
       const result = await storageRollbackImportBatch(body.batchId);
+      appendAuditEvent({
+        action: "import.rollback",
+        actor: "trainer",
+        actorRole: "trainer",
+        ip: getClientIp(req),
+        meta: { batchId: String(body.batchId || ""), rolledBack: result.rolledBack }
+      }).catch(() => {});
       return json(res, 200, result);
     } catch (err) {
       return json(res, 400, { error: err.message });
@@ -2832,6 +2962,14 @@ const server = http.createServer(async (req, res) => {
         role
       });
 
+      appendAuditEvent({
+        action: "session.start",
+        actor: normalizeEmail(userEmail) || String(body.userName || "anonymous"),
+        actorRole: role,
+        ip: getClientIp(req),
+        meta: { sessionId: result.id, userName: String(body.userName || ""), role }
+      }).catch(() => {});
+
       return json(res, result.reused ? 200 : 201, result);
     } catch (err) {
       return json(res, 400, { error: err.message });
@@ -2875,6 +3013,14 @@ const server = http.createServer(async (req, res) => {
         summary: body.summary && typeof body.summary === "object" ? body.summary : null
       });
 
+      appendAuditEvent({
+        action: "session.end",
+        actor: sessionId,
+        actorRole: "user",
+        ip: getClientIp(req),
+        meta: { sessionId, summary: body.summary || {} }
+      }).catch(() => {});
+
       return json(res, 200, { ok: true });
     } catch (err) {
       const message = err.message || "Unknown error";
@@ -2894,6 +3040,49 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       return json(res, 400, { error: err.message });
     }
+  }
+
+  if (url.pathname === "/api/admin/audit-log" && req.method === "GET") {
+    const key = getAdminKey(req);
+    if (!isAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
+    const limit = Math.max(1, Math.min(2000, Number(url.searchParams.get("limit") || 500)));
+    const actionFilter = String(url.searchParams.get("action") || "").trim().toLowerCase();
+    const since = Number(url.searchParams.get("since") || 0);
+
+    let events = [];
+    if (USE_SUPABASE) {
+      try {
+        let q = supabase
+          .from("audit_log")
+          .select("event_id,ts,action,actor,actor_role,ip,meta")
+          .order("ts", { ascending: false })
+          .limit(limit);
+        if (since) q = q.gt("ts", since);
+        if (actionFilter) q = q.eq("action", actionFilter);
+        const { data, error } = await q;
+        if (!error) {
+          events = (data || []).map((r) => ({
+            id: r.event_id,
+            ts: Number(r.ts),
+            action: r.action,
+            actor: r.actor,
+            actorRole: r.actor_role,
+            ip: r.ip,
+            meta: r.meta || {}
+          }));
+        } else {
+          events = readAuditLog();
+        }
+      } catch {
+        events = readAuditLog();
+      }
+    } else {
+      events = readAuditLog();
+    }
+
+    if (actionFilter) events = events.filter((e) => e.action === actionFilter);
+    if (since) events = events.filter((e) => e.ts > since);
+    return json(res, 200, { events: events.slice(0, limit), total: events.length });
   }
 
   return serveFile(url.pathname, res);

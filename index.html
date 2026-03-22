@@ -864,6 +864,7 @@
                 <a class="ghost-btn" href="#adminLearnersSection">Learners</a>
                 <a class="ghost-btn" href="#adminCohortsSection">Cohorts</a>
                 <a class="ghost-btn" href="#adminAdvancedSection">Advanced</a>
+                <a class="ghost-btn" href="#adminAuditSection">Audit Log</a>
               </div>
               <div class="admin-summary-card">
                 <div class="admin-summary-title">Access Status Summary</div>
@@ -1110,6 +1111,37 @@
                 <div class="danger-zone">
                   <p class="danger-zone-label">Danger zone</p>
                   <button id="clearCacheBtn" class="ghost-btn danger-btn" type="button">Clear Cache & Reload</button>
+                </div>
+              </details>
+
+              <details id="adminAuditSection" class="details-panel admin-section">
+                <summary>Audit Log</summary>
+                <div class="audit-log-controls">
+                  <label>
+                    Filter by action
+                    <select id="auditActionFilter">
+                      <option value="">All actions</option>
+                      <option value="session.start">session.start</option>
+                      <option value="session.end">session.end</option>
+                      <option value="questions.import">questions.import</option>
+                      <option value="question.delete">question.delete</option>
+                      <option value="access_config.update">access_config.update</option>
+                      <option value="data.reset">data.reset</option>
+                      <option value="cohort.create">cohort.create</option>
+                      <option value="cohort.update">cohort.update</option>
+                      <option value="learner.upsert">learner.upsert</option>
+                      <option value="learner.remove">learner.remove</option>
+                      <option value="import.rollback">import.rollback</option>
+                    </select>
+                  </label>
+                  <button id="auditLogRefreshBtn" class="ghost-btn" type="button">Refresh</button>
+                </div>
+                <p id="auditLogStatus" class="status"></p>
+                <div class="table-wrap">
+                  <table class="data-table audit-log-table">
+                    <thead><tr><th>Time</th><th>Action</th><th>Actor</th><th>Role</th><th>Details</th></tr></thead>
+                    <tbody id="auditLogBody"><tr><td colspan="5" style="text-align:center;opacity:.6">Load admin data to view audit log.</td></tr></tbody>
+                  </table>
                 </div>
               </details>
             </div>

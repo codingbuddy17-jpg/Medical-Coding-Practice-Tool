@@ -162,6 +162,41 @@ async function verifyAdmin() {
   }
 }
 
+async function loadAuditLog({ limit = 200, actionFilter = "", since = 0 } = {}) {
+  if (!state.adminPanel.verified || !state.adminKey) return;
+  const el = document.getElementById("auditLogBody");
+  const statusEl = document.getElementById("auditLogStatus");
+  if (!el) return;
+  try {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (actionFilter) params.set("action", actionFilter);
+    if (since) params.set("since", String(since));
+    const data = await apiRequest(`/api/admin/audit-log?${params}`, "GET", null, state.adminKey);
+    const events = Array.isArray(data.events) ? data.events : [];
+    if (!events.length) {
+      el.innerHTML = '<tr><td colspan="5" style="text-align:center;opacity:.6">No audit events recorded yet.</td></tr>';
+      if (statusEl) setStatus(statusEl, "Loaded 0 events.", "");
+      return;
+    }
+    el.innerHTML = events.map((e) => {
+      const time = new Date(Number(e.ts || 0)).toLocaleString();
+      const meta = e.meta && typeof e.meta === "object" ? JSON.stringify(e.meta).slice(0, 120) : "";
+      const actionGroup = String(e.action || "").split(".")[0];
+      return `<tr>
+        <td style="white-space:nowrap;font-size:12px">${escapeHtml(time)}</td>
+        <td><span class="audit-action-badge audit-action-${escapeHtml(actionGroup)}">${escapeHtml(e.action || "")}</span></td>
+        <td>${escapeHtml(e.actor || "")}</td>
+        <td>${escapeHtml(e.actorRole || "")}</td>
+        <td style="font-family:monospace;font-size:11px;opacity:.75;word-break:break-all">${escapeHtml(meta)}</td>
+      </tr>`;
+    }).join("");
+    if (statusEl) setStatus(statusEl, `Showing ${events.length} of ${data.total || events.length} events.`, "success");
+  } catch (err) {
+    el.innerHTML = `<tr><td colspan="5">Could not load audit log: ${escapeHtml(err.message)}</td></tr>`;
+    if (statusEl) setStatus(statusEl, `Error: ${err.message}`, "error");
+  }
+}
+
 async function loadAdminData() {
   if (!state.adminPanel.verified || !state.adminKey) {
     setStatus(dom.adminStatus, "Verify admin key first.", "error");
@@ -187,6 +222,7 @@ async function loadAdminData() {
     renderLearnerAccessTable();
     renderAnalyticsCohorts(state.adminPanel.cohorts);
     await loadBlueprintTemplates();
+    await loadAuditLog();
     setStatus(dom.adminStatus, "Admin data loaded.", "success");
   } catch (err) {
     setStatus(dom.adminStatus, `Could not load admin data: ${err.message}`, "error");
