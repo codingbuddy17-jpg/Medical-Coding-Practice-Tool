@@ -2216,3 +2216,197 @@ code {
 .hidden {
   display: none !important;
 }
+
+/* -------------------------------------------------------------------------- */
+/* ONBOARDING TOUR                                                             */
+/* -------------------------------------------------------------------------- */
+
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+  padding: 1rem;
+  animation: onboardingFadeIn 0.25s ease;
+}
+
+.onboarding-overlay.onboarding-leaving {
+  animation: onboardingFadeOut 0.25s ease forwards;
+}
+
+@keyframes onboardingFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes onboardingFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.onboarding-card {
+  background: var(--surface);
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+  padding: 1.75rem 1.75rem 1.5rem;
+  max-width: 420px;
+  width: 100%;
+  animation: onboardingSlideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes onboardingSlideUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.onboarding-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.onboarding-brand {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.onboarding-skip-btn {
+  background: none;
+  border: none;
+  font-size: 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+}
+
+.onboarding-skip-btn:hover {
+  color: var(--ink);
+  background: var(--accent-soft);
+}
+
+.onboarding-progress-track {
+  height: 3px;
+  background: var(--line);
+  border-radius: 999px;
+  margin-bottom: 1.4rem;
+  overflow: hidden;
+}
+
+.onboarding-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--blue));
+  border-radius: 999px;
+  transition: width 0.35s ease;
+  width: 33%;
+}
+
+.onboarding-icon-wrap {
+  font-size: 2.4rem;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.onboarding-counter {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.35rem;
+}
+
+.onboarding-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 0.65rem;
+  line-height: 1.25;
+}
+
+.onboarding-body {
+  font-size: 0.93rem;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 0.75rem;
+}
+
+.onboarding-hint {
+  font-size: 0.82rem;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  margin: 0 0 1.1rem;
+  line-height: 1.5;
+}
+
+.onboarding-dots {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1.1rem;
+}
+
+.onboarding-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line);
+  transition: background 0.2s ease, width 0.2s ease;
+}
+
+.onboarding-dot.active {
+  background: var(--accent);
+  width: 20px;
+}
+
+.onboarding-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.onboarding-next-btn {
+  min-width: 120px;
+}
+
+/* Help "?" replay button in topbar */
+.onboarding-help-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.onboarding-help-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+@media (max-width: 580px) {
+  .onboarding-card {
+    padding: 1.25rem 1.25rem 1.1rem;
+  }
+
+  .onboarding-title {
+    font-size: 1.1rem;
+  }
+}

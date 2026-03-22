@@ -34,6 +34,7 @@
         <button id="googleSignOutBtn" class="ghost-btn hidden" type="button">Logout</button>
         <button id="endSessionBtn" class="ghost-btn" type="button">End Session</button>
       </div>
+      <button id="onboardingReplayBtn" class="onboarding-help-btn" type="button" aria-label="Show app tour">?</button>
     </header>
 
     <nav id="mainNav" class="panel main-nav hidden">
@@ -1123,6 +1124,31 @@
     with us</a>
   <div id="badgeToast" class="badge-toast hidden" aria-live="polite"></div>
 
+  <div id="onboardingOverlay" class="onboarding-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+    <div class="onboarding-card">
+      <div class="onboarding-card-header">
+        <span class="onboarding-brand">PracticeBuddy Lab</span>
+        <button id="onboardingSkipBtn" class="onboarding-skip-btn" type="button" aria-label="Skip tour">Skip tour</button>
+      </div>
+      <div class="onboarding-progress-track">
+        <div id="onboardingProgressFill" class="onboarding-progress-fill"></div>
+      </div>
+      <div class="onboarding-icon-wrap" id="onboardingIcon" aria-hidden="true">🗂️</div>
+      <p class="onboarding-counter" id="onboardingCounter">Step 1 of 3</p>
+      <h2 class="onboarding-title" id="onboardingTitle">Pick a Coding Stream</h2>
+      <p class="onboarding-body" id="onboardingBody"></p>
+      <p class="onboarding-hint" id="onboardingHint"></p>
+      <div class="onboarding-dots" aria-hidden="true">
+        <span class="onboarding-dot active"></span>
+        <span class="onboarding-dot"></span>
+        <span class="onboarding-dot"></span>
+      </div>
+      <div class="onboarding-actions">
+        <button id="onboardingNextBtn" class="primary-btn onboarding-next-btn" type="button">Next →</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1137,6 +1163,7 @@
   <script src="app.trainer.js"></script>
   <script src="app.admin.js"></script>
   <script src="app.init.js"></script>
+  <script src="app.onboarding.js"></script>
 </body>
 
 </html>
