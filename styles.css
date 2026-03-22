@@ -2421,3 +2421,53 @@ code {
     font-size: 1.1rem;
   }
 }
+
+/* ── Audit Log ─────────────────────────────────────────── */
+.audit-log-controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.audit-log-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.audit-log-table {
+  font-size: 0.82rem;
+}
+
+.audit-log-table th {
+  background: #f4f6fb;
+  font-weight: 600;
+}
+
+.audit-log-table td {
+  vertical-align: top;
+  padding: 6px 8px;
+}
+
+.audit-action-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.audit-action-session   { background: #dbeafe; color: #1e40af; }
+.audit-action-questions { background: #d1fae5; color: #065f46; }
+.audit-action-question  { background: #fee2e2; color: #991b1b; }
+.audit-action-access_config { background: #fef9c3; color: #713f12; }
+.audit-action-data      { background: #fce7f3; color: #9d174d; }
+.audit-action-cohort    { background: #ede9fe; color: #4c1d95; }
+.audit-action-learner   { background: #e0f2fe; color: #0c4a6e; }
+.audit-action-import    { background: #f0fdf4; color: #14532d; }

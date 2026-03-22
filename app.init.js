@@ -228,6 +228,11 @@ function bindEvents() {
   if (dom.verifyAdminBtn) dom.verifyAdminBtn.addEventListener("click", verifyAdmin);
   if (dom.loadAdminDataBtn) dom.loadAdminDataBtn.addEventListener("click", loadAdminData);
   if (dom.clearCacheBtn) dom.clearCacheBtn.addEventListener("click", hardReset);
+  const auditRefreshBtn = document.getElementById("auditLogRefreshBtn");
+  if (auditRefreshBtn) auditRefreshBtn.addEventListener("click", () => {
+    const actionFilter = String((document.getElementById("auditActionFilter") || {}).value || "");
+    loadAuditLog({ limit: 200, actionFilter });
+  });
   if (dom.saveAccessConfigBtn) dom.saveAccessConfigBtn.addEventListener("click", saveAccessConfig);
   if (dom.saveLearnerBtn) dom.saveLearnerBtn.addEventListener("click", saveLearnerAccess);
   if (dom.refreshLearnersBtn) dom.refreshLearnersBtn.addEventListener("click", loadLearnerAccessList);
