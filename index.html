@@ -320,17 +320,23 @@
               <button id="skipBtn" class="action-btn btn-gradient-skip" type="button">Skip</button>
               <button id="nextBtn" class="action-btn btn-gradient-next" type="button">Next</button>
             </div>
+            <p class="swipe-hint" aria-hidden="true">&#8592; swipe right to skip &nbsp;|&nbsp; swipe left to advance &#8594;</p>
             <p id="feedback" class="status" aria-live="polite"></p>
             <details id="rationaleDetails" class="rationale-box">
               <summary>Rationale</summary>
               <p id="rationalePlaceholder" class="status">Rationale section reserved for future explanation details.</p>
             </details>
             <div id="trialInfoBanner" class="trial-info hidden">
-              <p class="status">You are using the Trial Version. <strong>Unlock full bank + exam mode.</strong> For full
-                access, contact us.</p>
+              <div class="trial-progress-header">
+                <span class="trial-progress-label">Trial Progress</span>
+                <span id="trialProgressText" class="trial-progress-count">0 of 20 used</span>
+              </div>
+              <div class="trial-progress-track">
+                <div id="trialProgressFill" class="trial-progress-fill"></div>
+              </div>
+              <p id="trialProgressRemaining" class="trial-progress-remaining">20 questions remaining in your trial</p>
               <p id="trialLockNotice" class="status hidden"></p>
-              <button id="trialInfoWhatsappBtn" class="ghost-btn cta-secondary" type="button">Contact On
-                WhatsApp</button>
+              <button id="trialInfoWhatsappBtn" class="ghost-btn cta-secondary" type="button">Unlock Full Access</button>
             </div>
           </section>
 
@@ -1121,9 +1127,16 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.config.js"></script>
-  <script src="app.helpers.js"></script>
   <script src="app.import.js"></script>
-  <script src="app.js"></script>
+  <script src="app.core.js"></script>
+  <script src="app.helpers.js"></script>
+  <script src="app.practice.js"></script>
+  <script src="app.exam.js"></script>
+  <script src="app.session.js"></script>
+  <script src="app.answer.js"></script>
+  <script src="app.trainer.js"></script>
+  <script src="app.admin.js"></script>
+  <script src="app.init.js"></script>
 </body>
 
 </html>

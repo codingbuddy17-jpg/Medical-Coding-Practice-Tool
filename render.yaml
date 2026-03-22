@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: practicebuddy-lab
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/public-access-config
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        generateValue: false
+      - key: TRAINER_KEY
+        sync: false
+      - key: TRAINEE_ACCESS_CODE
+        sync: false
+      - key: ADMIN_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
