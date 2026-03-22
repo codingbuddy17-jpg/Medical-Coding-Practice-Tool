@@ -493,7 +493,14 @@ function contentType(filePath) {
 }
 
 function serveFile(reqPath, res) {
-  const safePath = reqPath === "/" ? "index.html" : reqPath.replace(/^\/+/, "");
+  let safePath;
+  if (reqPath === "/") {
+    safePath = "landing.html";
+  } else if (reqPath === "/app" || reqPath === "/app/") {
+    safePath = "index.html";
+  } else {
+    safePath = reqPath.replace(/^\/+/, "");
+  }
   const filePath = path.resolve(ROOT, safePath);
 
   if (!filePath.startsWith(ROOT + path.sep)) return notFound(res);

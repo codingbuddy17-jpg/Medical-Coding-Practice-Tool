@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PracticeBuddy Lab — Medical Coding Practice & CPC Exam Prep | CodingBuddy360</title>
+  <meta name="description" content="Adaptive medical coding drills, timed CPC mock exams, and mastery analytics. Built for Indian coding institutes and individual learners. Free trial available." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink: #0f172a;
+      --muted: #475569;
+      --accent: #0f766e;
+      --accent-dark: #0d5f57;
+      --accent-soft: #d9f3ee;
+      --blue: #0369a1;
+      --line: #e2e8f0;
+      --surface: #ffffff;
+      --bg: #f8fafc;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: "Space Grotesk", "Avenir Next", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.6;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; }
+
+    /* ── NAV ── */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+      padding: 0 1.5rem;
+    }
+
+    .nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      gap: 1rem;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .nav-brand-logo {
+      width: 80px;
+      height: 32px;
+      object-fit: contain;
+    }
+
+    .nav-brand-name {
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--ink);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .nav-links a {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--muted);
+      transition: color 0.15s;
+    }
+
+    .nav-links a:hover { color: var(--accent); }
+
+    .nav-cta {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.92rem;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+      text-decoration: none;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: scale(0.98); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent) 0%, #0891b2 100%);
+      color: #fff;
+      padding: 0.6rem 1.2rem;
+      box-shadow: 0 2px 8px rgba(15,118,110,0.25);
+    }
+
+    .btn-primary:hover { box-shadow: 0 6px 18px rgba(15,118,110,0.3); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--accent);
+      border: 1.5px solid var(--accent);
+      padding: 0.55rem 1.1rem;
+    }
+
+    .btn-ghost:hover { background: var(--accent-soft); }
+
+    .btn-lg {
+      font-size: 1.05rem;
+      padding: 0.85rem 2rem;
+      border-radius: 12px;
+    }
+
+    .btn-xl {
+      font-size: 1.1rem;
+      padding: 1rem 2.4rem;
+      border-radius: 14px;
+    }
+
+    /* ── SECTIONS ── */
+    section { padding: 5rem 1.5rem; }
+    .container { max-width: 1100px; margin: 0 auto; }
+
+    .section-eyebrow {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+      margin-bottom: 0.85rem;
+    }
+
+    .section-title {
+      font-size: clamp(1.7rem, 4vw, 2.5rem);
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--ink);
+      margin-bottom: 0.75rem;
+    }
+
+    .section-sub {
+      font-size: 1.05rem;
+      color: var(--muted);
+      max-width: 580px;
+      line-height: 1.7;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      background: radial-gradient(circle at 15% 20%, #d6f1ff 0%, transparent 40%),
+                  radial-gradient(circle at 85% 15%, #d9f3ee 0%, transparent 35%),
+                  #f8fafc;
+      padding: 5rem 1.5rem 4rem;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0.35rem 0.9rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    .hero-badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      flex-shrink: 0;
+    }
+
+    .hero-title {
+      font-size: clamp(2rem, 5.5vw, 3.4rem);
+      font-weight: 700;
+      line-height: 1.15;
+      color: var(--ink);
+      max-width: 760px;
+      margin: 0 auto 1.1rem;
+    }
+
+    .hero-title span { color: var(--accent); }
+
+    .hero-sub {
+      font-size: clamp(1rem, 2.2vw, 1.2rem);
+      color: var(--muted);
+      max-width: 560px;
+      margin: 0 auto 2.2rem;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 0.85rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 1.2rem;
+    }
+
+    .hero-disclaimer {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    /* ── TRUST STRIP ── */
+    .trust-strip {
+      background: var(--surface);
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding: 1.4rem 1.5rem;
+    }
+
+    .trust-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2.5rem;
+      flex-wrap: wrap;
+    }
+
+    .trust-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .trust-icon { font-size: 1.1rem; }
+
+    /* ── FEATURES ── */
+    .features { background: var(--surface); }
+
+    .features-header { text-align: center; margin-bottom: 3rem; }
+    .features-header .section-sub { margin: 0 auto; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .feature-card {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1.75rem;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+
+    .feature-card:hover {
+      box-shadow: 0 8px 28px rgba(15,23,42,0.09);
+      transform: translateY(-2px);
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 0.9rem;
+      display: block;
+    }
+
+    .feature-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--ink);
+    }
+
+    .feature-body {
+      font-size: 0.92rem;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    /* ── HOW IT WORKS ── */
+    .how { background: var(--bg); }
+
+    .how-header { text-align: center; margin-bottom: 3rem; }
+    .how-header .section-sub { margin: 0 auto; }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 2rem;
+      position: relative;
+    }
+
+    .step {
+      text-align: center;
+      padding: 0 1rem;
+    }
+
+    .step-number {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #0891b2);
+      color: #fff;
+      font-size: 1.2rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+      box-shadow: 0 4px 14px rgba(15,118,110,0.3);
+    }
+
+    .step-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    .step-body { font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── FOR INSTITUTES ── */
+    .institutes { background: var(--surface); }
+
+    .institutes-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
+      align-items: center;
+    }
+
+    .institutes-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .institutes-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.7rem;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .check {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    .institutes-visual {
+      background: linear-gradient(135deg, #f0fdfa, #e0f2fe);
+      border-radius: 20px;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      border: 1px solid var(--line);
+    }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .stat-box {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+      border: 1px solid var(--line);
+    }
+
+    .stat-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-label { font-size: 0.75rem; color: var(--muted); font-weight: 500; }
+
+    .stat-bar-wrap {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 1rem;
+      border: 1px solid var(--line);
+    }
+
+    .stat-bar-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .stat-bar-track {
+      height: 8px;
+      background: var(--line);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .stat-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), #0891b2);
+    }
+
+    /* ── PRICING ── */
+    .pricing { background: var(--bg); }
+
+    .pricing-header { text-align: center; margin-bottom: 3rem; }
+    .pricing-header .section-sub { margin: 0 auto; }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    .pricing-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 2rem;
+      position: relative;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+
+    .pricing-card:hover { box-shadow: 0 10px 32px rgba(15,23,42,0.1); transform: translateY(-2px); }
+
+    .pricing-card.featured {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent), 0 12px 36px rgba(15,118,110,0.15);
+    }
+
+    .pricing-badge {
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, var(--accent), #0891b2);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.9rem;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .pricing-tier { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 0.4rem; }
+
+    .pricing-name { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.2rem; }
+
+    .pricing-desc { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.4rem; line-height: 1.5; }
+
+    .pricing-price { margin-bottom: 1.5rem; }
+
+    .pricing-amount {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1;
+    }
+
+    .pricing-period { font-size: 0.85rem; color: var(--muted); margin-left: 0.3rem; }
+
+    .pricing-note { font-size: 0.78rem; color: var(--muted); margin-top: 0.3rem; }
+
+    .pricing-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .pricing-features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .pricing-features .check { flex-shrink: 0; }
+
+    .pricing-divider { height: 1px; background: var(--line); margin: 1.25rem 0; }
+
+    /* ── FAQ ── */
+    .faq { background: var(--surface); }
+
+    .faq-header { text-align: center; margin-bottom: 2.5rem; }
+
+    .faq-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+      gap: 1rem;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .faq-item {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.25rem 1.4rem;
+    }
+
+    .faq-q { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--ink); }
+    .faq-a { font-size: 0.88rem; color: var(--muted); line-height: 1.65; }
+
+    /* ── FINAL CTA ── */
+    .final-cta {
+      background: linear-gradient(135deg, var(--accent) 0%, #0369a1 100%);
+      color: #fff;
+      text-align: center;
+      padding: 5rem 1.5rem;
+    }
+
+    .final-cta .section-title { color: #fff; }
+    .final-cta .section-sub { color: rgba(255,255,255,0.82); margin: 0 auto 2.2rem; }
+
+    .final-cta-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+
+    .btn-white {
+      background: #fff;
+      color: var(--accent);
+      padding: 0.85rem 2rem;
+      font-size: 1rem;
+      border-radius: 12px;
+    }
+
+    .btn-white:hover { background: #f0fdfa; }
+
+    .btn-outline-white {
+      background: transparent;
+      color: #fff;
+      border: 2px solid rgba(255,255,255,0.6);
+      padding: 0.8rem 1.8rem;
+      font-size: 1rem;
+      border-radius: 12px;
+    }
+
+    .btn-outline-white:hover { background: rgba(255,255,255,0.12); border-color: #fff; }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--ink);
+      color: rgba(255,255,255,0.65);
+      padding: 2.5rem 1.5rem;
+    }
+
+    .footer-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .footer-brand { font-weight: 700; color: #fff; font-size: 0.95rem; }
+    .footer-sub { font-size: 0.78rem; margin-top: 0.2rem; }
+    .footer-links { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .footer-links a { font-size: 0.82rem; transition: color 0.15s; }
+    .footer-links a:hover { color: #fff; }
+
+    /* ── FLOATING WHATSAPP ── */
+    .floating-wa {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #25d366;
+      color: #fff;
+      border-radius: 999px;
+      padding: 0.7rem 1.2rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 18px rgba(37,211,102,0.4);
+      z-index: 200;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .floating-wa:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(37,211,102,0.45); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      section { padding: 3.5rem 1rem; }
+
+      .nav-links { display: none; }
+
+      .institutes-inner { grid-template-columns: 1fr; }
+      .institutes-visual { display: none; }
+
+      .faq-grid { grid-template-columns: 1fr; }
+
+      .trust-inner { gap: 1.25rem; }
+
+      .stat-row { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 480px) {
+      .hero-actions { flex-direction: column; align-items: stretch; }
+      .hero-actions .btn { width: 100%; }
+      .final-cta-actions { flex-direction: column; align-items: stretch; }
+      .final-cta-actions .btn { width: 100%; }
+      .nav-cta .btn-ghost { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="/" class="nav-brand">
+        <img src="CCB.png" alt="CodingBuddy360" class="nav-brand-logo" />
+        <span class="nav-brand-name">PracticeBuddy Lab</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#institutes">For Institutes</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <div class="nav-cta">
+        <a href="/app" class="btn btn-ghost">Sign in</a>
+        <a href="/app" class="btn btn-primary">Start Free Trial</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        Built for Indian Medical Coders &amp; Training Institutes
+      </div>
+      <h1 class="hero-title">
+        From Practice to <span>CPC-Ready</span>.<br />
+        The Smarter Way to Train.
+      </h1>
+      <p class="hero-sub">
+        Adaptive drills, timed mock exams, and real-time mastery analytics — all in one platform designed for ICD-10-CM, CPT, HCPCS, and E&amp;M coding.
+      </p>
+      <div class="hero-actions">
+        <a href="/app" class="btn btn-primary btn-xl">Start Free Trial →</a>
+        <a href="https://wa.me/?text=Hi%2C+I%27d+like+to+know+more+about+PracticeBuddy+Lab+for+my+institute." class="btn btn-ghost btn-lg" target="_blank" rel="noopener">Request a Demo</a>
+      </div>
+      <p class="hero-disclaimer">No credit card required &nbsp;·&nbsp; Free trial includes 30 questions/day</p>
+    </div>
+  </section>
+
+  <!-- TRUST STRIP -->
+  <div class="trust-strip">
+    <div class="trust-inner">
+      <div class="trust-item"><span class="trust-icon">🏫</span> Used by coding training institutes</div>
+      <div class="trust-item"><span class="trust-icon">📋</span> ICD-10-CM · CPT · HCPCS · E&amp;M</div>
+      <div class="trust-item"><span class="trust-icon">🎯</span> CPC / CCS / COC exam aligned</div>
+      <div class="trust-item"><span class="trust-icon">🇮🇳</span> Built for India, priced for India</div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <div class="container">
+      <div class="features-header">
+        <span class="section-eyebrow">What you get</span>
+        <h2 class="section-title">Everything a coder needs to pass</h2>
+        <p class="section-sub">No scattered PDFs or static question banks. PracticeBuddy Lab adapts to how you learn and surfaces what you need to fix.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <span class="feature-icon">🗂️</span>
+          <div class="feature-title">Adaptive Topic Drills</div>
+          <p class="feature-body">Pick a coding stream and practice one question at a time. The platform surfaces your weak topics and drills them harder until mastery improves.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">⏱️</span>
+          <div class="feature-title">Timed CPC Mock Exams</div>
+          <p class="feature-body">Full-length timed simulations with configurable pass thresholds, strict timing enforcement, and post-exam review — just like the real thing.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">📊</span>
+          <div class="feature-title">Mastery Analytics</div>
+          <p class="feature-body">Per-topic accuracy, speed, and consistency scores give you a live heatmap of where you're strong and where you'll lose marks in the exam.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">🏆</span>
+          <div class="feature-title">Streaks &amp; Badges</div>
+          <p class="feature-body">Daily streaks, weekly targets, and badge unlocks keep learners coming back. Gamification that actually drives the 80%+ accuracy you need.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">💡</span>
+          <div class="feature-title">Instant Rationale</div>
+          <p class="feature-body">Every answer reveals the correct code and a rationale explanation. No more guessing why you got it wrong — learn at the point of failure.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">📱</span>
+          <div class="feature-title">Mobile-First Practice</div>
+          <p class="feature-body">Optimised for phones — swipe to advance cards, large touch targets, and horizontal category scroll. Practice from anywhere, not just a desk.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how">
+    <div class="container">
+      <div class="how-header">
+        <span class="section-eyebrow">How it works</span>
+        <h2 class="section-title">Up and running in 60 seconds</h2>
+        <p class="section-sub">No setup, no downloads. Start practicing the moment you sign up.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-title">Sign up free</div>
+          <p class="step-body">Create your account with Google sign-in. No credit card, no setup — your trial starts immediately.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-title">Pick your coding stream</div>
+          <p class="step-body">Choose ICD-10-CM, CPT, HCPCS, E&amp;M, or any stream assigned by your trainer. Every drill stays laser-focused on that topic.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-title">Practice &amp; track mastery</div>
+          <p class="step-body">Answer, check, and see your accuracy score update live. The platform identifies weak spots and builds a focused drill queue for you.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOR INSTITUTES -->
+  <section class="institutes" id="institutes">
+    <div class="container">
+      <div class="institutes-inner">
+        <div>
+          <span class="section-eyebrow">For training institutes</span>
+          <h2 class="section-title">Run your entire cohort from one dashboard</h2>
+          <p class="section-sub">PracticeBuddy Lab gives trainers visibility that no generic LMS provides — learner-by-learner mastery heatmaps, batch exam scheduling, and performance exports.</p>
+          <ul class="institutes-list">
+            <li><span class="check">✓</span><span><strong>Cohort management</strong> — add learners, assign access codes, track batch progress in one view</span></li>
+            <li><span class="check">✓</span><span><strong>Scheduled mock exams</strong> — create timed exams for your batch with configurable pass thresholds and strict timing</span></li>
+            <li><span class="check">✓</span><span><strong>Per-learner analytics</strong> — accuracy, speed, consistency, and weak topics for every student in your cohort</span></li>
+            <li><span class="check">✓</span><span><strong>Custom question bank</strong> — import your own questions via CSV; full ICD / CPT / HCPCS / E&amp;M tagging</span></li>
+            <li><span class="check">✓</span><span><strong>Exportable reports</strong> — PDF performance reports per learner, ready for placement documentation</span></li>
+            <li><span class="check">✓</span><span><strong>Blueprint-based exams</strong> — configure exams to match AAPC CPC topic weightings exactly</span></li>
+          </ul>
+          <a href="https://wa.me/?text=Hi%2C+I+run+a+medical+coding+training+institute+and+want+to+learn+more+about+PracticeBuddy+Lab." class="btn btn-primary btn-lg" target="_blank" rel="noopener">Talk to us about institute pricing →</a>
+        </div>
+        <div class="institutes-visual" aria-hidden="true">
+          <div class="stat-row">
+            <div class="stat-box">
+              <div class="stat-value">84%</div>
+              <div class="stat-label">Avg. session score</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">7🔥</div>
+              <div class="stat-label">Day streak</div>
+            </div>
+          </div>
+          <div class="stat-bar-wrap">
+            <div class="stat-bar-label"><span>ICD-10-CM Mastery</span><span>78%</span></div>
+            <div class="stat-bar-track"><div class="stat-bar-fill" style="width:78%"></div></div>
+          </div>
+          <div class="stat-bar-wrap">
+            <div class="stat-bar-label"><span>CPT Mastery</span><span>61%</span></div>
+            <div class="stat-bar-track"><div class="stat-bar-fill" style="width:61%"></div></div>
+          </div>
+          <div class="stat-bar-wrap">
+            <div class="stat-bar-label"><span>E&amp;M Mastery</span><span>90%</span></div>
+            <div class="stat-bar-track"><div class="stat-bar-fill" style="width:90%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-box">
+              <div class="stat-value">12</div>
+              <div class="stat-label">Learners in batch</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">3</div>
+              <div class="stat-label">Badges earned</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="pricing" id="pricing">
+    <div class="container">
+      <div class="pricing-header">
+        <span class="section-eyebrow">Pricing</span>
+        <h2 class="section-title">Simple pricing, built for India</h2>
+        <p class="section-sub">Start free. Upgrade when you're ready. No hidden fees, no per-question charges.</p>
+      </div>
+      <div class="pricing-grid">
+
+        <!-- Free -->
+        <div class="pricing-card">
+          <div class="pricing-tier">Trial</div>
+          <div class="pricing-name">Free</div>
+          <p class="pricing-desc">Explore the platform before committing. No time limit, no card needed.</p>
+          <div class="pricing-price">
+            <span class="pricing-amount">₹0</span>
+            <span class="pricing-period">forever</span>
+          </div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span>30 practice questions per day</li>
+            <li><span class="check">✓</span>1 trial mock exam (50 questions)</li>
+            <li><span class="check">✓</span>Basic session score &amp; streak</li>
+            <li><span class="check">✓</span>All 4 coding streams</li>
+          </ul>
+          <a href="/app" class="btn btn-ghost" style="width:100%;justify-content:center;">Start for free</a>
+        </div>
+
+        <!-- Trainee -->
+        <div class="pricing-card featured">
+          <div class="pricing-badge">Most popular</div>
+          <div class="pricing-tier">Trainee</div>
+          <div class="pricing-name">Individual Learner</div>
+          <p class="pricing-desc">Everything you need to pass CPC/CCS/COC on your first attempt.</p>
+          <div class="pricing-price">
+            <span class="pricing-amount">₹5,999</span>
+            <span class="pricing-period">/ year</span>
+            <p class="pricing-note">₹500/month · billed annually</p>
+          </div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span>Unlimited adaptive practice drills</li>
+            <li><span class="check">✓</span>Full-length timed mock exams (no cap)</li>
+            <li><span class="check">✓</span>Mastery analytics dashboard</li>
+            <li><span class="check">✓</span>Weak-topic drill mode</li>
+            <li><span class="check">✓</span>Badges, streaks &amp; leaderboard</li>
+            <li><span class="check">✓</span>Answer rationale for every question</li>
+          </ul>
+          <a href="https://wa.me/?text=Hi%2C+I%27d+like+to+get+full+Trainee+access+to+PracticeBuddy+Lab." class="btn btn-primary" style="width:100%;justify-content:center;" target="_blank" rel="noopener">Get full access →</a>
+        </div>
+
+        <!-- Institute -->
+        <div class="pricing-card">
+          <div class="pricing-tier">Trainer</div>
+          <div class="pricing-name">Institute / Trainer</div>
+          <p class="pricing-desc">Cohort management, scheduled exams, and per-learner analytics for your batch.</p>
+          <div class="pricing-price">
+            <span class="pricing-amount">₹49,999</span>
+            <span class="pricing-period">/ year</span>
+            <p class="pricing-note">Up to 30 learners · ~₹1,667 per student</p>
+          </div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span>Everything in Trainee for all seats</li>
+            <li><span class="check">✓</span>Trainer dashboard &amp; cohort management</li>
+            <li><span class="check">✓</span>Scheduled batch mock exams</li>
+            <li><span class="check">✓</span>Custom question bank (CSV import)</li>
+            <li><span class="check">✓</span>Exportable PDF performance reports</li>
+            <li><span class="check">✓</span>Blueprint-aligned CPC exam builder</li>
+          </ul>
+          <div class="pricing-divider"></div>
+          <p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">75 seats · ₹89,999/yr &nbsp;|&nbsp; 200 seats · ₹1,49,999/yr</p>
+          <a href="https://wa.me/?text=Hi%2C+I+run+a+coding+institute+and+want+to+discuss+the+Trainer+plan." class="btn btn-ghost" style="width:100%;justify-content:center;" target="_blank" rel="noopener">Talk to us</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq" id="faq">
+    <div class="container">
+      <div class="faq-header">
+        <span class="section-eyebrow">FAQ</span>
+        <h2 class="section-title">Common questions</h2>
+      </div>
+      <div class="faq-grid">
+        <div class="faq-item">
+          <div class="faq-q">Is the free trial really free? No card needed?</div>
+          <div class="faq-a">Yes — the Trial tier is free forever with 30 questions per day. You don't need a credit card. Upgrade only when you're ready for unlimited practice and full mock exams.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Which certifications does PracticeBuddy Lab cover?</div>
+          <div class="faq-a">The platform covers ICD-10-CM, CPT, HCPCS, and E&M coding — aligned with the AAPC CPC, AHIMA CCS, and COC exam content. Your trainer can also load custom questions for any specialty.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Can I use this on my phone?</div>
+          <div class="faq-a">Yes. PracticeBuddy Lab is fully mobile-optimised — swipe left to advance cards, swipe right to skip, large touch targets on MCQ options, and horizontal category scroll. Works great on Android and iOS browsers.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">How does the institute plan work?</div>
+          <div class="faq-a">You get a Trainer account that lets you create cohorts, add learner access codes, import your question bank, schedule timed exams for your batch, and view per-learner mastery analytics. Contact us via WhatsApp for a live demo.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Do you provide the question bank or do we bring our own?</div>
+          <div class="faq-a">Both. A starter question set is available for trial users. Trainers can import their own questions via CSV with full ICD-10/CPT/HCPCS/E&M tagging — ideal for institutes that already have question banks.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Is there a US dollar pricing option?</div>
+          <div class="faq-a">Yes — individual Trainee access is available at $99/year for learners outside India. Institute plans are $599–$1,799/year depending on cohort size. Contact us to set this up.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="final-cta">
+    <div class="container">
+      <h2 class="section-title">Ready to improve your CPC pass rate?</h2>
+      <p class="section-sub">Join learners and institutes already using PracticeBuddy Lab to train smarter and score higher.</p>
+      <div class="final-cta-actions">
+        <a href="/app" class="btn btn-white btn-xl">Start Free Trial →</a>
+        <a href="https://wa.me/?text=Hi%2C+I%27d+like+to+know+more+about+PracticeBuddy+Lab." class="btn btn-outline-white btn-xl" target="_blank" rel="noopener">💬 Chat on WhatsApp</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <div>
+        <div class="footer-brand">PracticeBuddy Lab · CodingBuddy360</div>
+        <div class="footer-sub">© 2026 CodingBuddy360. All rights reserved.</div>
+      </div>
+      <div class="footer-links">
+        <a href="/app">Sign in</a>
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="https://wa.me/?text=Hi%2C+I+have+a+question+about+PracticeBuddy+Lab." target="_blank" rel="noopener">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- FLOATING WHATSAPP -->
+  <a href="https://wa.me/?text=Hi%2C+I%27d+like+to+know+more+about+PracticeBuddy+Lab." class="floating-wa" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">
+    💬 Questions? Chat with us
+  </a>
+
+</body>
+</html>
