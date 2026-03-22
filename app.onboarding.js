@@ -95,6 +95,13 @@ function openOnboarding() {
 }
 
 // Called at end of file — DOM is already available (script at bottom of body)
+// Called by the navigation system when the practice tab first becomes visible
+function maybeShowOnboardingForPractice() {
+  if (shouldShowOnboarding()) {
+    setTimeout(openOnboarding, 600);
+  }
+}
+
 function initOnboarding() {
   const nextBtn = document.getElementById("onboardingNextBtn");
   const skipBtn = document.getElementById("onboardingSkipBtn");
@@ -112,8 +119,15 @@ function initOnboarding() {
     });
   }
 
+  // Close on Escape key
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeOnboarding();
+  });
+
+  // Pulse the ? button on first visit to draw attention
   if (shouldShowOnboarding()) {
-    setTimeout(openOnboarding, 700);
+    const btn = document.getElementById("onboardingReplayBtn");
+    if (btn) btn.classList.add("onboarding-help-pulse");
   }
 }
 

@@ -513,6 +513,10 @@ function handleTabSwitch(tabName) {
     const flashcard = document.getElementById("flashcard");
     if (flashcard) flashcard.scrollIntoView({ behavior: "smooth", block: "start" });
     else window.scrollTo(0, 0);
+    // Show onboarding tour on first visit to practice tab
+    if (typeof maybeShowOnboardingForPractice === "function") {
+      maybeShowOnboardingForPractice();
+    }
   }
   else if (tabName === "mentor") {
     if (navDom.viewMentor) navDom.viewMentor.classList.add("active");
