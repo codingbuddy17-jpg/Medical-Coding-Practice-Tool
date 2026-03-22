@@ -380,3 +380,4 @@ function startExam() {
 
 function stopExam() {
   finishExam("stopped");
+}

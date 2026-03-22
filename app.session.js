@@ -1,5 +1,3 @@
-}
-
 function consumeQuestionTime() {
   const start = Number(state.session.questionStartAt || 0);
   if (!start) return 0;
