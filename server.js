@@ -1383,7 +1383,17 @@ async function storageStartSession({ sessionId, userName, userEmail, userPhone, 
   };
 
   const { error: insertError } = await supabase.from("sessions").insert(payload);
-  if (insertError) throw insertError;
+  if (insertError) {
+    // Gracefully handle missing tenant_id column — column not yet migrated
+    const msg = String(insertError.message || "").toLowerCase();
+    if (msg.includes("tenant_id") && msg.includes("schema cache")) {
+      const { tenant_id: _drop, ...payloadWithoutTenant } = payload;
+      const { error: retryError } = await supabase.from("sessions").insert(payloadWithoutTenant);
+      if (retryError) throw retryError;
+      return { id: sessionId };
+    }
+    throw insertError;
+  }
 
   return { id: sessionId };
 }
