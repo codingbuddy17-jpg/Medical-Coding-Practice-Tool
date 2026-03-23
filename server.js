@@ -391,7 +391,9 @@ function resolveTenant(req) {
 }
 
 function isSuperAdminAuthorized(key) {
-  return Boolean(SUPER_ADMIN_KEY) && String(key || "").trim() === SUPER_ADMIN_KEY;
+  const k = String(key || "").trim();
+  if (SUPER_ADMIN_KEY) return k === SUPER_ADMIN_KEY;
+  return Boolean(ADMIN_KEY) && k === ADMIN_KEY;
 }
 
 function sanitizeTenantSlug(slug) {
