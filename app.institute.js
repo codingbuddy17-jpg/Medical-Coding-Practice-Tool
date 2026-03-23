@@ -25,6 +25,13 @@ async function verifyInstitute() {
     instituteState.settings = data.settings || {};
     document.getElementById("instituteNameDisplay").textContent = data.name;
     document.getElementById("instituteDashboard").classList.remove("hidden");
+    // Hide learner-facing and trainer-facing sections, show only institute content
+    document.getElementById("preSessionLanding")?.classList.add("hidden");
+    document.getElementById("brandIntro")?.classList.add("hidden");
+    document.getElementById("authPanel")?.classList.add("hidden");
+    document.getElementById("mainNav")?.classList.add("hidden");
+    document.getElementById("trainerZone")?.classList.add("hidden");
+    document.getElementById("instituteLoginPanel")?.classList.add("hidden");
     setStatus(statusEl, `Welcome, ${data.name}`, "success");
     await loadInstituteDashboard();
   } catch (err) {
@@ -246,4 +253,17 @@ async function loadInstAnalytics() {
   } catch (err) {
     setStatus(statusEl, `Error: ${err.message}`, "error");
   }
+}
+
+function logoutInstitute() {
+  instituteState.key = "";
+  instituteState.tenantId = "";
+  document.getElementById("instituteDashboard").classList.add("hidden");
+  document.getElementById("instituteLoginPanel")?.classList.remove("hidden");
+  document.getElementById("instituteKeyInput").value = "";
+  setStatus(document.getElementById("instituteAuthStatus"), "", "");
+  // Restore page sections
+  document.getElementById("preSessionLanding")?.classList.remove("hidden");
+  document.getElementById("brandIntro")?.classList.remove("hidden");
+  document.getElementById("authPanel")?.classList.remove("hidden");
 }

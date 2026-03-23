@@ -2540,3 +2540,13 @@ code {
   color: #0369a1;
   font-weight: 500;
 }
+
+/* ── Institute dashboard header ─────────────────────────── */
+.institute-dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .5rem 0 .75rem;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 1rem;
+}

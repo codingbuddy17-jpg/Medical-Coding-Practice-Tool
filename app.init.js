@@ -638,33 +638,18 @@ function handleMentorSubTab(subTab) {
   if (subTab === "users") {
     // Show users view
     document.getElementById("subview-users").classList.remove("hidden");
-    document.getElementById("subview-kpi").classList.add("hidden");
-    document.getElementById("subview-tools").classList.add("hidden");
-    document.getElementById("subview-bank").classList.add("hidden");
     loadSessions();
-  } else if (subTab === "kpi") {
-    // Show KPI view
-    document.getElementById("subview-users").classList.add("hidden");
-    document.getElementById("subview-kpi").classList.remove("hidden");
-    document.getElementById("subview-tools").classList.add("hidden");
-    document.getElementById("subview-bank").classList.add("hidden");
-    loadFlagQueue();
   } else if (subTab === "tools") {
-    // Show Tools view
-    document.getElementById("subview-users").classList.add("hidden");
-    document.getElementById("subview-kpi").classList.add("hidden");
+    // Show Administration view
     document.getElementById("subview-tools").classList.remove("hidden");
-    document.getElementById("subview-bank").classList.add("hidden");
-    loadImportBatches();
-    loadImportReviewQueue();
     loadAdminData();
   } else if (subTab === "bank") {
-    // Show Bank view
-    document.getElementById("subview-users").classList.add("hidden");
-    document.getElementById("subview-kpi").classList.add("hidden");
-    document.getElementById("subview-tools").classList.add("hidden");
+    // Show Question Bank view
     document.getElementById("subview-bank").classList.remove("hidden");
     loadQuestionBank();
+    loadFlagQueue();
+    loadImportBatches();
+    loadImportReviewQueue();
   }
 }
 
