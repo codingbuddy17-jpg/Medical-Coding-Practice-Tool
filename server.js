@@ -34,6 +34,8 @@ const IMPORT_REVIEWS_FILE = path.join(DATA_DIR, "import-reviews.json");
 const IMPORT_BATCHES_FILE = path.join(DATA_DIR, "import-batches.json");
 const ALLOWED_LEARNERS_FILE = path.join(DATA_DIR, "allowed-learners.json");
 const AUDIT_LOG_FILE = path.join(DATA_DIR, "audit-log.json");
+const TENANTS_FILE = path.join(DATA_DIR, "tenants.json");
+const SUPER_ADMIN_KEY = process.env.SUPER_ADMIN_KEY || "";
 let attemptsSupportsDurationMs = true;
 const VERIFY_RATE_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 const VERIFY_RATE_LIMIT = 12; // attempts per window per endpoint+IP
@@ -101,6 +103,7 @@ function ensureDataStore() {
   if (!fs.existsSync(IMPORT_BATCHES_FILE)) fs.writeFileSync(IMPORT_BATCHES_FILE, JSON.stringify({ batches: [] }, null, 2));
   if (!fs.existsSync(ALLOWED_LEARNERS_FILE)) fs.writeFileSync(ALLOWED_LEARNERS_FILE, JSON.stringify({ learners: [] }, null, 2));
   if (!fs.existsSync(AUDIT_LOG_FILE)) fs.writeFileSync(AUDIT_LOG_FILE, JSON.stringify({ events: [] }, null, 2));
+  if (!fs.existsSync(TENANTS_FILE)) fs.writeFileSync(TENANTS_FILE, JSON.stringify({ tenants: [] }, null, 2));
 }
 
 function readSessions() {
@@ -344,6 +347,108 @@ async function appendAuditEvent({ action, actor, actorRole, ip, meta }) {
   fs.writeFileSync(AUDIT_LOG_FILE, JSON.stringify({ events }, null, 2));
   return event;
 }
+
+// ── Multi-tenant ─────────────────────────────────────────────────────────────
+
+function readTenants() {
+  ensureDataStore();
+  const raw = fs.readFileSync(TENANTS_FILE, "utf8");
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.tenants) ? parsed.tenants : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeTenants(tenants) {
+  ensureDataStore();
+  fs.writeFileSync(TENANTS_FILE, JSON.stringify({ tenants }, null, 2));
+}
+
+function getDefaultTenant() {
+  const config = readAccessConfig();
+  return {
+    id: "default",
+    slug: "default",
+    name: "PracticeBuddy Lab",
+    trainerKey: config.trainerKey || TRAINER_KEY || "",
+    adminKey: ADMIN_KEY || "",
+    isActive: true,
+    settings: {
+      trialQuestionLimit: config.trialQuestionLimit || 20,
+      maxSessionQuestions: config.maxSessionQuestions || 250
+    }
+  };
+}
+
+function resolveTenant(req) {
+  const slug = String(req.headers["x-tenant-slug"] || "").trim().toLowerCase();
+  if (!slug || slug === "default") return getDefaultTenant();
+  const tenants = readTenants();
+  const tenant = tenants.find((t) => t.slug === slug && t.isActive !== false);
+  return tenant || getDefaultTenant();
+}
+
+function isSuperAdminAuthorized(key) {
+  return Boolean(SUPER_ADMIN_KEY) && String(key || "").trim() === SUPER_ADMIN_KEY;
+}
+
+function sanitizeTenantSlug(slug) {
+  return String(slug || "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
+}
+
+function createOrUpdateTenant({ tenantId, slug, name, trainerKey, adminKey, isActive, settings }) {
+  const tenants = readTenants();
+  const cleanSlug = sanitizeTenantSlug(slug);
+  if (!cleanSlug || cleanSlug === "default") throw new Error("Invalid slug. 'default' is reserved.");
+  if (!String(name || "").trim()) throw new Error("Tenant name is required.");
+  const now = Date.now();
+
+  if (tenantId) {
+    const idx = tenants.findIndex((t) => t.id === tenantId);
+    if (idx < 0) throw new Error("Tenant not found.");
+    const existing = tenants[idx];
+    if (cleanSlug !== existing.slug && tenants.some((t) => t.slug === cleanSlug)) {
+      throw new Error(`Slug '${cleanSlug}' is already in use.`);
+    }
+    tenants[idx] = {
+      ...existing,
+      slug: cleanSlug,
+      name: String(name || existing.name).trim().slice(0, 120),
+      trainerKey: trainerKey !== undefined ? String(trainerKey || "").trim() : existing.trainerKey,
+      adminKey: adminKey !== undefined ? String(adminKey || "").trim() : existing.adminKey,
+      isActive: isActive !== undefined ? Boolean(isActive) : existing.isActive,
+      settings: settings && typeof settings === "object"
+        ? { ...existing.settings, ...settings }
+        : existing.settings,
+      updatedAt: now
+    };
+    writeTenants(tenants);
+    return tenants[idx];
+  }
+
+  if (tenants.some((t) => t.slug === cleanSlug)) throw new Error(`Slug '${cleanSlug}' is already in use.`);
+  const newTenant = {
+    id: `tenant_${now}_${Math.random().toString(36).slice(2, 8)}`,
+    slug: cleanSlug,
+    name: String(name).trim().slice(0, 120),
+    trainerKey: String(trainerKey || "").trim(),
+    adminKey: String(adminKey || "").trim(),
+    isActive: isActive !== false,
+    settings: {
+      trialQuestionLimit: Math.max(1, Number(settings?.trialQuestionLimit || 20)),
+      maxSessionQuestions: Math.max(1, Number(settings?.maxSessionQuestions || 250))
+    },
+    createdAt: now,
+    updatedAt: now
+  };
+  tenants.push(newTenant);
+  writeTenants(tenants);
+  return newTenant;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function toEpochMs(value) {
   if (value === null || value === undefined || value === "") return null;
@@ -666,6 +771,19 @@ function isAdminAuthorized(key) {
   const validAdmin = Boolean(ADMIN_KEY) && value === ADMIN_KEY;
   const validTrainer = Boolean(config.trainerKey) && value === config.trainerKey;
   return validAdmin || validTrainer;
+}
+
+function isTenantTrainerAuth(tenant, providedKey) {
+  return Boolean(tenant.trainerKey) && String(providedKey || "") === tenant.trainerKey;
+}
+
+function isTenantAdminAuth(tenant, providedKey) {
+  const value = String(providedKey || "");
+  const superAdmin = isSuperAdminAuthorized(value);
+  const globalAdmin = Boolean(ADMIN_KEY) && value === ADMIN_KEY;
+  const tenantAdmin = Boolean(tenant.adminKey) && value === tenant.adminKey;
+  const tenantTrainer = Boolean(tenant.trainerKey) && value === tenant.trainerKey;
+  return superAdmin || globalAdmin || tenantAdmin || tenantTrainer;
 }
 
 function getPublicAccessConfig() {
@@ -1208,7 +1326,7 @@ async function upsertUserAndEntitlement({ userName, userEmail, userPhone, role }
   if (entError) throw entError;
 }
 
-async function storageStartSession({ sessionId, userName, userEmail, userPhone, role }) {
+async function storageStartSession({ sessionId, userName, userEmail, userPhone, role, tenantId = "default" }) {
   const normalizedEmail = normalizeEmail(userEmail);
   const normalizedPhone = normalizePhone(userPhone);
 
@@ -1222,6 +1340,7 @@ async function storageStartSession({ sessionId, userName, userEmail, userPhone, 
       userEmail: normalizedEmail,
       userPhone: normalizedPhone,
       role,
+      tenantId,
       startedAt: Date.now(),
       endedAt: null,
       answers: [],
@@ -1248,6 +1367,7 @@ async function storageStartSession({ sessionId, userName, userEmail, userPhone, 
     user_email: normalizedEmail,
     user_phone: normalizedPhone,
     role,
+    tenant_id: tenantId === "default" ? null : tenantId,
     started_at: toIso(Date.now()),
     correct: 0,
     wrong: 0,
@@ -1410,9 +1530,9 @@ async function storageEndSession({ sessionId, summary }) {
   if (updateErr) throw updateErr;
 }
 
-async function storageListSessions() {
+async function storageListSessions(tenantId = "default") {
   if (!USE_SUPABASE) {
-    const sessions = readSessions();
+    const sessions = readSessions().filter((s) => (s.tenantId || "default") === tenantId);
     return sessions.map((s) => ({
       id: s.id,
       userName: s.userName,
@@ -1423,11 +1543,19 @@ async function storageListSessions() {
     }));
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("sessions")
     .select("session_id,user_name,role,started_at,ended_at,correct,wrong,attempted,score")
     .order("started_at", { ascending: false })
     .limit(500);
+
+  if (tenantId === "default") {
+    query = query.or("tenant_id.is.null,tenant_id.eq.default");
+  } else {
+    query = query.eq("tenant_id", tenantId);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 
@@ -1489,7 +1617,7 @@ function sanitizeQuestionCard(card) {
   };
 }
 
-async function storageImportQuestions(cards, meta = {}) {
+async function storageImportQuestions(cards, meta = {}, tenantId = "default") {
   const uploadedBy = String(meta.uploadedBy || "trainer");
   const reviewRows = Array.isArray(meta.reviewRows) ? meta.reviewRows : [];
   const batchSummary = meta.batchSummary && typeof meta.batchSummary === "object" ? meta.batchSummary : null;
@@ -1519,6 +1647,7 @@ async function storageImportQuestions(cards, meta = {}) {
       question: c.question,
       answer: c.answer,
       is_active: true,
+      tenantId,
       created_at: new Date(now).toISOString()
     }));
     writeQuestions([...existing, ...newRows]);
@@ -1575,7 +1704,8 @@ async function storageImportQuestions(cards, meta = {}) {
     tag: c.tag,
     question: c.question,
     answer: c.answer,
-    is_active: true
+    is_active: true,
+    tenant_id: tenantId === "default" ? null : tenantId
   }));
 
   const { data: insertedRows, error: insertErr } = await supabase.from("questions").insert(payload).select("id");
@@ -1977,9 +2107,13 @@ async function storageRollbackImportBatch(batchId) {
   return { batchId: cleanBatchId, affected: ids.length };
 }
 
-async function storageListQuestions(tag) {
+async function storageListQuestions(tag, tenantId = "default") {
   if (!USE_SUPABASE) {
-    const questions = readQuestions().filter((q) => q.is_active !== false);
+    const questions = readQuestions().filter((q) => {
+      if (q.is_active === false) return false;
+      const qTenant = q.tenantId || "default";
+      return qTenant === tenantId;
+    });
     return tag ? questions.filter((q) => q.tag === tag) : questions;
   }
 
@@ -1994,6 +2128,11 @@ async function storageListQuestions(tag) {
       .order("created_at", { ascending: true })
       .range(from, from + batchSize - 1);
     if (tag) query = query.eq("tag", tag);
+    if (tenantId === "default") {
+      query = query.or("tenant_id.is.null,tenant_id.eq.default");
+    } else {
+      query = query.eq("tenant_id", tenantId);
+    }
     const { data, error } = await query;
     if (error) throw error;
     const rows = data || [];
@@ -2075,8 +2214,25 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true, storage: USE_SUPABASE ? "supabase" : "file", timestamp: Date.now() });
   }
 
+  if (url.pathname === "/api/tenant/info" && req.method === "GET") {
+    const tenant = resolveTenant(req);
+    return json(res, 200, {
+      id: tenant.id,
+      slug: tenant.slug,
+      name: tenant.name,
+      isActive: tenant.isActive !== false,
+      settings: tenant.settings || {}
+    });
+  }
+
   if (url.pathname === "/api/access/config" && req.method === "GET") {
-    return json(res, 200, getPublicAccessConfig());
+    const tenant = resolveTenant(req);
+    const base = getPublicAccessConfig();
+    return json(res, 200, {
+      ...base,
+      trialQuestionLimit: tenant.settings?.trialQuestionLimit || base.trialQuestionLimit,
+      maxSessionQuestions: tenant.settings?.maxSessionQuestions || base.maxSessionQuestions
+    });
   }
 
   if (url.pathname === "/api/access/verify" && req.method === "POST") {
@@ -2584,8 +2740,9 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === "/api/questions" && req.method === "GET") {
     try {
+      const tenant = resolveTenant(req);
       const tag = url.searchParams.get("tag");
-      const questions = await storageListQuestions(tag || "");
+      const questions = await storageListQuestions(tag || "", tenant.id);
       return json(res, 200, { questions });
     } catch (err) {
       return json(res, 400, { error: err.message });
@@ -2598,8 +2755,8 @@ const server = http.createServer(async (req, res) => {
       const trainerKey = qs.get("trainerKey");
       const questionId = qs.get("id");
 
-      const access = readAccessConfig();
-      if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+      const tenant = resolveTenant(req);
+      if (!isTenantTrainerAuth(tenant, trainerKey)) return json(res, 403, { error: "Forbidden" });
 
       if (!questionId) return json(res, 400, { error: "Missing question ID" });
 
@@ -2658,8 +2815,8 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await parseBody(req);
       const trainerKey = String(body.trainerKey || "");
-      const access = readAccessConfig();
-      if (!access.trainerKey || trainerKey !== access.trainerKey) {
+      const tenant = resolveTenant(req);
+      if (!isTenantTrainerAuth(tenant, trainerKey)) {
         return json(res, 403, { error: "Forbidden" });
       }
 
@@ -2674,7 +2831,7 @@ const server = http.createServer(async (req, res) => {
         batchSummary: body.batchSummary && typeof body.batchSummary === "object" ? body.batchSummary : null,
         sourceName: String(body.sourceName || ""),
         notes: String(body.notes || "")
-      });
+      }, tenant.id);
 
       appendAuditEvent({
         action: "questions.import",
@@ -2929,6 +3086,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === "/api/session/start" && req.method === "POST") {
     try {
       const body = await parseBody(req);
+      const sessionTenant = resolveTenant(req);
       const role = String(body.role || "trainee");
       const userEmail = String(body.userEmail || "");
       const userPhone = String(body.userPhone || "");
@@ -2959,7 +3117,8 @@ const server = http.createServer(async (req, res) => {
         userName: String(body.userName || "anonymous"),
         userEmail,
         userPhone,
-        role
+        role,
+        tenantId: sessionTenant.id
       });
 
       appendAuditEvent({
@@ -3030,13 +3189,52 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/sessions" && req.method === "GET") {
+    const tenant = resolveTenant(req);
     const key = getTrainerKey(req);
-    const access = readAccessConfig();
-    if (!access.trainerKey || key !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+    if (!isTenantTrainerAuth(tenant, key)) return json(res, 403, { error: "Forbidden" });
 
     try {
-      const sessions = await storageListSessions();
+      const sessions = await storageListSessions(tenant.id);
       return json(res, 200, { sessions });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/superadmin/tenants" && req.method === "GET") {
+    const key = String(req.headers["x-super-admin-key"] || req.headers.authorization?.replace(/^Bearer\s+/i, "") || "").trim();
+    if (!isSuperAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
+    const defaultTenant = getDefaultTenant();
+    const tenants = [
+      { id: defaultTenant.id, slug: defaultTenant.slug, name: defaultTenant.name, isActive: true, isDefault: true, createdAt: 0 },
+      ...readTenants().map((t) => ({ id: t.id, slug: t.slug, name: t.name, isActive: t.isActive !== false, isDefault: false, createdAt: t.createdAt || 0 }))
+    ];
+    return json(res, 200, { tenants });
+  }
+
+  if (url.pathname === "/api/superadmin/tenants" && req.method === "POST") {
+    try {
+      const key = String(req.headers["x-super-admin-key"] || "").trim() ||
+        String(req.headers.authorization || "").replace(/^Bearer\s+/i, "").trim();
+      if (!isSuperAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
+      const body = await parseBody(req);
+      const tenant = createOrUpdateTenant({
+        tenantId: body.tenantId ? String(body.tenantId) : undefined,
+        slug: body.slug,
+        name: body.name,
+        trainerKey: body.trainerKey,
+        adminKey: body.adminKey,
+        isActive: body.isActive,
+        settings: body.settings
+      });
+      appendAuditEvent({
+        action: body.tenantId ? "tenant.update" : "tenant.create",
+        actor: "superadmin",
+        actorRole: "superadmin",
+        ip: getClientIp(req),
+        meta: { tenantId: tenant.id, slug: tenant.slug, name: tenant.name }
+      }).catch(() => {});
+      return json(res, body.tenantId ? 200 : 201, { tenant });
     } catch (err) {
       return json(res, 400, { error: err.message });
     }

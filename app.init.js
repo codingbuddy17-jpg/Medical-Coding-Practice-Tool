@@ -395,13 +395,35 @@ function bindEvents() {
   })();
 }
 
+async function loadTenantInfo() {
+  try {
+    const data = await apiRequest("/api/tenant/info");
+    state.tenantName = String(data.name || "");
+    const tenantDisplay = document.getElementById("tenantNameDisplay");
+    if (tenantDisplay && state.tenantName && state.tenantSlug !== "default") {
+      tenantDisplay.textContent = state.tenantName;
+      tenantDisplay.style.display = "";
+    }
+  } catch {
+    // silently ignore — tenant info is non-critical
+  }
+}
+
 async function init() {
+  // Read tenant slug from URL: ?tenant=acme-school
+  const urlParams = new URLSearchParams(window.location.search);
+  const tenantParam = String(urlParams.get("tenant") || "").trim().toLowerCase();
+  if (tenantParam && tenantParam !== "default") {
+    state.tenantSlug = tenantParam;
+  }
+
   loadLocal();
   bindEvents(); // Bind listeners immediately so buttons work even if data loads slowly
 
   state.session.isActive = false;
   state.session.isActive = false;
   state.trainerKeyVerified = false;
+  await loadTenantInfo();
   await loadPublicAccessConfig();
   dom.userName.value = state.userName;
   dom.userEmail.value = state.userEmail;

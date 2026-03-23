@@ -176,6 +176,9 @@ async function apiRequest(path, method = "GET", payload = null, authKey = "") {
   if (authKey) {
     options.headers.Authorization = `Bearer ${authKey}`;
   }
+  if (state.tenantSlug && state.tenantSlug !== "default") {
+    options.headers["X-Tenant-Slug"] = state.tenantSlug;
+  }
   if (payload) {
     options.headers["Content-Type"] = "application/json";
     options.body = JSON.stringify(payload);
