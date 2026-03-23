@@ -157,10 +157,15 @@ function updatePreSessionLandingUI() {
   const isActive = state.session.isActive;
 
   if (!isActive) {
-    // Show Landing & Auth
-    dom.preSessionLanding.classList.remove("hidden", "landing-hidden");
-    if (dom.authPanel) dom.authPanel.classList.remove("hidden");
-    if (dom.brandIntro) dom.brandIntro.classList.remove("hidden");
+    // Show Landing & Auth — but only if NOT in institute mode
+    const isInstituteMode = new URLSearchParams(window.location.search).get("mode") === "institute";
+    if (!isInstituteMode) {
+      dom.preSessionLanding.classList.remove("hidden", "landing-hidden");
+      if (dom.authPanel) dom.authPanel.classList.remove("hidden");
+      if (dom.brandIntro) dom.brandIntro.classList.remove("hidden");
+    }
+    // Institute panel stays hidden in normal mode; only shown by ?mode=institute
+    if (dom.instituteLoginPanel && !isInstituteMode) dom.instituteLoginPanel.classList.add("hidden");
     if (dom.trialInfoBanner) dom.trialInfoBanner.classList.add("hidden");
 
     // Hide Navigation & Views
@@ -174,6 +179,8 @@ function updatePreSessionLandingUI() {
     dom.preSessionLanding.classList.add("landing-hidden");
     if (dom.authPanel) dom.authPanel.classList.add("hidden");
     if (dom.brandIntro) dom.brandIntro.classList.add("hidden");
+    // Always hide institute panel once a normal session is active
+    if (dom.instituteLoginPanel) dom.instituteLoginPanel.classList.add("hidden");
 
     // Show Navigation & Views
     showNavigation();

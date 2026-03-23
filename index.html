@@ -1279,7 +1279,7 @@
                       </label>
                       <label>
                         Slug * <span class="helper" style="display:inline">(URL-safe, e.g. acme-school)</span>
-                        <input id="tenantFormSlug" type="text" placeholder="acme-school" />
+                        <input id="tenantFormSlug" type="text" placeholder="acme-school" oninput="(function(v){var wrap=document.getElementById('tenantPortalUrlWrap'),disp=document.getElementById('tenantPortalUrlDisplay');if(!wrap||!disp)return;var slug=v.trim().toLowerCase().replace(/[^a-z0-9-]/g,'');if(slug){var url=window.location.origin+window.location.pathname+'?mode=institute&tenant='+encodeURIComponent(slug);disp.value=url;wrap.classList.remove('hidden');var btn=document.getElementById('copyTenantUrlBtn');if(btn)btn.onclick=function(){navigator.clipboard.writeText(url).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy URL'},1500)})}}else{disp.value='';wrap.classList.add('hidden')}})(this.value)" />
                       </label>
                       <div id="tenantPortalUrlWrap" class="hidden" style="grid-column:1/-1">
                         <label style="display:block;margin-bottom:.35rem;font-size:.85rem;font-weight:600">Institute Portal URL <span class="helper" style="display:inline;font-weight:400">(share this with the institute admin)</span></label>

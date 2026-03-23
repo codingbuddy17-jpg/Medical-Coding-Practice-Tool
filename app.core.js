@@ -285,6 +285,8 @@ function cacheDOM() {
     trialProgressText: document.getElementById("trialProgressText"),
     trialProgressRemaining: document.getElementById("trialProgressRemaining"),
     preSessionLanding: document.getElementById("preSessionLanding"),
+    authPanel: document.getElementById("authPanel"),
+    instituteLoginPanel: document.getElementById("instituteLoginPanel"),
     landingStartTrialBtn: document.getElementById("landingStartTrialBtn"),
     landingFullAccessBtn: document.getElementById("landingFullAccessBtn"),
     upgradeWall: document.getElementById("upgradeWall"),

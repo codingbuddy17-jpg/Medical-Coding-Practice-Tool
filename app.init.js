@@ -455,7 +455,9 @@ async function init() {
   loadLocal();
   bindEvents(); // Bind listeners immediately so buttons work even if data loads slowly
 
-  state.session.isActive = false;
+  // Ensure institute panel is never visible in normal (non-institute) mode
+  if (dom.instituteLoginPanel) dom.instituteLoginPanel.classList.add("hidden");
+
   state.session.isActive = false;
   state.trainerKeyVerified = false;
   await loadTenantInfo();
