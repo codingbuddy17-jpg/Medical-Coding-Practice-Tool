@@ -233,6 +233,12 @@ function bindEvents() {
     const actionFilter = String((document.getElementById("auditActionFilter") || {}).value || "");
     loadAuditLog({ limit: 200, actionFilter });
   });
+  const loadTenantsBtn = document.getElementById("loadTenantsBtn");
+  if (loadTenantsBtn) loadTenantsBtn.addEventListener("click", loadTenants);
+  const saveTenantBtn = document.getElementById("saveTenantBtn");
+  if (saveTenantBtn) saveTenantBtn.addEventListener("click", saveTenant);
+  const clearTenantFormBtn = document.getElementById("clearTenantFormBtn");
+  if (clearTenantFormBtn) clearTenantFormBtn.addEventListener("click", clearTenantForm);
   if (dom.saveAccessConfigBtn) dom.saveAccessConfigBtn.addEventListener("click", saveAccessConfig);
   if (dom.saveLearnerBtn) dom.saveLearnerBtn.addEventListener("click", saveLearnerAccess);
   if (dom.refreshLearnersBtn) dom.refreshLearnersBtn.addEventListener("click", loadLearnerAccessList);
@@ -399,11 +405,15 @@ async function loadTenantInfo() {
   try {
     const data = await apiRequest("/api/tenant/info");
     state.tenantName = String(data.name || "");
+    const settings = data.settings || {};
+    state.tenantAllowedTags = Array.isArray(settings.allowedTags) ? settings.allowedTags : [];
     const tenantDisplay = document.getElementById("tenantNameDisplay");
     if (tenantDisplay && state.tenantName && state.tenantSlug !== "default") {
       tenantDisplay.textContent = state.tenantName;
       tenantDisplay.style.display = "";
     }
+    // Re-render category buttons now that we know allowed tags
+    if (typeof renderCategoryButtons === "function") renderCategoryButtons();
   } catch {
     // silently ignore — tenant info is non-critical
   }

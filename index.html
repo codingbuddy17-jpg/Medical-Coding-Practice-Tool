@@ -866,6 +866,7 @@
                 <a class="ghost-btn" href="#adminCohortsSection">Cohorts</a>
                 <a class="ghost-btn" href="#adminAdvancedSection">Advanced</a>
                 <a class="ghost-btn" href="#adminAuditSection">Audit Log</a>
+                <a class="ghost-btn" href="#adminTenantSection">Tenants</a>
               </div>
               <div class="admin-summary-card">
                 <div class="admin-summary-title">Access Status Summary</div>
@@ -1143,6 +1144,90 @@
                     <thead><tr><th>Time</th><th>Action</th><th>Actor</th><th>Role</th><th>Details</th></tr></thead>
                     <tbody id="auditLogBody"><tr><td colspan="5" style="text-align:center;opacity:.6">Load admin data to view audit log.</td></tr></tbody>
                   </table>
+                </div>
+              </details>
+
+              <details id="adminTenantSection" class="details-panel admin-section">
+                <summary>Tenant Management <span class="badge-label" style="font-size:.75rem;opacity:.7">(Super Admin)</span></summary>
+                <div class="auth-grid">
+                  <label>
+                    Super Admin Key
+                    <input id="superAdminKeyInput" type="password" placeholder="Enter super admin key" />
+                    <span class="helper">Required to create or edit tenants.</span>
+                  </label>
+                  <div class="panel-actions">
+                    <button id="loadTenantsBtn" class="ghost-btn" type="button">Load Tenants</button>
+                  </div>
+                </div>
+                <p id="tenantMgrStatus" class="status"></p>
+                <div id="tenantMgrTools" class="hidden">
+                  <div class="table-wrap" style="margin-bottom:1rem">
+                    <table class="data-table">
+                      <thead><tr><th>Name</th><th>Slug</th><th>Status</th><th>Trainer Key</th><th>Allowed Modules</th><th>Actions</th></tr></thead>
+                      <tbody id="tenantTableBody"><tr><td colspan="6" style="text-align:center;opacity:.6">No tenants loaded.</td></tr></tbody>
+                    </table>
+                  </div>
+
+                  <details id="tenantFormPanel" class="details-panel" style="margin-top:.5rem">
+                    <summary id="tenantFormTitle">Create New Tenant</summary>
+                    <input type="hidden" id="tenantEditId" value="" />
+                    <div class="auth-grid">
+                      <label>
+                        Tenant Name *
+                        <input id="tenantFormName" type="text" placeholder="e.g. ACME Medical Coding School" />
+                      </label>
+                      <label>
+                        Slug * <span class="helper" style="display:inline">(URL-safe, e.g. acme-school)</span>
+                        <input id="tenantFormSlug" type="text" placeholder="acme-school" />
+                      </label>
+                      <label>
+                        Trainer Key
+                        <input id="tenantFormTrainerKey" type="text" placeholder="Leave blank for auto-generate tip" />
+                      </label>
+                      <label>
+                        Admin Key
+                        <input id="tenantFormAdminKey" type="text" placeholder="Leave blank for auto-generate tip" />
+                      </label>
+                      <label>
+                        Trial Question Limit
+                        <input id="tenantFormTrialLimit" type="number" min="1" step="1" placeholder="20" />
+                      </label>
+                      <label>
+                        Max Session Questions
+                        <input id="tenantFormSessionCap" type="number" min="1" step="1" placeholder="250" />
+                      </label>
+                      <label>
+                        Active
+                        <select id="tenantFormActive">
+                          <option value="true">Yes</option>
+                          <option value="false">No</option>
+                        </select>
+                      </label>
+                    </div>
+                    <div style="margin:.75rem 0 .25rem">
+                      <strong style="font-size:.85rem">Allowed Modules</strong>
+                      <span class="helper" style="display:block;margin-bottom:.5rem">Leave all unchecked = all modules visible. Check specific modules to restrict access (pricing lever).</span>
+                      <div id="tenantTagCheckboxes" class="tag-checkbox-grid">
+                        <label class="tag-checkbox-item"><input type="checkbox" value="ICD-10-CM" /> ICD 10 CM</label>
+                        <label class="tag-checkbox-item"><input type="checkbox" value="ICD-10-PCS" /> ICD 10 PCS</label>
+                        <label class="tag-checkbox-item"><input type="checkbox" value="CPT" /> CPT</label>
+                        <label class="tag-checkbox-item"><input type="checkbox" value="MODIFIERS" /> Modifiers</label>
+                        <label class="tag-checkbox-item"><input type="checkbox" value="GUIDELINES" /> Guidelines</label>
+                        <label class="tag-checkbox-item"><input type="checkbox" value="CCS" /> CCS</label>
+                        <label class="tag-checkbox-item"><input type="checkbox" value="CPC" /> CPC</label>
+                        <label class="tag-checkbox-item"><input type="checkbox" value="CDIP" /> CDIP</label>
+                        <label class="tag-checkbox-item"><input type="checkbox" value="SURGERY-CODING" /> Surgery Coding</label>
+                        <label class="tag-checkbox-item"><input type="checkbox" value="IP-DRG-CODING" /> IP-DRG Coding</label>
+                        <label class="tag-checkbox-item"><input type="checkbox" value="MEDICINE" /> Medicine</label>
+                        <label class="tag-checkbox-item"><input type="checkbox" value="PRACTICE-CASES" /> Practice Cases</label>
+                      </div>
+                    </div>
+                    <div class="panel-actions">
+                      <button id="saveTenantBtn" class="primary-btn" type="button">Save Tenant</button>
+                      <button id="clearTenantFormBtn" class="ghost-btn" type="button">Clear Form</button>
+                    </div>
+                    <p id="tenantFormStatus" class="status"></p>
+                  </details>
                 </div>
               </details>
             </div>

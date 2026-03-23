@@ -171,13 +171,16 @@ function recordSkipStats(card, durationMs = 0) {
   cardStat.skipped = (cardStat.skipped || 0) + 1;
 }
 
-async function apiRequest(path, method = "GET", payload = null, authKey = "") {
+async function apiRequest(path, method = "GET", payload = null, authKey = "", extraHeaders = {}) {
   const options = { method, headers: {}, cache: "no-store" };
   if (authKey) {
     options.headers.Authorization = `Bearer ${authKey}`;
   }
   if (state.tenantSlug && state.tenantSlug !== "default") {
     options.headers["X-Tenant-Slug"] = state.tenantSlug;
+  }
+  if (extraHeaders && typeof extraHeaders === "object") {
+    Object.assign(options.headers, extraHeaders);
   }
   if (payload) {
     options.headers["Content-Type"] = "application/json";

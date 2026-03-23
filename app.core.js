@@ -74,6 +74,7 @@ const state = {
   adminKey: "",
   tenantSlug: "default",
   tenantName: "",
+  tenantAllowedTags: [],
   selectedTag: "ALL",
   weakDrillEnabled: false,
   adaptiveEnabled: false,

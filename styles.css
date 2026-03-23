@@ -2472,6 +2472,32 @@ code {
 .audit-action-learner   { background: #e0f2fe; color: #0c4a6e; }
 .audit-action-import    { background: #f0fdf4; color: #14532d; }
 
+/* ── Tenant management ─────────────────────────────────────── */
+.tag-checkbox-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem .8rem;
+}
+.tag-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .82rem;
+  cursor: pointer;
+  padding: .25rem .5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
+  transition: background .15s, border-color .15s;
+}
+.tag-checkbox-item:has(input:checked) {
+  background: #ecfdf5;
+  border-color: #10b981;
+  color: #065f46;
+  font-weight: 600;
+}
+.tag-checkbox-item input { cursor: pointer; }
+
 /* ── Multi-tenant ─────────────────────────────────────────── */
 .tenant-name-badge {
   display: inline-block;
