@@ -354,7 +354,7 @@ function renderTenantTable(tenants) {
       <td>${escapeHtml(t.name)}</td>
       <td><code>${escapeHtml(t.slug)}</code></td>
       <td>${statusBadge}</td>
-      <td><code style="font-size:.78rem">${t.trainerKey ? escapeHtml(t.trainerKey.slice(0, 6) + "…") : "—"}</code></td>
+      <td style="font-size:.78rem">${t.contactEmail ? escapeHtml(t.contactEmail) : "—"}</td>
       <td style="font-size:.78rem">${escapeHtml(tagStr)}</td>
       <td>
         <button class="ghost-btn" type="button" onclick="populateTenantForm(${escapeHtml(JSON.stringify(t.id))})">Edit</button>
@@ -369,10 +369,11 @@ function populateTenantForm(tenantId) {
   document.getElementById("tenantEditId").value = t.id;
   document.getElementById("tenantFormName").value = t.name || "";
   document.getElementById("tenantFormSlug").value = t.slug || "";
-  document.getElementById("tenantFormTrainerKey").value = t.trainerKey || "";
+  document.getElementById("tenantFormContactEmail").value = t.contactEmail || "";
   document.getElementById("tenantFormAdminKey").value = t.adminKey || "";
   document.getElementById("tenantFormTrialLimit").value = t.settings?.trialQuestionLimit || 20;
   document.getElementById("tenantFormSessionCap").value = t.settings?.maxSessionQuestions || 250;
+  document.getElementById("tenantFormMaxUsers").value = t.settings?.maxUsers || 50;
   document.getElementById("tenantFormActive").value = t.isActive !== false ? "true" : "false";
   document.getElementById("tenantFormTitle").textContent = `Edit: ${t.name}`;
   const allowed = Array.isArray(t.settings?.allowedTags) ? t.settings.allowedTags : [];
@@ -387,10 +388,11 @@ function clearTenantForm() {
   document.getElementById("tenantEditId").value = "";
   document.getElementById("tenantFormName").value = "";
   document.getElementById("tenantFormSlug").value = "";
-  document.getElementById("tenantFormTrainerKey").value = "";
+  document.getElementById("tenantFormContactEmail").value = "";
   document.getElementById("tenantFormAdminKey").value = "";
   document.getElementById("tenantFormTrialLimit").value = "20";
   document.getElementById("tenantFormSessionCap").value = "250";
+  document.getElementById("tenantFormMaxUsers").value = "50";
   document.getElementById("tenantFormActive").value = "true";
   document.getElementById("tenantFormTitle").textContent = "Create New Tenant";
   document.querySelectorAll("#tenantTagCheckboxes input[type=checkbox]").forEach((cb) => { cb.checked = false; });
@@ -425,12 +427,13 @@ async function saveTenant() {
     tenantId,
     name: document.getElementById("tenantFormName").value.trim(),
     slug: document.getElementById("tenantFormSlug").value.trim(),
-    trainerKey: document.getElementById("tenantFormTrainerKey").value.trim() || undefined,
+    contactEmail: document.getElementById("tenantFormContactEmail").value.trim() || undefined,
     adminKey: document.getElementById("tenantFormAdminKey").value.trim() || undefined,
     isActive: document.getElementById("tenantFormActive").value !== "false",
     settings: {
       trialQuestionLimit: Number(document.getElementById("tenantFormTrialLimit").value) || 20,
       maxSessionQuestions: Number(document.getElementById("tenantFormSessionCap").value) || 250,
+      maxUsers: Number(document.getElementById("tenantFormMaxUsers").value) || 50,
       allowedTags
     }
   };

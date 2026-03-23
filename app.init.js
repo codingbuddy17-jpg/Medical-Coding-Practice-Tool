@@ -239,6 +239,18 @@ function bindEvents() {
   if (saveTenantBtn) saveTenantBtn.addEventListener("click", saveTenant);
   const clearTenantFormBtn = document.getElementById("clearTenantFormBtn");
   if (clearTenantFormBtn) clearTenantFormBtn.addEventListener("click", clearTenantForm);
+  const verifyInstBtn = document.getElementById("verifyInstituteBtn");
+  if (verifyInstBtn) verifyInstBtn.addEventListener("click", verifyInstitute);
+  const saveInstStudentBtn = document.getElementById("saveInstStudentBtn");
+  if (saveInstStudentBtn) saveInstStudentBtn.addEventListener("click", saveInstStudent);
+  const clearInstStudentBtn = document.getElementById("clearInstStudentBtn");
+  if (clearInstStudentBtn) clearInstStudentBtn.addEventListener("click", clearInstStudentForm);
+  const saveInstCohortBtn = document.getElementById("saveInstCohortBtn");
+  if (saveInstCohortBtn) saveInstCohortBtn.addEventListener("click", saveInstCohort);
+  const clearInstCohortBtn = document.getElementById("clearInstCohortBtn");
+  if (clearInstCohortBtn) clearInstCohortBtn.addEventListener("click", clearInstCohortForm);
+  const refreshInstAnalyticsBtn = document.getElementById("refreshInstAnalyticsBtn");
+  if (refreshInstAnalyticsBtn) refreshInstAnalyticsBtn.addEventListener("click", loadInstAnalytics);
   if (dom.saveAccessConfigBtn) dom.saveAccessConfigBtn.addEventListener("click", saveAccessConfig);
   if (dom.saveLearnerBtn) dom.saveLearnerBtn.addEventListener("click", saveLearnerAccess);
   if (dom.refreshLearnersBtn) dom.refreshLearnersBtn.addEventListener("click", loadLearnerAccessList);

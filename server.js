@@ -400,7 +400,7 @@ function sanitizeTenantSlug(slug) {
   return String(slug || "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
 }
 
-function createOrUpdateTenant({ tenantId, slug, name, trainerKey, adminKey, isActive, settings }) {
+function createOrUpdateTenant({ tenantId, slug, name, contactEmail, adminKey, isActive, settings }) {
   const tenants = readTenants();
   const cleanSlug = sanitizeTenantSlug(slug);
   if (!cleanSlug || cleanSlug === "default") throw new Error("Invalid slug. 'default' is reserved.");
@@ -420,11 +420,14 @@ function createOrUpdateTenant({ tenantId, slug, name, trainerKey, adminKey, isAc
     if (Array.isArray(settings?.allowedTags)) {
       mergedSettings.allowedTags = settings.allowedTags.map((t) => String(t || "").trim().toUpperCase()).filter(Boolean);
     }
+    if (settings?.maxUsers !== undefined) {
+      mergedSettings.maxUsers = Math.max(1, Number(settings.maxUsers || 50));
+    }
     tenants[idx] = {
       ...existing,
       slug: cleanSlug,
       name: String(name || existing.name).trim().slice(0, 120),
-      trainerKey: trainerKey !== undefined ? String(trainerKey || "").trim() : existing.trainerKey,
+      contactEmail: contactEmail !== undefined ? String(contactEmail || "").trim().toLowerCase() : existing.contactEmail,
       adminKey: adminKey !== undefined ? String(adminKey || "").trim() : existing.adminKey,
       isActive: isActive !== undefined ? Boolean(isActive) : existing.isActive,
       settings: mergedSettings,
@@ -439,7 +442,7 @@ function createOrUpdateTenant({ tenantId, slug, name, trainerKey, adminKey, isAc
     id: `tenant_${now}_${Math.random().toString(36).slice(2, 8)}`,
     slug: cleanSlug,
     name: String(name).trim().slice(0, 120),
-    trainerKey: String(trainerKey || "").trim(),
+    contactEmail: String(contactEmail || "").trim().toLowerCase(),
     adminKey: String(adminKey || "").trim(),
     isActive: isActive !== false,
     settings: {
@@ -447,7 +450,8 @@ function createOrUpdateTenant({ tenantId, slug, name, trainerKey, adminKey, isAc
       maxSessionQuestions: Math.max(1, Number(settings?.maxSessionQuestions || 250)),
       allowedTags: Array.isArray(settings?.allowedTags)
         ? settings.allowedTags.map((t) => String(t || "").trim().toUpperCase()).filter(Boolean)
-        : []
+        : [],
+      maxUsers: Math.max(1, Number(settings?.maxUsers || 50))
     },
     createdAt: now,
     updatedAt: now
@@ -455,6 +459,12 @@ function createOrUpdateTenant({ tenantId, slug, name, trainerKey, adminKey, isAc
   tenants.push(newTenant);
   writeTenants(tenants);
   return newTenant;
+}
+
+function resolveInstituteFromKey(key) {
+  if (!key) return null;
+  const k = String(key).trim();
+  return readTenants().find((t) => t.isActive !== false && Boolean(t.adminKey) && t.adminKey === k) || null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -483,7 +493,7 @@ function isMissingLearnerTable(error) {
   return error?.code === "42P01" || msg.includes("learner_access") && msg.includes("does not exist");
 }
 
-async function readAllowedLearnersStore() {
+async function readAllowedLearnersStore(tenantId) {
   if (USE_SUPABASE) {
     const { data, error } = await supabase
       .from("learner_access")
@@ -494,18 +504,31 @@ async function readAllowedLearnersStore() {
       console.error("Learner access read failed from Supabase, using file fallback:", error.message || error);
     }
   }
-  return readAllowedLearners()
+  const allLearners = readAllowedLearners();
+  let filtered;
+  if (tenantId && tenantId !== "default") {
+    filtered = allLearners.filter((item) => item.tenantId === tenantId);
+  } else if (tenantId === "default" || !tenantId) {
+    filtered = allLearners.filter((item) => !item.tenantId || item.tenantId === "default");
+  } else {
+    filtered = allLearners;
+  }
+  return filtered
     .map((item) => ({
       email: normalizeEmail(item.email),
+      name: item.name || "",
+      accessCode: item.accessCode || "",
+      phone: item.phone || "",
       isActive: item.isActive !== false,
       expiresAt: item.expiresAt ? Number(item.expiresAt) : null,
+      tenantId: item.tenantId || null,
       createdAt: Number(item.createdAt || Date.now()),
       updatedAt: Number(item.updatedAt || Date.now())
     }))
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-async function upsertAllowedLearnerStore({ email, isActive, expiresAt }) {
+async function upsertAllowedLearnerStore({ email, name, accessCode, phone, isActive, expiresAt, tenantId }) {
   const normalizedEmail = normalizeEmail(email);
   const now = Date.now();
   const normalizedExpiry = normalizeExpiryTs(expiresAt);
@@ -535,6 +558,10 @@ async function upsertAllowedLearnerStore({ email, isActive, expiresAt }) {
     expiresAt: normalizedExpiry,
     updatedAt: now
   };
+  if (name !== undefined) next.name = String(name || "").trim();
+  if (accessCode !== undefined) next.accessCode = String(accessCode || "").trim();
+  if (phone !== undefined) next.phone = String(phone || "").trim();
+  if (tenantId !== undefined) next.tenantId = tenantId || null;
   if (idx >= 0) {
     learners[idx] = { ...learners[idx], ...next };
   } else {
@@ -833,8 +860,15 @@ async function getLearnerAccessRecord(email) {
   return learners.find((item) => normalizeEmail(item.email) === target) || null;
 }
 
-function listCohortsSummary() {
-  return readCohorts().map((cohort) => ({
+function listCohortsSummary(tenantId) {
+  const allCohorts = readCohorts();
+  let filtered;
+  if (tenantId && tenantId !== "default") {
+    filtered = allCohorts.filter((c) => c.tenantId === tenantId);
+  } else {
+    filtered = allCohorts.filter((c) => !c.tenantId || c.tenantId === "default");
+  }
+  return filtered.map((cohort) => ({
     id: cohort.id,
     name: cohort.name,
     accessCode: cohort.accessCode,
@@ -842,12 +876,13 @@ function listCohortsSummary() {
     expiresAt: cohort.expiresAt ? Number(cohort.expiresAt) : null,
     questionLimit: Number(cohort.questionLimit || 1000000),
     memberCount: Array.isArray(cohort.members) ? cohort.members.length : 0,
+    tenantId: cohort.tenantId || null,
     createdAt: Number(cohort.createdAt || Date.now()),
     updatedAt: Number(cohort.updatedAt || Date.now())
   }));
 }
 
-function createCohort({ name, accessCode, questionLimit, isActive, expiresAt }) {
+function createCohort({ name, accessCode, questionLimit, isActive, expiresAt, tenantId }) {
   const cleanName = sanitizeCohortName(name);
   const cleanCode = sanitizeAccessCode(accessCode);
   const limit = Math.max(1, Number(questionLimit || 1000000));
@@ -866,6 +901,7 @@ function createCohort({ name, accessCode, questionLimit, isActive, expiresAt }) 
     questionLimit: limit,
     isActive: isActive !== false,
     expiresAt: normalizeExpiryTs(expiresAt),
+    tenantId: tenantId || null,
     members: [],
     createdAt: now,
     updatedAt: now
@@ -3219,7 +3255,7 @@ const server = http.createServer(async (req, res) => {
         id: defaultTenant.id,
         slug: defaultTenant.slug,
         name: defaultTenant.name,
-        trainerKey: TRAINER_KEY,
+        contactEmail: "",
         adminKey: ADMIN_KEY,
         isActive: true,
         isDefault: true,
@@ -3241,7 +3277,7 @@ const server = http.createServer(async (req, res) => {
         tenantId: body.tenantId ? String(body.tenantId) : undefined,
         slug: body.slug,
         name: body.name,
-        trainerKey: body.trainerKey,
+        contactEmail: body.contactEmail,
         adminKey: body.adminKey,
         isActive: body.isActive,
         settings: body.settings
@@ -3300,6 +3336,181 @@ const server = http.createServer(async (req, res) => {
     if (actionFilter) events = events.filter((e) => e.action === actionFilter);
     if (since) events = events.filter((e) => e.ts > since);
     return json(res, 200, { events: events.slice(0, limit), total: events.length });
+  }
+
+  // ── Institute Dashboard API ───────────────────────────────────────────────
+
+  function getInstituteKey(req) {
+    const fromHeader = String(req.headers["x-institute-key"] || "").trim();
+    if (fromHeader) return fromHeader;
+    const auth = String(req.headers.authorization || "").trim();
+    if (auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
+    return "";
+  }
+
+  if (url.pathname === "/api/institute/auth" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const key = String(body.key || getInstituteKey(req) || "").trim();
+      const tenant = resolveInstituteFromKey(key);
+      if (!tenant) return json(res, 401, { error: "Invalid institute key" });
+      return json(res, 200, {
+        ok: true,
+        tenantId: tenant.id,
+        slug: tenant.slug,
+        name: tenant.name,
+        settings: tenant.settings || {}
+      });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/institute/info" && req.method === "GET") {
+    const key = getInstituteKey(req);
+    const tenant = resolveInstituteFromKey(key);
+    if (!tenant) return json(res, 401, { error: "Invalid institute key" });
+    const allLearners = readAllowedLearners();
+    const usedSeats = allLearners.filter((l) => l.tenantId === tenant.id).length;
+    return json(res, 200, {
+      name: tenant.name,
+      slug: tenant.slug,
+      contactEmail: tenant.contactEmail || "",
+      settings: tenant.settings || {},
+      usedSeats,
+      maxUsers: (tenant.settings || {}).maxUsers || 50
+    });
+  }
+
+  if (url.pathname === "/api/institute/students" && req.method === "GET") {
+    const key = getInstituteKey(req);
+    const tenant = resolveInstituteFromKey(key);
+    if (!tenant) return json(res, 401, { error: "Invalid institute key" });
+    const students = await readAllowedLearnersStore(tenant.id);
+    return json(res, 200, { students });
+  }
+
+  if (url.pathname === "/api/institute/students" && req.method === "POST") {
+    const key = getInstituteKey(req);
+    const tenant = resolveInstituteFromKey(key);
+    if (!tenant) return json(res, 401, { error: "Invalid institute key" });
+    try {
+      const body = await parseBody(req);
+      const email = normalizeEmail(body.email);
+      if (!email) return json(res, 400, { error: "Email is required" });
+      // Enforce maxUsers cap (only count if adding new)
+      const allLearners = readAllowedLearners();
+      const existing = allLearners.find((l) => normalizeEmail(l.email) === email);
+      if (!existing) {
+        const usedSeats = allLearners.filter((l) => l.tenantId === tenant.id).length;
+        const maxUsers = (tenant.settings || {}).maxUsers || 50;
+        if (usedSeats >= maxUsers) return json(res, 400, { error: `Seat limit reached (${maxUsers} max)` });
+      }
+      const student = await upsertAllowedLearnerStore({
+        email,
+        name: body.name,
+        accessCode: body.accessCode,
+        phone: body.phone,
+        isActive: body.isActive !== false,
+        expiresAt: body.expiresAt,
+        tenantId: tenant.id
+      });
+      return json(res, 200, { student });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/institute/students" && req.method === "DELETE") {
+    const key = getInstituteKey(req);
+    const tenant = resolveInstituteFromKey(key);
+    if (!tenant) return json(res, 401, { error: "Invalid institute key" });
+    try {
+      const body = await parseBody(req);
+      const email = normalizeEmail(body.email);
+      if (!email) return json(res, 400, { error: "Email is required" });
+      // Only allow removal of learners belonging to this tenant
+      const allLearners = readAllowedLearners();
+      const learner = allLearners.find((l) => normalizeEmail(l.email) === email);
+      if (learner && learner.tenantId !== tenant.id) return json(res, 403, { error: "Forbidden" });
+      const removed = await removeAllowedLearnerStore(email);
+      return json(res, 200, { removed });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/institute/cohorts" && req.method === "GET") {
+    const key = getInstituteKey(req);
+    const tenant = resolveInstituteFromKey(key);
+    if (!tenant) return json(res, 401, { error: "Invalid institute key" });
+    return json(res, 200, { cohorts: listCohortsSummary(tenant.id) });
+  }
+
+  if (url.pathname === "/api/institute/cohorts" && req.method === "POST") {
+    const key = getInstituteKey(req);
+    const tenant = resolveInstituteFromKey(key);
+    if (!tenant) return json(res, 401, { error: "Invalid institute key" });
+    try {
+      const body = await parseBody(req);
+      let cohort;
+      if (body.cohortId) {
+        cohort = updateCohort({
+          cohortId: String(body.cohortId),
+          name: body.name,
+          accessCode: body.accessCode,
+          questionLimit: body.questionLimit,
+          isActive: body.isActive,
+          expiresAt: body.expiresAt
+        });
+      } else {
+        cohort = createCohort({
+          name: body.name,
+          accessCode: body.accessCode,
+          questionLimit: body.questionLimit,
+          isActive: body.isActive,
+          expiresAt: body.expiresAt,
+          tenantId: tenant.id
+        });
+      }
+      return json(res, 200, { cohort });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/institute/analytics" && req.method === "GET") {
+    const key = getInstituteKey(req);
+    const tenant = resolveInstituteFromKey(key);
+    if (!tenant) return json(res, 401, { error: "Invalid institute key" });
+    try {
+      const sessions = readSessions().filter((s) => s.tenantId === tenant.id);
+      const allLearners = readAllowedLearners().filter((l) => l.tenantId === tenant.id);
+      const byEmail = {};
+      for (const s of sessions) {
+        const email = String(s.userEmail || "").toLowerCase();
+        if (!email) continue;
+        if (!byEmail[email]) {
+          byEmail[email] = { email, sessionCount: 0, attempted: 0, correct: 0, lastActive: 0 };
+        }
+        byEmail[email].sessionCount += 1;
+        byEmail[email].attempted += Number(s.totalAnswered || s.attempted || 0);
+        byEmail[email].correct += Number(s.correctCount || s.correct || 0);
+        const ts = Number(s.endedAt || s.startedAt || s.createdAt || 0);
+        if (ts > byEmail[email].lastActive) byEmail[email].lastActive = ts;
+      }
+      const analytics = Object.values(byEmail).map((row) => {
+        const learner = allLearners.find((l) => normalizeEmail(l.email) === row.email);
+        return {
+          ...row,
+          name: learner ? (learner.name || "") : "",
+          accuracy: row.attempted > 0 ? Math.round((row.correct / row.attempted) * 100) : 0
+        };
+      });
+      return json(res, 200, { analytics });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
   }
 
   return serveFile(url.pathname, res);

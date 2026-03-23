@@ -1163,7 +1163,7 @@
                 <div id="tenantMgrTools" class="hidden">
                   <div class="table-wrap" style="margin-bottom:1rem">
                     <table class="data-table">
-                      <thead><tr><th>Name</th><th>Slug</th><th>Status</th><th>Trainer Key</th><th>Allowed Modules</th><th>Actions</th></tr></thead>
+                      <thead><tr><th>Name</th><th>Slug</th><th>Status</th><th>Contact Email</th><th>Allowed Modules</th><th>Actions</th></tr></thead>
                       <tbody id="tenantTableBody"><tr><td colspan="6" style="text-align:center;opacity:.6">No tenants loaded.</td></tr></tbody>
                     </table>
                   </div>
@@ -1181,12 +1181,16 @@
                         <input id="tenantFormSlug" type="text" placeholder="acme-school" />
                       </label>
                       <label>
-                        Trainer Key
-                        <input id="tenantFormTrainerKey" type="text" placeholder="Leave blank for auto-generate tip" />
+                        Contact Email
+                        <input id="tenantFormContactEmail" type="email" placeholder="admin@theirschool.com" />
                       </label>
                       <label>
                         Admin Key
                         <input id="tenantFormAdminKey" type="text" placeholder="Leave blank for auto-generate tip" />
+                      </label>
+                      <label>
+                        Max Users (seat cap)
+                        <input id="tenantFormMaxUsers" type="number" min="1" step="1" placeholder="50" />
                       </label>
                       <label>
                         Trial Question Limit
@@ -1232,6 +1236,100 @@
               </details>
             </div>
 
+          </section>
+
+          <div class="section-divider section-divider-tight"><span>Institute Access</span></div>
+          <section class="panel" id="instituteAccessPanel">
+            <h3>Institute Login</h3>
+            <p class="status">Institutes: enter your institute key to access your dashboard.</p>
+            <div class="auth-grid">
+              <label>
+                Institute Key
+                <input id="instituteKeyInput" type="password" placeholder="Enter your institute key" />
+              </label>
+              <div class="panel-actions">
+                <button id="verifyInstituteBtn" class="ghost-btn" type="button">Login</button>
+              </div>
+            </div>
+            <p id="instituteAuthStatus" class="status" aria-live="polite"></p>
+
+            <div id="instituteDashboard" class="hidden">
+              <!-- Header bar -->
+              <div class="institute-header">
+                <div>
+                  <strong id="instituteNameDisplay"></strong>
+                  <span id="instituteSeatUsage" class="institute-seat-badge"></span>
+                </div>
+                <div id="instituteModules" class="institute-modules"></div>
+              </div>
+
+              <!-- Quick nav -->
+              <div class="admin-quick-actions" style="margin:.75rem 0">
+                <a class="ghost-btn" href="#instituteStudentsSection">Students</a>
+                <a class="ghost-btn" href="#instituteCohortsSection">Cohorts</a>
+                <a class="ghost-btn" href="#instituteAnalyticsSection">Analytics</a>
+              </div>
+
+              <!-- Students -->
+              <details id="instituteStudentsSection" class="details-panel admin-section" open>
+                <summary>Student Management</summary>
+                <div class="auth-grid">
+                  <label>Email * <input id="instStudentEmail" type="email" placeholder="student@email.com" /></label>
+                  <label>Name <input id="instStudentName" type="text" placeholder="Full name" /></label>
+                  <label>Access Code <input id="instStudentCode" type="text" placeholder="their login code" /></label>
+                  <label>Active <select id="instStudentActive"><option value="true">Yes</option><option value="false">No</option></select></label>
+                  <label>Expires <input id="instStudentExpiry" type="date" /></label>
+                </div>
+                <div class="panel-actions">
+                  <button id="saveInstStudentBtn" class="primary-btn" type="button">Save Student</button>
+                  <button id="clearInstStudentBtn" class="ghost-btn" type="button">Clear</button>
+                </div>
+                <p id="instStudentStatus" class="status"></p>
+                <div class="table-wrap">
+                  <table class="data-table">
+                    <thead><tr><th>Email</th><th>Name</th><th>Access Code</th><th>Active</th><th>Expires</th><th>Actions</th></tr></thead>
+                    <tbody id="instStudentBody"><tr><td colspan="6" style="text-align:center;opacity:.6">No students loaded.</td></tr></tbody>
+                  </table>
+                </div>
+              </details>
+
+              <!-- Cohorts -->
+              <details id="instituteCohortsSection" class="details-panel admin-section">
+                <summary>Cohort Management</summary>
+                <div class="auth-grid">
+                  <input type="hidden" id="instCohortId" />
+                  <label>Name * <input id="instCohortName" type="text" placeholder="e.g. Batch 2024-A" /></label>
+                  <label>Access Code * <input id="instCohortCode" type="text" placeholder="e.g. BATCH2024A" /></label>
+                  <label>Question Limit <input id="instCohortLimit" type="number" min="1" placeholder="1000000" /></label>
+                  <label>Active <select id="instCohortActive"><option value="true">Yes</option><option value="false">No</option></select></label>
+                  <label>Expires <input id="instCohortExpiry" type="date" /></label>
+                </div>
+                <div class="panel-actions">
+                  <button id="saveInstCohortBtn" class="primary-btn" type="button">Save Cohort</button>
+                  <button id="clearInstCohortBtn" class="ghost-btn" type="button">Clear</button>
+                </div>
+                <p id="instCohortStatus" class="status"></p>
+                <div class="table-wrap">
+                  <table class="data-table">
+                    <thead><tr><th>Name</th><th>Code</th><th>Limit</th><th>Active</th><th>Actions</th></tr></thead>
+                    <tbody id="instCohortBody"><tr><td colspan="5" style="text-align:center;opacity:.6">No cohorts loaded.</td></tr></tbody>
+                  </table>
+                </div>
+              </details>
+
+              <!-- Analytics -->
+              <details id="instituteAnalyticsSection" class="details-panel admin-section">
+                <summary>Student Analytics</summary>
+                <button id="refreshInstAnalyticsBtn" class="ghost-btn" type="button" style="margin-bottom:.5rem">Refresh</button>
+                <p id="instAnalyticsStatus" class="status"></p>
+                <div class="table-wrap">
+                  <table class="data-table">
+                    <thead><tr><th>Email</th><th>Name</th><th>Sessions</th><th>Attempted</th><th>Accuracy</th><th>Last Active</th></tr></thead>
+                    <tbody id="instAnalyticsBody"><tr><td colspan="6" style="text-align:center;opacity:.6">Click Refresh to load analytics.</td></tr></tbody>
+                  </table>
+                </div>
+              </details>
+            </div>
           </section>
         </div> <!-- Close subview-tools -->
       </section> <!-- Close trainerZone -->
@@ -1280,6 +1378,7 @@
   <script src="app.answer.js"></script>
   <script src="app.trainer.js"></script>
   <script src="app.admin.js"></script>
+  <script src="app.institute.js"></script>
   <script src="app.init.js"></script>
   <script src="app.onboarding.js"></script>
 </body>
