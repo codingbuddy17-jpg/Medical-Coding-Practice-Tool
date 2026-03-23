@@ -1617,7 +1617,7 @@ function sanitizeQuestionCard(card) {
   };
 }
 
-async function storageImportQuestions(cards, meta = {}, tenantId = "default") {
+async function storageImportQuestions(cards, meta = {}) {
   const uploadedBy = String(meta.uploadedBy || "trainer");
   const reviewRows = Array.isArray(meta.reviewRows) ? meta.reviewRows : [];
   const batchSummary = meta.batchSummary && typeof meta.batchSummary === "object" ? meta.batchSummary : null;
@@ -1647,7 +1647,6 @@ async function storageImportQuestions(cards, meta = {}, tenantId = "default") {
       question: c.question,
       answer: c.answer,
       is_active: true,
-      tenantId,
       created_at: new Date(now).toISOString()
     }));
     writeQuestions([...existing, ...newRows]);
@@ -1704,8 +1703,7 @@ async function storageImportQuestions(cards, meta = {}, tenantId = "default") {
     tag: c.tag,
     question: c.question,
     answer: c.answer,
-    is_active: true,
-    tenant_id: tenantId === "default" ? null : tenantId
+    is_active: true
   }));
 
   const { data: insertedRows, error: insertErr } = await supabase.from("questions").insert(payload).select("id");
@@ -2107,13 +2105,11 @@ async function storageRollbackImportBatch(batchId) {
   return { batchId: cleanBatchId, affected: ids.length };
 }
 
-async function storageListQuestions(tag, tenantId = "default") {
+// Questions are shared across all tenants — central bank maintained by admin.
+// Tenant isolation applies to sessions, cohorts, and analytics only.
+async function storageListQuestions(tag) {
   if (!USE_SUPABASE) {
-    const questions = readQuestions().filter((q) => {
-      if (q.is_active === false) return false;
-      const qTenant = q.tenantId || "default";
-      return qTenant === tenantId;
-    });
+    const questions = readQuestions().filter((q) => q.is_active !== false);
     return tag ? questions.filter((q) => q.tag === tag) : questions;
   }
 
@@ -2128,11 +2124,6 @@ async function storageListQuestions(tag, tenantId = "default") {
       .order("created_at", { ascending: true })
       .range(from, from + batchSize - 1);
     if (tag) query = query.eq("tag", tag);
-    if (tenantId === "default") {
-      query = query.or("tenant_id.is.null,tenant_id.eq.default");
-    } else {
-      query = query.eq("tenant_id", tenantId);
-    }
     const { data, error } = await query;
     if (error) throw error;
     const rows = data || [];
@@ -2740,9 +2731,8 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === "/api/questions" && req.method === "GET") {
     try {
-      const tenant = resolveTenant(req);
       const tag = url.searchParams.get("tag");
-      const questions = await storageListQuestions(tag || "", tenant.id);
+      const questions = await storageListQuestions(tag || "");
       return json(res, 200, { questions });
     } catch (err) {
       return json(res, 400, { error: err.message });
@@ -2831,7 +2821,7 @@ const server = http.createServer(async (req, res) => {
         batchSummary: body.batchSummary && typeof body.batchSummary === "object" ? body.batchSummary : null,
         sourceName: String(body.sourceName || ""),
         notes: String(body.notes || "")
-      }, tenant.id);
+      });
 
       appendAuditEvent({
         action: "questions.import",
