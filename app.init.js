@@ -432,8 +432,21 @@ async function loadTenantInfo() {
 }
 
 async function init() {
-  // Read tenant slug from URL: ?tenant=acme-school
   const urlParams = new URLSearchParams(window.location.search);
+
+  // ?mode=institute → show only institute login, hide learner UI
+  if (urlParams.get("mode") === "institute") {
+    document.getElementById("preSessionLanding")?.classList.add("hidden");
+    document.getElementById("brandIntro")?.classList.add("hidden");
+    document.getElementById("authPanel")?.classList.add("hidden");
+    document.getElementById("instituteLoginPanel")?.classList.remove("hidden");
+    document.getElementById("instituteKeyInput")?.focus();
+    loadLocal();
+    bindEvents();
+    return; // skip learner init entirely
+  }
+
+  // Read tenant slug from URL: ?tenant=acme-school
   const tenantParam = String(urlParams.get("tenant") || "").trim().toLowerCase();
   if (tenantParam && tenantParam !== "default") {
     state.tenantSlug = tenantParam;
