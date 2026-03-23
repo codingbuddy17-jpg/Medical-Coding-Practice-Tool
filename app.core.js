@@ -72,6 +72,8 @@ const state = {
   trainerKey: "",
   trainerKeyVerified: false,
   adminKey: "",
+  tenantSlug: "default",
+  tenantName: "",
   selectedTag: "ALL",
   weakDrillEnabled: false,
   adaptiveEnabled: false,
