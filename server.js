@@ -412,6 +412,12 @@ function createOrUpdateTenant({ tenantId, slug, name, trainerKey, adminKey, isAc
     if (cleanSlug !== existing.slug && tenants.some((t) => t.slug === cleanSlug)) {
       throw new Error(`Slug '${cleanSlug}' is already in use.`);
     }
+    const mergedSettings = settings && typeof settings === "object"
+      ? { ...existing.settings, ...settings }
+      : existing.settings;
+    if (Array.isArray(settings?.allowedTags)) {
+      mergedSettings.allowedTags = settings.allowedTags.map((t) => String(t || "").trim().toUpperCase()).filter(Boolean);
+    }
     tenants[idx] = {
       ...existing,
       slug: cleanSlug,
@@ -419,9 +425,7 @@ function createOrUpdateTenant({ tenantId, slug, name, trainerKey, adminKey, isAc
       trainerKey: trainerKey !== undefined ? String(trainerKey || "").trim() : existing.trainerKey,
       adminKey: adminKey !== undefined ? String(adminKey || "").trim() : existing.adminKey,
       isActive: isActive !== undefined ? Boolean(isActive) : existing.isActive,
-      settings: settings && typeof settings === "object"
-        ? { ...existing.settings, ...settings }
-        : existing.settings,
+      settings: mergedSettings,
       updatedAt: now
     };
     writeTenants(tenants);
@@ -438,7 +442,10 @@ function createOrUpdateTenant({ tenantId, slug, name, trainerKey, adminKey, isAc
     isActive: isActive !== false,
     settings: {
       trialQuestionLimit: Math.max(1, Number(settings?.trialQuestionLimit || 20)),
-      maxSessionQuestions: Math.max(1, Number(settings?.maxSessionQuestions || 250))
+      maxSessionQuestions: Math.max(1, Number(settings?.maxSessionQuestions || 250)),
+      allowedTags: Array.isArray(settings?.allowedTags)
+        ? settings.allowedTags.map((t) => String(t || "").trim().toUpperCase()).filter(Boolean)
+        : []
     },
     createdAt: now,
     updatedAt: now
@@ -3196,8 +3203,18 @@ const server = http.createServer(async (req, res) => {
     if (!isSuperAdminAuthorized(key)) return json(res, 403, { error: "Forbidden" });
     const defaultTenant = getDefaultTenant();
     const tenants = [
-      { id: defaultTenant.id, slug: defaultTenant.slug, name: defaultTenant.name, isActive: true, isDefault: true, createdAt: 0 },
-      ...readTenants().map((t) => ({ id: t.id, slug: t.slug, name: t.name, isActive: t.isActive !== false, isDefault: false, createdAt: t.createdAt || 0 }))
+      {
+        id: defaultTenant.id,
+        slug: defaultTenant.slug,
+        name: defaultTenant.name,
+        trainerKey: TRAINER_KEY,
+        adminKey: ADMIN_KEY,
+        isActive: true,
+        isDefault: true,
+        settings: defaultTenant.settings || {},
+        createdAt: 0
+      },
+      ...readTenants()
     ];
     return json(res, 200, { tenants });
   }

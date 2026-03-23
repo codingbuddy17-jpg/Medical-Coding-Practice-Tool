@@ -120,7 +120,11 @@ function currentCard() {
 }
 
 function renderCategoryButtons() {
-  dom.categoryButtons.innerHTML = CATEGORY_OPTIONS.map((item) => {
+  const allowed = state.tenantAllowedTags;
+  const visible = allowed && allowed.length > 0
+    ? CATEGORY_OPTIONS.filter((item) => item.key === "ALL" || allowed.includes(item.key))
+    : CATEGORY_OPTIONS;
+  dom.categoryButtons.innerHTML = visible.map((item) => {
     const activeClass = item.key === state.selectedTag ? "active" : "";
     return `<button type="button" class="tag-btn ${activeClass}" data-tag="${escapeHtml(item.key)}">${escapeHtml(item.label)}</button>`;
   }).join("");

@@ -332,6 +332,119 @@ async function updateSelectedCohortFromForm() {
   }
 }
 
+// ── Tenant Management ────────────────────────────────────────────────────────
+
+let _tenantList = [];
+
+function renderTenantTable(tenants) {
+  _tenantList = Array.isArray(tenants) ? tenants : [];
+  const tbody = document.getElementById("tenantTableBody");
+  if (!tbody) return;
+  if (!_tenantList.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;opacity:.6">No tenants found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _tenantList.map((t) => {
+    const tags = t.settings?.allowedTags;
+    const tagStr = Array.isArray(tags) && tags.length ? tags.join(", ") : "All";
+    const statusBadge = t.isActive !== false
+      ? '<span style="color:#10b981;font-weight:600">Active</span>'
+      : '<span style="color:#ef4444;font-weight:600">Inactive</span>';
+    return `<tr>
+      <td>${escapeHtml(t.name)}</td>
+      <td><code>${escapeHtml(t.slug)}</code></td>
+      <td>${statusBadge}</td>
+      <td><code style="font-size:.78rem">${t.trainerKey ? escapeHtml(t.trainerKey.slice(0, 6) + "…") : "—"}</code></td>
+      <td style="font-size:.78rem">${escapeHtml(tagStr)}</td>
+      <td>
+        <button class="ghost-btn" type="button" onclick="populateTenantForm(${escapeHtml(JSON.stringify(t.id))})">Edit</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function populateTenantForm(tenantId) {
+  const t = _tenantList.find((x) => x.id === tenantId);
+  if (!t) return;
+  document.getElementById("tenantEditId").value = t.id;
+  document.getElementById("tenantFormName").value = t.name || "";
+  document.getElementById("tenantFormSlug").value = t.slug || "";
+  document.getElementById("tenantFormTrainerKey").value = t.trainerKey || "";
+  document.getElementById("tenantFormAdminKey").value = t.adminKey || "";
+  document.getElementById("tenantFormTrialLimit").value = t.settings?.trialQuestionLimit || 20;
+  document.getElementById("tenantFormSessionCap").value = t.settings?.maxSessionQuestions || 250;
+  document.getElementById("tenantFormActive").value = t.isActive !== false ? "true" : "false";
+  document.getElementById("tenantFormTitle").textContent = `Edit: ${t.name}`;
+  const allowed = Array.isArray(t.settings?.allowedTags) ? t.settings.allowedTags : [];
+  document.querySelectorAll("#tenantTagCheckboxes input[type=checkbox]").forEach((cb) => {
+    cb.checked = allowed.includes(cb.value);
+  });
+  document.getElementById("tenantFormPanel").open = true;
+  document.getElementById("tenantFormPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function clearTenantForm() {
+  document.getElementById("tenantEditId").value = "";
+  document.getElementById("tenantFormName").value = "";
+  document.getElementById("tenantFormSlug").value = "";
+  document.getElementById("tenantFormTrainerKey").value = "";
+  document.getElementById("tenantFormAdminKey").value = "";
+  document.getElementById("tenantFormTrialLimit").value = "20";
+  document.getElementById("tenantFormSessionCap").value = "250";
+  document.getElementById("tenantFormActive").value = "true";
+  document.getElementById("tenantFormTitle").textContent = "Create New Tenant";
+  document.querySelectorAll("#tenantTagCheckboxes input[type=checkbox]").forEach((cb) => { cb.checked = false; });
+  setStatus(document.getElementById("tenantFormStatus"), "", "");
+}
+
+async function loadTenants() {
+  const key = document.getElementById("superAdminKeyInput")?.value.trim();
+  const statusEl = document.getElementById("tenantMgrStatus");
+  const toolsEl = document.getElementById("tenantMgrTools");
+  if (!key) { setStatus(statusEl, "Enter super admin key first.", "error"); return; }
+  try {
+    setStatus(statusEl, "Loading tenants…", "");
+    const data = await apiRequest("/api/superadmin/tenants", "GET", null, null, { "X-Super-Admin-Key": key });
+    renderTenantTable(data.tenants);
+    toolsEl.classList.remove("hidden");
+    setStatus(statusEl, `${(data.tenants || []).length} tenant(s) loaded.`, "success");
+  } catch (err) {
+    setStatus(statusEl, `Error: ${err.message}`, "error");
+  }
+}
+
+async function saveTenant() {
+  const key = document.getElementById("superAdminKeyInput")?.value.trim();
+  const statusEl = document.getElementById("tenantFormStatus");
+  if (!key) { setStatus(statusEl, "Enter super admin key first.", "error"); return; }
+  const tenantId = document.getElementById("tenantEditId").value.trim() || undefined;
+  const allowedTags = Array.from(
+    document.querySelectorAll("#tenantTagCheckboxes input[type=checkbox]:checked")
+  ).map((cb) => cb.value);
+  const payload = {
+    tenantId,
+    name: document.getElementById("tenantFormName").value.trim(),
+    slug: document.getElementById("tenantFormSlug").value.trim(),
+    trainerKey: document.getElementById("tenantFormTrainerKey").value.trim() || undefined,
+    adminKey: document.getElementById("tenantFormAdminKey").value.trim() || undefined,
+    isActive: document.getElementById("tenantFormActive").value !== "false",
+    settings: {
+      trialQuestionLimit: Number(document.getElementById("tenantFormTrialLimit").value) || 20,
+      maxSessionQuestions: Number(document.getElementById("tenantFormSessionCap").value) || 250,
+      allowedTags
+    }
+  };
+  try {
+    setStatus(statusEl, "Saving…", "");
+    const data = await apiRequest("/api/superadmin/tenants", "POST", payload, null, { "X-Super-Admin-Key": key });
+    setStatus(statusEl, `Tenant "${data.tenant?.name}" saved.`, "success");
+    clearTenantForm();
+    await loadTenants();
+  } catch (err) {
+    setStatus(statusEl, `Error: ${err.message}`, "error");
+  }
+}
+
 async function enrollSelectedCohortMember() {
   if (!state.adminPanel.verified || !state.adminKey) {
     setStatus(dom.enrollStatus, "Verify admin key first.", "error");
