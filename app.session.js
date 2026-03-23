@@ -340,6 +340,7 @@ async function startSession() {
   state.session.id = uid("session");
   state.session.startedAt = Date.now();
   state.session.isActive = true;
+  updatePreSessionLandingUI(); // hide auth/landing panels immediately on login
   const roleLimit = Math.max(
     1,
     Number(role === "trial" ? state.accessConfig.trialQuestionLimit : verifiedAccess.questionLimit || 1000000)

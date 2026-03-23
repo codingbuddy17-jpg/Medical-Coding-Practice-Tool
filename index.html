@@ -141,7 +141,7 @@
       <p id="sessionStatus" class="status" aria-live="polite"></p>
     </section>
 
-    <section class="panel institute-login-panel" id="instituteLoginPanel">
+    <section class="panel institute-login-panel hidden" id="instituteLoginPanel">
       <h2>Institute Login</h2>
       <p class="status">Institute admins: enter your key to access your dashboard.</p>
       <div class="auth-grid">
@@ -1273,6 +1273,13 @@
                         Slug * <span class="helper" style="display:inline">(URL-safe, e.g. acme-school)</span>
                         <input id="tenantFormSlug" type="text" placeholder="acme-school" />
                       </label>
+                      <div id="tenantPortalUrlWrap" class="hidden" style="grid-column:1/-1">
+                        <label style="display:block;margin-bottom:.35rem;font-size:.85rem;font-weight:600">Institute Portal URL <span class="helper" style="display:inline;font-weight:400">(share this with the institute admin)</span></label>
+                        <div style="display:flex;gap:.5rem;align-items:center">
+                          <input id="tenantPortalUrlDisplay" type="text" readonly style="flex:1;font-size:.8rem;background:var(--card-bg);cursor:text" />
+                          <button type="button" class="ghost-btn" id="copyTenantUrlBtn" style="white-space:nowrap;flex-shrink:0">Copy URL</button>
+                        </div>
+                      </div>
                       <label>
                         Contact Email
                         <input id="tenantFormContactEmail" type="email" placeholder="admin@theirschool.com" />
