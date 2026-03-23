@@ -350,14 +350,17 @@ function renderTenantTable(tenants) {
     const statusBadge = t.isActive !== false
       ? '<span style="color:#10b981;font-weight:600">Active</span>'
       : '<span style="color:#ef4444;font-weight:600">Inactive</span>';
+    const portalUrl = `${window.location.origin}/app?tenant=${encodeURIComponent(t.slug)}&mode=institute`;
+    const safeUrl = portalUrl.replace(/'/g, "%27");
     return `<tr>
       <td>${escapeHtml(t.name)}</td>
       <td><code>${escapeHtml(t.slug)}</code></td>
       <td>${statusBadge}</td>
       <td style="font-size:.78rem">${t.contactEmail ? escapeHtml(t.contactEmail) : "—"}</td>
       <td style="font-size:.78rem">${escapeHtml(tagStr)}</td>
-      <td>
+      <td style="white-space:nowrap">
         <button class="ghost-btn" type="button" onclick="populateTenantForm(${escapeHtml(JSON.stringify(t.id))})">Edit</button>
+        <button class="ghost-btn" type="button" style="font-size:.78rem" onclick="navigator.clipboard.writeText('${safeUrl}').then(()=>{this.textContent='Copied!';setTimeout(()=>{this.textContent='Copy URL'},1500)})">Copy URL</button>
       </td>
     </tr>`;
   }).join("");
@@ -380,6 +383,20 @@ function populateTenantForm(tenantId) {
   document.querySelectorAll("#tenantTagCheckboxes input[type=checkbox]").forEach((cb) => {
     cb.checked = allowed.includes(cb.value);
   });
+  const portalUrl = `${window.location.origin}/app?tenant=${encodeURIComponent(t.slug)}&mode=institute`;
+  const urlWrap = document.getElementById("tenantPortalUrlWrap");
+  const urlDisplay = document.getElementById("tenantPortalUrlDisplay");
+  const copyBtn = document.getElementById("copyTenantUrlBtn");
+  if (urlWrap && urlDisplay) {
+    urlDisplay.value = portalUrl;
+    urlWrap.classList.remove("hidden");
+    if (copyBtn) copyBtn.onclick = () => {
+      navigator.clipboard.writeText(portalUrl).then(() => {
+        copyBtn.textContent = "Copied!";
+        setTimeout(() => { copyBtn.textContent = "Copy URL"; }, 1500);
+      });
+    };
+  }
   document.getElementById("tenantFormPanel").open = true;
   document.getElementById("tenantFormPanel").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -396,6 +413,9 @@ function clearTenantForm() {
   document.getElementById("tenantFormActive").value = "true";
   document.getElementById("tenantFormTitle").textContent = "Create New Tenant";
   document.querySelectorAll("#tenantTagCheckboxes input[type=checkbox]").forEach((cb) => { cb.checked = false; });
+  const urlWrap = document.getElementById("tenantPortalUrlWrap");
+  const urlDisplay = document.getElementById("tenantPortalUrlDisplay");
+  if (urlWrap && urlDisplay) { urlDisplay.value = ""; urlWrap.classList.add("hidden"); }
   setStatus(document.getElementById("tenantFormStatus"), "", "");
 }
 
