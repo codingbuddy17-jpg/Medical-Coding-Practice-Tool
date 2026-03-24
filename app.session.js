@@ -370,6 +370,7 @@ async function startSession() {
       authEmail: role === "trial" || role === "trainee" ? (state.auth.googleUser?.email || "") : ""
     });
     state.session.id = session.id || state.session.id;
+    saveSessionState();
     const cohortInfo = state.session.cohortName ? ` Cohort: ${state.session.cohortName}.` : "";
     setStatus(dom.sessionStatus, `Session started for ${userName}.${cohortInfo}`, "success");
   } catch (err) {
@@ -422,6 +423,7 @@ async function endSession() {
   }
 
   state.session.isActive = false;
+  clearSessionState();
   updateSessionIdentityLock();
   updatePreSessionLandingUI();
   setStatus(dom.sessionStatus, `Session ended. Score: ${summary.score}%`, "success");

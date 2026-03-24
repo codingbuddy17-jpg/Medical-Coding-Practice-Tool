@@ -673,22 +673,45 @@ function removeResource(index) {
   setStatus(dom.resourceStatus, "Resource removed.", "success");
 }
 
-async function loadSessions() {
+let _sessionPollTimer = null;
+
+function startSessionPoll() {
+  if (_sessionPollTimer) return;
+  _sessionPollTimer = setInterval(() => {
+    if (state.role === "trainer" && state.trainerKey) loadSessions(true);
+  }, 60000);
+}
+
+function stopSessionPoll() {
+  if (_sessionPollTimer) { clearInterval(_sessionPollTimer); _sessionPollTimer = null; }
+}
+
+async function loadSessions(silent = false) {
   if (state.role !== "trainer") return;
 
   const trainerKey = state.trainerKey;
   if (!trainerKey) {
-    setStatus(dom.sessionLoadStatus, "Enter trainer key.", "error");
+    if (!silent) setStatus(dom.sessionLoadStatus, "Enter trainer key.", "error");
     return;
   }
   try {
+    const prevCount = state.sessionConsole.all.length;
     const data = await apiRequest(`/api/sessions`, "GET", null, trainerKey);
     state.sessionConsole.all = Array.isArray(data.sessions) ? data.sessions : [];
     renderSessionConsoleTable();
-    setStatus(dom.sessionLoadStatus, `Loaded ${state.sessionConsole.all.length} sessions.`, "success");
-    if (dom.sessionConsoleSummary) dom.sessionConsoleSummary.textContent = state.sessionConsole.all.length > 0 ? String(state.sessionConsole.all.length) : "";
+    const total = state.sessionConsole.all.length;
+    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const lastRefreshedEl = document.getElementById("sessionLastRefreshed");
+    if (lastRefreshedEl) lastRefreshedEl.textContent = `Updated ${now}`;
+    if (silent) {
+      const diff = total - prevCount;
+      if (diff > 0) setStatus(dom.sessionLoadStatus, `${diff} new session(s) detected — ${now}`, "success");
+    } else {
+      setStatus(dom.sessionLoadStatus, `Loaded ${total} sessions.`, "success");
+    }
+    if (dom.sessionConsoleSummary) dom.sessionConsoleSummary.textContent = total > 0 ? String(total) : "";
   } catch (err) {
-    setStatus(dom.sessionLoadStatus, `Could not load sessions: ${err.message}`, "error");
+    if (!silent) setStatus(dom.sessionLoadStatus, `Could not load sessions: ${err.message}`, "error");
     if (dom.sessionConsoleSummary) dom.sessionConsoleSummary.textContent = "";
   }
 }
