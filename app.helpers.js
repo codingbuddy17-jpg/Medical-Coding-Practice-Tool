@@ -319,6 +319,56 @@ function hydrateCards(cards) {
   });
 }
 
+const SESSION_SNAP_KEY = "pb_session_snap";
+
+function saveSessionState() {
+  try {
+    sessionStorage.setItem(SESSION_SNAP_KEY, JSON.stringify({
+      userName: state.userName,
+      userEmail: state.userEmail,
+      userPhone: state.userPhone,
+      role: state.role,
+      trainerKey: state.trainerKey || "",
+      adminKey: state.adminKey || "",
+      trainerKeyVerified: state.trainerKeyVerified,
+      sessionId: state.session.id,
+      sessionStartedAt: state.session.startedAt,
+      questionLimit: state.session.questionLimit,
+      cohortId: state.session.cohortId || "",
+      cohortName: state.session.cohortName || "",
+      shuffleSeed: state.session.shuffleSeed || ""
+    }));
+  } catch {}
+}
+
+function clearSessionState() {
+  try { sessionStorage.removeItem(SESSION_SNAP_KEY); } catch {}
+}
+
+function loadSessionState() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_SNAP_KEY);
+    if (!raw) return false;
+    const snap = JSON.parse(raw);
+    if (!snap.sessionId || !snap.role) return false;
+    state.userName = snap.userName || "";
+    state.userEmail = snap.userEmail || "";
+    state.userPhone = snap.userPhone || "";
+    state.role = snap.role;
+    state.trainerKey = snap.trainerKey || "";
+    state.adminKey = snap.adminKey || "";
+    state.trainerKeyVerified = Boolean(snap.trainerKeyVerified);
+    state.session.id = snap.sessionId;
+    state.session.startedAt = snap.sessionStartedAt || Date.now();
+    state.session.isActive = true;
+    state.session.questionLimit = snap.questionLimit || 1000000;
+    state.session.cohortId = snap.cohortId || "";
+    state.session.cohortName = snap.cohortName || "";
+    state.session.shuffleSeed = snap.shuffleSeed || snap.sessionId;
+    return true;
+  } catch { return false; }
+}
+
 function saveLocal() {
   const payload = {
     role: state.role,

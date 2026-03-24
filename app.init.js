@@ -456,16 +456,19 @@ async function init() {
   bindEvents(); // Bind listeners immediately so buttons work even if data loads slowly
 
   state.session.isActive = false;
-  state.session.isActive = false;
   state.trainerKeyVerified = false;
   await loadTenantInfo();
   await loadPublicAccessConfig();
+
+  // Restore session from sessionStorage if page was refreshed mid-session
+  const sessionRestored = loadSessionState();
+
   dom.userName.value = state.userName;
   dom.userEmail.value = state.userEmail;
   dom.userPhone.value = state.userPhone;
   dom.roleSelect.value = state.role;
   dom.traineeCode.value = "";
-  dom.trainerKey.value = "";
+  dom.trainerKey.value = sessionRestored ? state.trainerKey : "";
   dom.adminKeyInput.value = "";
   dom.adminTraineeActive.value = "true";
   dom.adminTraineeExpiry.value = "";
@@ -510,6 +513,15 @@ async function init() {
   await loadBlueprintTemplates();
   await loadAssignedBlueprintForSession();
   await loadDeckFromCloud();
+
+  // If a session was restored from sessionStorage, show the post-login UI
+  if (sessionRestored) {
+    showNavigation();
+    if (state.role === "trainer") {
+      await loadSessions();
+      await loadFlagQueue();
+    }
+  }
   renderCard();
   setAwaitingNext(false);
   renderCard();
@@ -641,6 +653,9 @@ function handleMentorSubTab(subTab) {
     else btn.classList.remove("active");
   });
 
+  // Stop session poll when leaving users tab
+  stopSessionPoll();
+
   // Hide all sub-views
   document.getElementById("subview-users").classList.add("hidden");
   document.getElementById("subview-kpi").classList.add("hidden");
@@ -652,6 +667,7 @@ function handleMentorSubTab(subTab) {
     // Show users view
     document.getElementById("subview-users").classList.remove("hidden");
     loadSessions();
+    startSessionPoll();
   } else if (subTab === "tools") {
     // Show Administration view
     document.getElementById("subview-tools").classList.remove("hidden");
