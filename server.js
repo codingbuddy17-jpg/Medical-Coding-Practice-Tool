@@ -3110,6 +3110,20 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { flag: flags[idx], updatedQuestion: updated });
       }
 
+      if (action === "deactivate") {
+        const result = await storageDeleteQuestion(flags[idx].questionId);
+        flags[idx].status = "deactivated";
+        flags[idx].updatedAt = Date.now();
+        flags[idx].resolution = {
+          action: "deactivated",
+          by: "trainer",
+          at: Date.now(),
+          result
+        };
+        writeFlags(flags);
+        return json(res, 200, { flag: flags[idx], result });
+      }
+
       return json(res, 400, { error: "Unsupported action" });
     } catch (err) {
       return json(res, 400, { error: err.message });

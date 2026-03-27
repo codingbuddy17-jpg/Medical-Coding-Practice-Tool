@@ -1039,7 +1039,8 @@ function renderFlagQueue(flags) {
       const canAct = item.status === "open";
       const actions = canAct
         ? `<button type="button" class="ghost-btn" data-flag-action="resolve" data-flag-id="${escapeHtml(item.id)}">Resolve</button>
-           <button type="button" class="ghost-btn" data-flag-action="replace" data-flag-id="${escapeHtml(item.id)}">Replace</button>`
+           <button type="button" class="ghost-btn" data-flag-action="replace" data-flag-id="${escapeHtml(item.id)}">Replace</button>
+           <button type="button" class="ghost-btn danger-btn" data-flag-action="deactivate" data-flag-id="${escapeHtml(item.id)}">Deactivate</button>`
         : "-";
       return `<tr>
         <td>${escapeHtml(item.cardTag || "-")}</td>
@@ -1132,6 +1133,25 @@ async function handleFlagQueueAction(action, flagId) {
       setStatus(dom.flagQueueStatus, "Question replaced and flag closed.", "success");
     } catch (err) {
       setStatus(dom.flagQueueStatus, `Replace failed: ${err.message}`, "error");
+    }
+    return;
+  }
+
+  if (action === "deactivate") {
+    const confirmed = window.confirm("Deactivate this question so it no longer appears in future sessions?");
+    if (!confirmed) return;
+    try {
+      await apiRequest("/api/questions/flags/action", "POST", {
+        trainerKey,
+        flagId,
+        action: "deactivate"
+      });
+      await loadFlagQueue();
+      await loadDeckFromCloud();
+      renderCard();
+      setStatus(dom.flagQueueStatus, "Question deactivated and flag closed.", "success");
+    } catch (err) {
+      setStatus(dom.flagQueueStatus, `Deactivate failed: ${err.message}`, "error");
     }
   }
 }
