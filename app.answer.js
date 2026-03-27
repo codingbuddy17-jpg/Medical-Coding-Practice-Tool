@@ -48,7 +48,7 @@ async function validateCurrentAnswer() {
       }
     }
 
-    const result = checkAnswer(responseValue, card.answer, card);
+    const result = checkAnswer(responseValue, card.answer, card, state.currentCardRender);
     const durationMs = consumeQuestionTime();
     state.session.attempted += 1;
 
