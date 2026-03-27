@@ -453,7 +453,35 @@ function mergeDiscoveredTags(tags) {
   return Array.from(map.values());
 }
 
-function readTags() {
+function mapTagRow(row) {
+  return {
+    key: normalizeTagKeyInput(row.key),
+    label: normalizeTagLabel(row.label || row.key),
+    aliases: normalizeTagAliases(row.aliases),
+    isActive: row.is_active !== false,
+    sortOrder: Number(row.sort_order || 0),
+    createdAt: toEpochMs(row.created_at) || Date.now(),
+    updatedAt: toEpochMs(row.updated_at) || Date.now()
+  };
+}
+
+function isMissingTagsTable(error) {
+  const msg = String(error?.message || "").toLowerCase();
+  return error?.code === "42P01" || msg.includes("tags") && msg.includes("does not exist");
+}
+
+async function readTags() {
+  if (USE_SUPABASE) {
+    const { data, error } = await supabase
+      .from("tags")
+      .select("key,label,aliases,is_active,sort_order,created_at,updated_at")
+      .order("sort_order", { ascending: true })
+      .order("label", { ascending: true });
+    if (!error) return mergeDiscoveredTags((data || []).map(mapTagRow));
+    if (!isMissingTagsTable(error)) {
+      console.error("Tags read failed from Supabase, using file fallback:", error.message || error);
+    }
+  }
   ensureDataStore();
   const raw = fs.readFileSync(TAGS_FILE, "utf8");
   try {
@@ -470,8 +498,8 @@ function writeTags(tags) {
   fs.writeFileSync(TAGS_FILE, JSON.stringify({ tags }, null, 2));
 }
 
-function listTags({ includeInactive = false } = {}) {
-  const tags = readTags()
+async function listTags({ includeInactive = false } = {}) {
+  const tags = (await readTags())
     .map((tag, idx) => ({
       key: normalizeTagKeyInput(tag.key),
       label: normalizeTagLabel(tag.label || tag.key),
@@ -486,8 +514,8 @@ function listTags({ includeInactive = false } = {}) {
   return filtered.sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || String(a.label).localeCompare(String(b.label)));
 }
 
-function createOrUpdateTag({ key, label, aliases, isActive }) {
-  const tags = readTags();
+async function createOrUpdateTag({ key, label, aliases, isActive }) {
+  const tags = await readTags();
   const cleanKey = normalizeTagKeyInput(key || label);
   const cleanLabel = normalizeTagLabel(label || key);
   if (!cleanKey) throw new Error("Tag key is required");
@@ -507,8 +535,26 @@ function createOrUpdateTag({ key, label, aliases, isActive }) {
   } else {
     tags.push({ ...next, createdAt: now });
   }
+  if (USE_SUPABASE) {
+    const payload = {
+      key: cleanKey,
+      label: cleanLabel,
+      aliases: normalizeTagAliases(aliases),
+      is_active: isActive !== false,
+      sort_order: next.sortOrder
+    };
+    const { data, error } = await supabase
+      .from("tags")
+      .upsert(payload, { onConflict: "key" })
+      .select("key,label,aliases,is_active,sort_order,created_at,updated_at")
+      .single();
+    if (!error) return mapTagRow(data);
+    if (!isMissingTagsTable(error)) {
+      console.error("Tags write failed to Supabase, using file fallback:", error.message || error);
+    }
+  }
   writeTags(tags);
-  return listTags({ includeInactive: true }).find((item) => item.key === cleanKey) || next;
+  return (await listTags({ includeInactive: true })).find((item) => item.key === cleanKey) || next;
 }
 
 function countTagUsage(tagKey) {
@@ -519,20 +565,27 @@ function countTagUsage(tagKey) {
   return { questionUsage, tenantUsage, templateUsage, total: questionUsage + tenantUsage + templateUsage };
 }
 
-function deleteTag(tagKey) {
+async function deleteTag(tagKey) {
   const key = normalizeTagKeyInput(tagKey);
   if (!key) throw new Error("Tag key is required");
   const usage = countTagUsage(key);
   if (usage.total > 0) throw new Error(`Tag is still in use (${usage.total} references)`);
-  const tags = readTags();
+  if (USE_SUPABASE) {
+    const { error } = await supabase.from("tags").delete().eq("key", key);
+    if (!error) return { key, deleted: true };
+    if (!isMissingTagsTable(error)) {
+      console.error("Tags delete failed in Supabase, using file fallback:", error.message || error);
+    }
+  }
+  const tags = await readTags();
   const next = tags.filter((item) => normalizeTagKeyInput(item.key) !== key);
   if (next.length === tags.length) throw new Error("Tag not found");
   writeTags(next);
   return { key, deleted: true };
 }
 
-function getTagSummary() {
-  const tags = listTags({ includeInactive: true });
+async function getTagSummary() {
+  const tags = await listTags({ includeInactive: true });
   return tags.map((tag) => ({ ...tag, usage: countTagUsage(tag.key) }));
 }
 
@@ -2980,7 +3033,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === "/api/tags" && req.method === "GET") {
     try {
-      return json(res, 200, { tags: listTags() });
+      return json(res, 200, { tags: await listTags() });
     } catch (err) {
       return json(res, 400, { error: err.message });
     }
@@ -2991,7 +3044,7 @@ const server = http.createServer(async (req, res) => {
     const tenant = resolveTenant(req);
     if (!isTenantTrainerAuth(tenant, trainerKey)) return json(res, 403, { error: "Forbidden" });
     try {
-      return json(res, 200, { tags: getTagSummary() });
+      return json(res, 200, { tags: await getTagSummary() });
     } catch (err) {
       return json(res, 400, { error: err.message });
     }
@@ -3003,7 +3056,7 @@ const server = http.createServer(async (req, res) => {
       const trainerKey = String(body.trainerKey || "");
       const tenant = resolveTenant(req);
       if (!isTenantTrainerAuth(tenant, trainerKey)) return json(res, 403, { error: "Forbidden" });
-      const tag = createOrUpdateTag({
+      const tag = await createOrUpdateTag({
         key: body.key,
         label: body.label,
         aliases: body.aliases,
@@ -3016,7 +3069,7 @@ const server = http.createServer(async (req, res) => {
         ip: getClientIp(req),
         meta: { key: tag.key, label: tag.label, isActive: tag.isActive }
       }).catch(() => {});
-      return json(res, 200, { tag, tags: getTagSummary() });
+      return json(res, 200, { tag, tags: await getTagSummary() });
     } catch (err) {
       return json(res, 400, { error: err.message });
     }
@@ -3028,7 +3081,7 @@ const server = http.createServer(async (req, res) => {
       const trainerKey = String(body.trainerKey || "");
       const tenant = resolveTenant(req);
       if (!isTenantTrainerAuth(tenant, trainerKey)) return json(res, 403, { error: "Forbidden" });
-      const result = deleteTag(body.key);
+      const result = await deleteTag(body.key);
       appendAuditEvent({
         action: "tag.delete",
         actor: "trainer",
@@ -3036,7 +3089,7 @@ const server = http.createServer(async (req, res) => {
         ip: getClientIp(req),
         meta: { key: String(body.key || "") }
       }).catch(() => {});
-      return json(res, 200, { result, tags: getTagSummary() });
+      return json(res, 200, { result, tags: await getTagSummary() });
     } catch (err) {
       return json(res, 400, { error: err.message });
     }

@@ -99,3 +99,35 @@ drop trigger if exists trg_learner_access_updated_at on learner_access;
 create trigger trg_learner_access_updated_at
 before update on learner_access
 for each row execute function set_updated_at_learner_access();
+
+-- Durable tag registry (survives redeploy/restart)
+create table if not exists tags (
+  key text primary key,
+  label text not null,
+  aliases jsonb not null default '[]'::jsonb,
+  is_active boolean not null default true,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table tags add column if not exists label text;
+alter table tags add column if not exists aliases jsonb not null default '[]'::jsonb;
+alter table tags add column if not exists is_active boolean not null default true;
+alter table tags add column if not exists sort_order integer not null default 0;
+
+create index if not exists idx_tags_is_active on tags(is_active);
+create index if not exists idx_tags_sort_order on tags(sort_order);
+
+create or replace function set_updated_at_tags()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_tags_updated_at on tags;
+create trigger trg_tags_updated_at
+before update on tags
+for each row execute function set_updated_at_tags();
