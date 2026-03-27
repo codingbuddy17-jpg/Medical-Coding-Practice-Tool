@@ -35,11 +35,27 @@ const IMPORT_BATCHES_FILE = path.join(DATA_DIR, "import-batches.json");
 const ALLOWED_LEARNERS_FILE = path.join(DATA_DIR, "allowed-learners.json");
 const AUDIT_LOG_FILE = path.join(DATA_DIR, "audit-log.json");
 const TENANTS_FILE = path.join(DATA_DIR, "tenants.json");
+const TAGS_FILE = path.join(DATA_DIR, "tags.json");
 const SUPER_ADMIN_KEY = process.env.SUPER_ADMIN_KEY || "";
 let attemptsSupportsDurationMs = true;
 const VERIFY_RATE_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 const VERIFY_RATE_LIMIT = 12; // attempts per window per endpoint+IP
 const verifyRateLimitStore = new Map();
+
+const DEFAULT_TAGS = [
+  { key: "ICD-10-CM", label: "ICD 10 CM", aliases: ["ICD10CM", "ICD 10 CM"], isActive: true, sortOrder: 10 },
+  { key: "ICD-10-PCS", label: "ICD 10 PCS", aliases: ["ICD10PCS", "ICD 10 PCS"], isActive: true, sortOrder: 20 },
+  { key: "CPT", label: "CPT", aliases: [], isActive: true, sortOrder: 30 },
+  { key: "MODIFIERS", label: "Modifiers", aliases: ["MODIFIER"], isActive: true, sortOrder: 40 },
+  { key: "GUIDELINES", label: "Guidelines", aliases: ["GUIDELINE"], isActive: true, sortOrder: 50 },
+  { key: "CCS", label: "CCS", aliases: [], isActive: true, sortOrder: 60 },
+  { key: "CPC", label: "CPC", aliases: [], isActive: true, sortOrder: 70 },
+  { key: "CDIP", label: "CDIP", aliases: [], isActive: true, sortOrder: 80 },
+  { key: "SURGERY-CODING", label: "Surgery Coding", aliases: ["SURGERY CODING"], isActive: true, sortOrder: 90 },
+  { key: "IP-DRG-CODING", label: "IP-DRG Coding", aliases: ["IP DRG", "IP DRG CODING"], isActive: true, sortOrder: 100 },
+  { key: "MEDICINE", label: "Medicine", aliases: [], isActive: true, sortOrder: 110 },
+  { key: "PRACTICE-CASES", label: "Practice Cases", aliases: ["PRACTICE CASES"], isActive: true, sortOrder: 120 }
+];
 
 const DEFAULT_EXAM_TEMPLATES = [
   {
@@ -104,6 +120,7 @@ function ensureDataStore() {
   if (!fs.existsSync(ALLOWED_LEARNERS_FILE)) fs.writeFileSync(ALLOWED_LEARNERS_FILE, JSON.stringify({ learners: [] }, null, 2));
   if (!fs.existsSync(AUDIT_LOG_FILE)) fs.writeFileSync(AUDIT_LOG_FILE, JSON.stringify({ events: [] }, null, 2));
   if (!fs.existsSync(TENANTS_FILE)) fs.writeFileSync(TENANTS_FILE, JSON.stringify({ tenants: [] }, null, 2));
+  if (!fs.existsSync(TAGS_FILE)) fs.writeFileSync(TAGS_FILE, JSON.stringify({ tags: DEFAULT_TAGS }, null, 2));
 }
 
 function readSessions() {
@@ -364,6 +381,159 @@ function readTenants() {
 function writeTenants(tenants) {
   ensureDataStore();
   fs.writeFileSync(TENANTS_FILE, JSON.stringify({ tenants }, null, 2));
+}
+
+function normalizeTagLabel(label) {
+  return String(label || "").trim().slice(0, 120);
+}
+
+function normalizeTagKeyInput(key) {
+  return String(key || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+}
+
+function normalizeTagAliases(aliases) {
+  const source = Array.isArray(aliases)
+    ? aliases
+    : String(aliases || "")
+      .split(",")
+      .map((item) => item.trim());
+  return Array.from(new Set(source.map((item) => String(item || "").trim()).filter(Boolean))).slice(0, 50);
+}
+
+function humanizeTagKey(tagKey) {
+  return String(tagKey || "")
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.length <= 4 ? part : `${part.slice(0, 1)}${part.slice(1).toLowerCase()}`)
+    .join(" ");
+}
+
+function mergeDiscoveredTags(tags) {
+  const map = new Map();
+  (Array.isArray(tags) ? tags : []).forEach((tag, idx) => {
+    const key = normalizeTagKeyInput(tag.key);
+    if (!key) return;
+    map.set(key, {
+      ...tag,
+      key,
+      label: normalizeTagLabel(tag.label || key) || humanizeTagKey(key),
+      aliases: normalizeTagAliases(tag.aliases),
+      isActive: tag.isActive !== false,
+      sortOrder: Number(tag.sortOrder || ((idx + 1) * 10))
+    });
+  });
+
+  const discovered = new Set();
+  readQuestions().forEach((q) => discovered.add(normalizeTagKeyInput(q.tag)));
+  readTenants().forEach((tenant) => {
+    (tenant.settings?.allowedTags || []).forEach((tag) => discovered.add(normalizeTagKeyInput(tag)));
+  });
+  readExamStore().templates.forEach((tpl) => {
+    (tpl.tags || []).forEach((tag) => discovered.add(normalizeTagKeyInput(tag)));
+  });
+
+  discovered.forEach((key) => {
+    if (!key || map.has(key)) return;
+    map.set(key, {
+      key,
+      label: humanizeTagKey(key),
+      aliases: [],
+      isActive: true,
+      sortOrder: (map.size + 1) * 10,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    });
+  });
+
+  return Array.from(map.values());
+}
+
+function readTags() {
+  ensureDataStore();
+  const raw = fs.readFileSync(TAGS_FILE, "utf8");
+  try {
+    const parsed = JSON.parse(raw);
+    const tags = Array.isArray(parsed.tags) ? parsed.tags : [];
+    return mergeDiscoveredTags(tags.length ? tags : DEFAULT_TAGS);
+  } catch {
+    return mergeDiscoveredTags(DEFAULT_TAGS);
+  }
+}
+
+function writeTags(tags) {
+  ensureDataStore();
+  fs.writeFileSync(TAGS_FILE, JSON.stringify({ tags }, null, 2));
+}
+
+function listTags({ includeInactive = false } = {}) {
+  const tags = readTags()
+    .map((tag, idx) => ({
+      key: normalizeTagKeyInput(tag.key),
+      label: normalizeTagLabel(tag.label || tag.key),
+      aliases: normalizeTagAliases(tag.aliases),
+      isActive: tag.isActive !== false,
+      sortOrder: Number(tag.sortOrder || ((idx + 1) * 10)),
+      createdAt: Number(tag.createdAt || Date.now()),
+      updatedAt: Number(tag.updatedAt || Date.now())
+    }))
+    .filter((tag) => tag.key);
+  const filtered = includeInactive ? tags : tags.filter((tag) => tag.isActive !== false);
+  return filtered.sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || String(a.label).localeCompare(String(b.label)));
+}
+
+function createOrUpdateTag({ key, label, aliases, isActive }) {
+  const tags = readTags();
+  const cleanKey = normalizeTagKeyInput(key || label);
+  const cleanLabel = normalizeTagLabel(label || key);
+  if (!cleanKey) throw new Error("Tag key is required");
+  if (!cleanLabel) throw new Error("Tag label is required");
+  const now = Date.now();
+  const idx = tags.findIndex((item) => normalizeTagKeyInput(item.key) === cleanKey);
+  const next = {
+    key: cleanKey,
+    label: cleanLabel,
+    aliases: normalizeTagAliases(aliases),
+    isActive: isActive !== false,
+    sortOrder: idx >= 0 ? Number(tags[idx].sortOrder || ((idx + 1) * 10)) : ((tags.length + 1) * 10),
+    updatedAt: now
+  };
+  if (idx >= 0) {
+    tags[idx] = { ...tags[idx], ...next };
+  } else {
+    tags.push({ ...next, createdAt: now });
+  }
+  writeTags(tags);
+  return listTags({ includeInactive: true }).find((item) => item.key === cleanKey) || next;
+}
+
+function countTagUsage(tagKey) {
+  const key = normalizeTagKeyInput(tagKey);
+  const questionUsage = readQuestions().filter((q) => normalizeTagKeyInput(q.tag) === key).length;
+  const tenantUsage = readTenants().filter((t) => Array.isArray(t.settings?.allowedTags) && t.settings.allowedTags.some((tag) => normalizeTagKeyInput(tag) === key)).length;
+  const templateUsage = readExamStore().templates.filter((tpl) => Array.isArray(tpl.tags) && tpl.tags.some((tag) => normalizeTagKeyInput(tag) === key)).length;
+  return { questionUsage, tenantUsage, templateUsage, total: questionUsage + tenantUsage + templateUsage };
+}
+
+function deleteTag(tagKey) {
+  const key = normalizeTagKeyInput(tagKey);
+  if (!key) throw new Error("Tag key is required");
+  const usage = countTagUsage(key);
+  if (usage.total > 0) throw new Error(`Tag is still in use (${usage.total} references)`);
+  const tags = readTags();
+  const next = tags.filter((item) => normalizeTagKeyInput(item.key) !== key);
+  if (next.length === tags.length) throw new Error("Tag not found");
+  writeTags(next);
+  return { key, deleted: true };
+}
+
+function getTagSummary() {
+  const tags = listTags({ includeInactive: true });
+  return tags.map((tag) => ({ ...tag, usage: countTagUsage(tag.key) }));
 }
 
 function getDefaultTenant() {
@@ -2803,6 +2973,70 @@ const server = http.createServer(async (req, res) => {
           template
         }
       });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/tags" && req.method === "GET") {
+    try {
+      return json(res, 200, { tags: listTags() });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/trainer/tags" && req.method === "GET") {
+    const trainerKey = getTrainerKey(req);
+    const tenant = resolveTenant(req);
+    if (!isTenantTrainerAuth(tenant, trainerKey)) return json(res, 403, { error: "Forbidden" });
+    try {
+      return json(res, 200, { tags: getTagSummary() });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/trainer/tags" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const trainerKey = String(body.trainerKey || "");
+      const tenant = resolveTenant(req);
+      if (!isTenantTrainerAuth(tenant, trainerKey)) return json(res, 403, { error: "Forbidden" });
+      const tag = createOrUpdateTag({
+        key: body.key,
+        label: body.label,
+        aliases: body.aliases,
+        isActive: body.isActive
+      });
+      appendAuditEvent({
+        action: "tag.upsert",
+        actor: "trainer",
+        actorRole: "trainer",
+        ip: getClientIp(req),
+        meta: { key: tag.key, label: tag.label, isActive: tag.isActive }
+      }).catch(() => {});
+      return json(res, 200, { tag, tags: getTagSummary() });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/trainer/tags/delete" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const trainerKey = String(body.trainerKey || "");
+      const tenant = resolveTenant(req);
+      if (!isTenantTrainerAuth(tenant, trainerKey)) return json(res, 403, { error: "Forbidden" });
+      const result = deleteTag(body.key);
+      appendAuditEvent({
+        action: "tag.delete",
+        actor: "trainer",
+        actorRole: "trainer",
+        ip: getClientIp(req),
+        meta: { key: String(body.key || "") }
+      }).catch(() => {});
+      return json(res, 200, { result, tags: getTagSummary() });
     } catch (err) {
       return json(res, 400, { error: err.message });
     }

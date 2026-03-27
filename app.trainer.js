@@ -790,7 +790,7 @@ function renderQuestionBankTable() {
       : String(q.answer || "");
     return `<tr>
       <td><input type="checkbox" data-bank-select="${escapeHtml(q.id)}" ${selected.has(q.id) ? "checked" : ""}></td>
-      <td>${escapeHtml(q.tag || "General")}</td>
+      <td>${escapeHtml(getTagLabel(q.tag || "General"))}</td>
       <td title="${escapeHtml(q.question)}">${escapeHtml(shortQ)}</td>
       <td>${escapeHtml(typeLabel)}</td>
       <td>${escapeHtml(answerLabel)}</td>
@@ -886,6 +886,150 @@ function exportQuestionBankCsv() {
   a.click();
   URL.revokeObjectURL(url);
   setStatus(dom.questionBankStatus, "Question bank exported.", "success");
+}
+
+function renderTagRegistryTable() {
+  const items = Array.isArray(state.tagRegistry) ? state.tagRegistry : [];
+  if (!dom.tagRegistryBody) return;
+  if (!items.length) {
+    dom.tagRegistryBody.innerHTML = '<tr><td colspan="6">No tags configured.</td></tr>';
+    return;
+  }
+  dom.tagRegistryBody.innerHTML = items.map((item) => {
+    const usage = item.usage || { total: 0, questionUsage: 0, tenantUsage: 0, templateUsage: 0 };
+    const actions = `<button type="button" class="ghost-btn" data-tag-action="edit" data-tag-key="${escapeHtml(item.key)}">Edit</button>
+      <button type="button" class="ghost-btn ${item.isActive === false ? '' : 'danger-btn'}" data-tag-action="toggle" data-tag-key="${escapeHtml(item.key)}">${item.isActive === false ? 'Activate' : 'Deactivate'}</button>
+      <button type="button" class="ghost-btn danger-btn" data-tag-action="delete" data-tag-key="${escapeHtml(item.key)}">Delete</button>`;
+    return `<tr>
+      <td>${escapeHtml(item.label || item.key)}</td>
+      <td><code>${escapeHtml(item.key)}</code></td>
+      <td>${escapeHtml((item.aliases || []).join(', ') || '-')}</td>
+      <td>${item.isActive === false ? 'Inactive' : 'Active'}</td>
+      <td>${usage.total || 0}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+function clearTagForm() {
+  if (dom.tagFormMode) dom.tagFormMode.textContent = 'Create Tag';
+  if (dom.tagFormKey) { dom.tagFormKey.value = ''; dom.tagFormKey.disabled = false; }
+  if (dom.tagFormLabel) dom.tagFormLabel.value = '';
+  if (dom.tagFormAliases) dom.tagFormAliases.value = '';
+  if (dom.tagFormActive) dom.tagFormActive.value = 'true';
+}
+
+function populateTagForm(tagKey) {
+  const item = (state.tagRegistry || []).find((tag) => tag.key === tagKey);
+  if (!item) return;
+  if (dom.tagFormMode) dom.tagFormMode.textContent = `Edit ${item.label || item.key}`;
+  if (dom.tagFormKey) { dom.tagFormKey.value = item.key || ''; dom.tagFormKey.disabled = true; }
+  if (dom.tagFormLabel) dom.tagFormLabel.value = item.label || '';
+  if (dom.tagFormAliases) dom.tagFormAliases.value = Array.isArray(item.aliases) ? item.aliases.join(', ') : '';
+  if (dom.tagFormActive) dom.tagFormActive.value = item.isActive === false ? 'false' : 'true';
+}
+
+async function loadTagRegistryManager(silent = false) {
+  if (state.role !== 'trainer') return;
+  const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
+  if (!trainerKey) {
+    if (!silent) setStatus(dom.tagRegistryStatus, 'Trainer key required.', 'error');
+    return;
+  }
+  try {
+    const data = await apiRequest('/api/trainer/tags', 'GET', null, trainerKey);
+    setTagRegistry(Array.isArray(data.tags) ? data.tags : []);
+    renderTagRegistryTable();
+    renderCategoryButtons();
+    renderQuestionBankTable();
+    if (!silent) setStatus(dom.tagRegistryStatus, `Loaded ${state.tagRegistry.length} tags.`, 'success');
+  } catch (err) {
+    if (!silent) setStatus(dom.tagRegistryStatus, `Could not load tags: ${err.message}`, 'error');
+  }
+}
+
+async function saveTagDefinition() {
+  if (state.role !== 'trainer') return;
+  const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
+  if (!trainerKey) {
+    setStatus(dom.tagRegistryStatus, 'Trainer key required.', 'error');
+    return;
+  }
+  const key = String(dom.tagFormKey?.value || '').trim();
+  const label = String(dom.tagFormLabel?.value || '').trim();
+  if (!key || !label) {
+    setStatus(dom.tagRegistryStatus, 'Tag key and label are required.', 'error');
+    return;
+  }
+  try {
+    const data = await apiRequest('/api/trainer/tags', 'POST', {
+      trainerKey,
+      key,
+      label,
+      aliases: String(dom.tagFormAliases?.value || '').split(',').map((item) => item.trim()).filter(Boolean),
+      isActive: String(dom.tagFormActive?.value || 'true') !== 'false'
+    });
+    setTagRegistry(Array.isArray(data.tags) ? data.tags : []);
+    renderTagRegistryTable();
+    renderCategoryButtons();
+    renderQuestionBankTable();
+    clearTagForm();
+    setStatus(dom.tagRegistryStatus, `Tag "${label}" saved.`, 'success');
+  } catch (err) {
+    setStatus(dom.tagRegistryStatus, `Could not save tag: ${err.message}`, 'error');
+  }
+}
+
+async function handleTagRegistryAction(action, tagKey) {
+  if (state.role !== 'trainer') return;
+  const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
+  if (!trainerKey) {
+    setStatus(dom.tagRegistryStatus, 'Trainer key required.', 'error');
+    return;
+  }
+  const item = (state.tagRegistry || []).find((tag) => tag.key === tagKey);
+  if (!item) {
+    setStatus(dom.tagRegistryStatus, 'Tag not found.', 'error');
+    return;
+  }
+  if (action === 'edit') {
+    populateTagForm(tagKey);
+    return;
+  }
+  if (action === 'toggle') {
+    const nextActive = item.isActive === false;
+    try {
+      const data = await apiRequest('/api/trainer/tags', 'POST', {
+        trainerKey,
+        key: item.key,
+        label: item.label,
+        aliases: item.aliases || [],
+        isActive: nextActive
+      });
+      setTagRegistry(Array.isArray(data.tags) ? data.tags : []);
+      renderTagRegistryTable();
+      renderCategoryButtons();
+      renderQuestionBankTable();
+      setStatus(dom.tagRegistryStatus, `Tag ${nextActive ? 'activated' : 'deactivated'}.`, 'success');
+    } catch (err) {
+      setStatus(dom.tagRegistryStatus, `Could not update tag: ${err.message}`, 'error');
+    }
+    return;
+  }
+  if (action === 'delete') {
+    if (!window.confirm(`Delete tag "${item.label}"? This only works when no questions or tenant settings use it.`)) return;
+    try {
+      const data = await apiRequest('/api/trainer/tags/delete', 'POST', { trainerKey, key: item.key });
+      setTagRegistry(Array.isArray(data.tags) ? data.tags : []);
+      renderTagRegistryTable();
+      renderCategoryButtons();
+      renderQuestionBankTable();
+      clearTagForm();
+      setStatus(dom.tagRegistryStatus, 'Tag deleted.', 'success');
+    } catch (err) {
+      setStatus(dom.tagRegistryStatus, `Could not delete tag: ${err.message}`, 'error');
+    }
+  }
 }
 
 function toAccessTypeLabel(role) {

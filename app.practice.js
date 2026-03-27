@@ -200,10 +200,10 @@ function renderCategoryScorecards() {
   const stats = state.session.categoryStats || createEmptyCategoryStats();
   const rows = [];
 
-  TRACKED_CATEGORY_KEYS.forEach((key) => {
+  getTrackedCategoryKeys().forEach((key) => {
     const s = stats[key] || { attempted: 0, correct: 0, wrong: 0 };
     if (s.attempted > 0) {
-      rows.push(`<tr><td>${key}</td><td>${s.attempted}</td><td>${s.correct}</td><td>${s.wrong}</td><td>${formatPercent(s.correct, s.attempted)}</td></tr>`);
+      rows.push(`<tr><td>${escapeHtml(getTagLabel(key))}</td><td>${s.attempted}</td><td>${s.correct}</td><td>${s.wrong}</td><td>${formatPercent(s.correct, s.attempted)}</td></tr>`);
     }
   });
 
@@ -395,11 +395,11 @@ function renderCard() {
   const card = currentCard();
 
   if (!card) {
-    dom.cardTag.textContent = state.selectedTag === "ALL" ? "General" : state.selectedTag;
+    dom.cardTag.textContent = state.selectedTag === "ALL" ? "General" : getTagLabel(state.selectedTag);
     dom.cardPrompt.textContent =
       state.selectedTag === "ALL"
         ? "No cards available. Trainer can import a deck."
-        : `No cards found for ${state.selectedTag}. Select another category.`;
+        : `No cards found for ${getTagLabel(state.selectedTag)}. Select another category.`;
     dom.userAnswer.value = "";
     state.selectedMcqOption = "";
     dom.mcqOptions.innerHTML = "";
@@ -417,7 +417,7 @@ function renderCard() {
     updateTrialLockUI();
     updateTrialInfoBannerUI();
     updateUpgradeWallUI();
-    dom.categoryStatus.textContent = state.role === "trainer" ? `Showing 0 cards for ${state.selectedTag}.` : "";
+    dom.categoryStatus.textContent = state.role === "trainer" ? `Showing 0 cards for ${getTagLabel(state.selectedTag)}.` : "";
 
     // Hide rationale when no card
     dom.rationalePlaceholder.classList.add("hidden");
@@ -455,7 +455,7 @@ function renderCard() {
     return;
   }
 
-  dom.cardTag.textContent = card.tag;
+  dom.cardTag.textContent = getTagLabel(card.tag);
   dom.cardPrompt.textContent = card.question;
   dom.userAnswer.value = "";
   state.selectedMcqOption = "";
@@ -505,7 +505,7 @@ function renderCard() {
   if (state.exam.inProgress) {
     dom.categoryStatus.textContent = `Exam mode: ${state.exam.answered}/${state.exam.queueIds.length} answered.`;
   } else {
-    dom.categoryStatus.textContent = state.role === "trainer" ? `Showing ${cards.length} cards for ${state.selectedTag}.` : "";
+    dom.categoryStatus.textContent = state.role === "trainer" ? `Showing ${cards.length} cards for ${getTagLabel(state.selectedTag)}.` : "";
   }
 
   if (card.type !== "mcq") dom.userAnswer.focus();

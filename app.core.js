@@ -15,23 +15,24 @@ const SYLLABUS_URL = "/assets/curriculum.pdf";
 const APP_CONFIG = window.APP_CONFIG || {};
 const REQUIRE_GOOGLE_FOR_TRIAL_TRAINEE = APP_CONFIG.REQUIRE_GOOGLE_FOR_TRIAL_TRAINEE !== false;
 
-const CATEGORY_OPTIONS = [
-  { key: "ALL", label: "All Topics" },
-  { key: "ICD-10-CM", label: "ICD 10 CM" },
-  { key: "ICD-10-PCS", label: "ICD 10 PCS" },
-  { key: "CPT", label: "CPT" },
-  { key: "MODIFIERS", label: "Modifiers" },
-  { key: "GUIDELINES", label: "Guidelines" },
-  { key: "CCS", label: "CCS" },
-  { key: "CPC", label: "CPC" },
-  { key: "CDIP", label: "CDIP" },
-  { key: "SURGERY-CODING", label: "Surgery Coding" },
-  { key: "IP-DRG-CODING", label: "IP-DRG Coding" },
-  { key: "MEDICINE", label: "Medicine" },
-  { key: "PRACTICE-CASES", label: "Practice Cases" }
+const DEFAULT_TAG_DEFINITIONS = [
+  { key: "ICD-10-CM", label: "ICD 10 CM", aliases: ["ICD10CM", "ICD 10 CM"], isActive: true },
+  { key: "ICD-10-PCS", label: "ICD 10 PCS", aliases: ["ICD10PCS", "ICD 10 PCS"], isActive: true },
+  { key: "CPT", label: "CPT", aliases: [], isActive: true },
+  { key: "MODIFIERS", label: "Modifiers", aliases: ["MODIFIER"], isActive: true },
+  { key: "GUIDELINES", label: "Guidelines", aliases: ["GUIDELINE"], isActive: true },
+  { key: "CCS", label: "CCS", aliases: [], isActive: true },
+  { key: "CPC", label: "CPC", aliases: [], isActive: true },
+  { key: "CDIP", label: "CDIP", aliases: [], isActive: true },
+  { key: "SURGERY-CODING", label: "Surgery Coding", aliases: ["SURGERY CODING"], isActive: true },
+  { key: "IP-DRG-CODING", label: "IP-DRG Coding", aliases: ["IP DRG", "IP DRG CODING"], isActive: true },
+  { key: "MEDICINE", label: "Medicine", aliases: [], isActive: true },
+  { key: "PRACTICE-CASES", label: "Practice Cases", aliases: ["PRACTICE CASES"], isActive: true }
 ];
 
-const TRACKED_CATEGORY_KEYS = CATEGORY_OPTIONS.filter((item) => item.key !== "ALL").map((item) => item.key);
+let CATEGORY_OPTIONS = [{ key: "ALL", label: "All Topics" }].concat(
+  DEFAULT_TAG_DEFINITIONS.filter((item) => item.isActive !== false).map((item) => ({ key: item.key, label: item.label }))
+);
 const DEFAULT_WEEKLY_TARGET = 150;
 const BADGE_DEFINITIONS = [
   { id: "questions_50", title: "Starter Sprint", icon: "🚀", theme: "volume", rule: "Answer 50 questions", check: (g) => Number(g.totalAnswered || 0) >= 50 },
@@ -55,9 +56,13 @@ const DEFAULT_RESOURCES = [
 
 const STARTER_DECK = [];
 
+function getTrackedCategoryKeys() {
+  return CATEGORY_OPTIONS.filter((item) => item.key !== "ALL").map((item) => item.key);
+}
+
 function createEmptyCategoryStats() {
   const stats = {};
-  TRACKED_CATEGORY_KEYS.forEach((key) => {
+  getTrackedCategoryKeys().forEach((key) => {
     stats[key] = { attempted: 0, correct: 0, wrong: 0, skipped: 0, totalTimeMs: 0, timedCount: 0 };
   });
   stats.OTHER = { attempted: 0, correct: 0, wrong: 0, skipped: 0, totalTimeMs: 0, timedCount: 0 };
@@ -75,6 +80,7 @@ const state = {
   tenantSlug: "default",
   tenantName: "",
   tenantAllowedTags: [],
+  tagRegistry: DEFAULT_TAG_DEFINITIONS.map((item) => ({ ...item })),
   selectedTag: "ALL",
   weakDrillEnabled: false,
   adaptiveEnabled: false,
@@ -347,6 +353,17 @@ function cacheDOM() {
     exportQuestionBankBtn: document.getElementById("exportQuestionBankBtn"),
     questionBankBody: document.getElementById("questionBankBody"),
     questionBankStatus: document.getElementById("questionBankStatus"),
+    tagRegistryBody: document.getElementById("tagRegistryBody"),
+    tagRegistryStatus: document.getElementById("tagRegistryStatus"),
+    refreshTagsBtn: document.getElementById("refreshTagsBtn"),
+    saveTagBtn: document.getElementById("saveTagBtn"),
+    clearTagFormBtn: document.getElementById("clearTagFormBtn"),
+    tagFormKey: document.getElementById("tagFormKey"),
+    tagFormLabel: document.getElementById("tagFormLabel"),
+    tagFormAliases: document.getElementById("tagFormAliases"),
+    tagFormActive: document.getElementById("tagFormActive"),
+    tagFormMode: document.getElementById("tagFormMode"),
+    tenantTagCheckboxes: document.getElementById("tenantTagCheckboxes"),
 
     // Import Batches
     refreshImportBatchesBtn: document.getElementById("refreshImportBatchesBtn"),
@@ -778,24 +795,72 @@ function questionCompositeKey(tag, question, answer) {
   return `${normalize(tag)}|${normalize(question)}|${normalize(answer)}`;
 }
 
-function normalizeTagKey(tag) {
-  const cleaned = String(tag || "")
+function sanitizeTagKey(tag) {
+  return String(tag || "")
+    .trim()
     .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "");
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
-  if (cleaned.includes("ICD10CM")) return "ICD-10-CM";
-  if (cleaned.includes("ICD10PCS")) return "ICD-10-PCS";
-  if (cleaned.includes("CPT")) return "CPT";
-  if (cleaned.includes("MODIFIER")) return "MODIFIERS";
-  if (cleaned.includes("GUIDELINE")) return "GUIDELINES";
-  if (cleaned.includes("CCS")) return "CCS";
-  if (cleaned.includes("CPC")) return "CPC";
-  if (cleaned.includes("CDIP")) return "CDIP";
-  if (cleaned.includes("SURGERYCODING")) return "SURGERY-CODING";
-  if (cleaned.includes("IPDRGCODING")) return "IP-DRG-CODING";
+function syncCategoryOptionsFromTagRegistry() {
+  const active = (state.tagRegistry || []).filter((item) => item && item.isActive !== false);
+  CATEGORY_OPTIONS = [{ key: "ALL", label: "All Topics" }].concat(
+    active.map((item) => ({ key: item.key, label: item.label || item.key }))
+  );
+}
+
+function setTagRegistry(tags) {
+  state.tagRegistry = Array.isArray(tags) && tags.length
+    ? tags.map((item) => ({
+      key: sanitizeTagKey(item.key),
+      label: String(item.label || item.key || "").trim() || sanitizeTagKey(item.key),
+      aliases: Array.isArray(item.aliases) ? item.aliases : [],
+      isActive: item.isActive !== false,
+      usage: item.usage || null
+    })).filter((item) => item.key)
+    : DEFAULT_TAG_DEFINITIONS.map((item) => ({ ...item }));
+  syncCategoryOptionsFromTagRegistry();
+  if (!CATEGORY_OPTIONS.some((item) => item.key === state.selectedTag)) {
+    state.selectedTag = "ALL";
+  }
+  renderDynamicTagControls();
+}
+
+function getTagLabel(tagKey) {
+  const normalized = sanitizeTagKey(tagKey);
+  const found = (state.tagRegistry || []).find((item) => sanitizeTagKey(item.key) === normalized);
+  return found ? (found.label || found.key) : String(tagKey || normalized || "OTHER");
+}
+
+function normalizeTagKey(tag) {
+  const cleaned = sanitizeTagKey(tag).replace(/-/g, "");
+  const registry = Array.isArray(state.tagRegistry) ? state.tagRegistry : [];
+  for (const item of registry) {
+    const keyClean = sanitizeTagKey(item.key).replace(/-/g, "");
+    if (cleaned === keyClean || cleaned.includes(keyClean)) return item.key;
+    const aliases = Array.isArray(item.aliases) ? item.aliases : [];
+    for (const alias of aliases) {
+      const aliasClean = sanitizeTagKey(alias).replace(/-/g, "");
+      if (aliasClean && (cleaned === aliasClean || cleaned.includes(aliasClean))) return item.key;
+    }
+  }
+
   if (cleaned.includes("IPDRG")) return "IP-DRG-CODING";
-  if (cleaned.includes("MEDICINE")) return "MEDICINE";
-  if (cleaned.includes("PRACTICECASES")) return "PRACTICE-CASES";
+  if (cleaned.includes("SURGERY")) return "SURGERY-CODING";
   return "OTHER";
+}
+
+function renderDynamicTagControls() {
+  if (dom.questionBankBulkTag) {
+    dom.questionBankBulkTag.innerHTML = ['<option value="">Change tag to...</option>']
+      .concat(CATEGORY_OPTIONS.filter((item) => item.key !== "ALL").map((item) => `<option value="${escapeHtml(item.key)}">${escapeHtml(item.label)}</option>`))
+      .join("");
+  }
+  if (dom.tenantTagCheckboxes) {
+    dom.tenantTagCheckboxes.innerHTML = CATEGORY_OPTIONS.filter((item) => item.key !== "ALL")
+      .map((item) => `<label class="tag-checkbox-item"><input type="checkbox" value="${escapeHtml(item.key)}" /> ${escapeHtml(item.label)}</label>`)
+      .join("");
+  }
 }
 

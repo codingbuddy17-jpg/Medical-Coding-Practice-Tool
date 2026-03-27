@@ -155,6 +155,22 @@ function bindEvents() {
   if (dom.exportQuestionBankBtn) {
     dom.exportQuestionBankBtn.addEventListener("click", exportQuestionBankCsv);
   }
+  if (dom.refreshTagsBtn) {
+    dom.refreshTagsBtn.addEventListener("click", () => loadTagRegistryManager());
+  }
+  if (dom.saveTagBtn) {
+    dom.saveTagBtn.addEventListener("click", saveTagDefinition);
+  }
+  if (dom.clearTagFormBtn) {
+    dom.clearTagFormBtn.addEventListener("click", clearTagForm);
+  }
+  if (dom.tagRegistryBody) {
+    dom.tagRegistryBody.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-tag-action][data-tag-key]");
+      if (!button) return;
+      handleTagRegistryAction(button.dataset.tagAction, button.dataset.tagKey);
+    });
+  }
   if (dom.questionBankSearchInput) {
     dom.questionBankSearchInput.addEventListener("input", renderQuestionBankTable);
   }
@@ -413,6 +429,17 @@ function bindEvents() {
   })();
 }
 
+async function loadTagRegistry() {
+  try {
+    const data = await apiRequest("/api/tags");
+    setTagRegistry(Array.isArray(data.tags) ? data.tags : []);
+  } catch {
+    setTagRegistry(DEFAULT_TAG_DEFINITIONS);
+  }
+  renderDynamicTagControls();
+  if (typeof renderCategoryButtons === "function") renderCategoryButtons();
+}
+
 async function loadTenantInfo() {
   try {
     const data = await apiRequest("/api/tenant/info");
@@ -461,6 +488,7 @@ async function init() {
 
   state.session.isActive = false;
   state.trainerKeyVerified = false;
+  await loadTagRegistry();
   await loadTenantInfo();
   await loadPublicAccessConfig();
 
@@ -683,6 +711,7 @@ function handleMentorSubTab(subTab) {
     loadFlagQueue();
     loadImportBatches();
     loadImportReviewQueue();
+    loadTagRegistryManager(true);
   }
 }
 

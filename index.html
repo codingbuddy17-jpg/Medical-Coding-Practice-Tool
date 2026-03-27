@@ -781,6 +781,60 @@
           </section>
 
           <section class="panel">
+            <h3>Tag Registry</h3>
+            <p class="status">Create, rename, deactivate, or safely delete tags before importing new question categories.</p>
+            <div class="panel-actions">
+              <button id="refreshTagsBtn" class="ghost-btn" type="button">Refresh Tags</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Label</th>
+                    <th>Key</th>
+                    <th>Aliases</th>
+                    <th>Status</th>
+                    <th>Usage</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="tagRegistryBody">
+                  <tr>
+                    <td colspan="6">No tags loaded.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="auth-grid" style="margin-top:.9rem">
+              <label>
+                <span id="tagFormMode">Create Tag</span>
+                <input id="tagFormKey" type="text" placeholder="e.g. RADIOLOGY" />
+                <span class="helper">Use uppercase key style. Example: `SURGERY-CODING`.</span>
+              </label>
+              <label>
+                Display Label
+                <input id="tagFormLabel" type="text" placeholder="e.g. Radiology" />
+              </label>
+              <label style="grid-column:1/-1">
+                Aliases
+                <input id="tagFormAliases" type="text" placeholder="Comma separated, e.g. radiology, imaging" />
+              </label>
+              <label>
+                Active
+                <select id="tagFormActive">
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </label>
+            </div>
+            <div class="panel-actions">
+              <button id="saveTagBtn" class="primary-btn" type="button">Save Tag</button>
+              <button id="clearTagFormBtn" class="ghost-btn" type="button">Clear</button>
+            </div>
+            <p id="tagRegistryStatus" class="status"></p>
+          </section>
+
+          <section class="panel">
             <h3>Mentor Deck Manager</h3>
             <p class="status">Import and validate question banks with preview, paging, and rollback support.</p>
             <p>CSV/XLSX headers (order can vary):
