@@ -330,6 +330,7 @@ function cacheDOM() {
     // importStatus: document.getElementById("importStatus"), // Duplicate, removed
     importPreviewPanel: document.getElementById("importPreviewPanel"),
     importPreviewSummary: document.getElementById("importPreviewSummary"),
+    importPreviewMappings: document.getElementById("importPreviewMappings"),
     importPreviewBody: document.getElementById("importPreviewBody"),
     importPreviewPrevBtn: document.getElementById("importPreviewPrevBtn"),
     importPreviewNextBtn: document.getElementById("importPreviewNextBtn"),
@@ -863,4 +864,3 @@ function renderDynamicTagControls() {
       .join("");
   }
 }
-

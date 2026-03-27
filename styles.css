@@ -1695,6 +1695,23 @@ button {
   background: #f8fcff;
 }
 
+.import-mapping-box {
+  margin: 0.35rem 0 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #c7ddf5;
+  border-radius: 0.9rem;
+  background: linear-gradient(135deg, rgba(227, 242, 253, 0.9), rgba(245, 250, 255, 0.95));
+  color: #1f3c53;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.import-mapping-box strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #0f3b5f;
+}
+
 .import-status-pill {
   display: inline-block;
   padding: 0.1rem 0.35rem;

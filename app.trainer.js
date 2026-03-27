@@ -57,6 +57,10 @@ function renderImportPreview() {
   }
   if (!active) {
     if (dom.importPreviewSummary) dom.importPreviewSummary.textContent = "";
+    if (dom.importPreviewMappings) {
+      dom.importPreviewMappings.classList.add("hidden");
+      dom.importPreviewMappings.innerHTML = "";
+    }
     dom.importPreviewBody.innerHTML = '<tr><td colspan="6">No preview yet.</td></tr>';
     dom.confirmImportBtn.disabled = true;
     if (dom.importPreviewPageInfo) dom.importPreviewPageInfo.textContent = "Page 1 of 1";
@@ -68,6 +72,19 @@ function renderImportPreview() {
 
   const summary = state.importPreview.summary || { total: 0, pass: 0, warn: 0, skip: 0, fail: 0 };
   dom.importPreviewSummary.textContent = `Total ${summary.total} rows: ${summary.pass} pass, ${summary.warn} warn, ${summary.skip} skip, ${summary.fail} fail.`;
+  const importMeta = typeof getLastImportMeta === "function" ? getLastImportMeta() : null;
+  if (dom.importPreviewMappings) {
+    if (importMeta?.mappings?.length) {
+      const mappingText = importMeta.mappings
+        .map((item) => `<code>${escapeHtml(item.matchedHeader)}</code> -> <code>${escapeHtml(item.canonicalName)}</code>`)
+        .join(", ");
+      dom.importPreviewMappings.innerHTML = `<strong>Column mappings used</strong>${mappingText}`;
+      dom.importPreviewMappings.classList.remove("hidden");
+    } else {
+      dom.importPreviewMappings.classList.add("hidden");
+      dom.importPreviewMappings.innerHTML = "";
+    }
+  }
   dom.confirmImportBtn.disabled = !state.importPreview.importCards.length;
 
   const rows = Array.isArray(state.importPreview.rows) ? state.importPreview.rows : [];
