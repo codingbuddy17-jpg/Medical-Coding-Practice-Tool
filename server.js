@@ -481,8 +481,12 @@ function toEpochMs(value) {
 function mapLearnerRow(row) {
   return {
     email: normalizeEmail(row.email),
+    name: String(row.name || "").trim(),
+    accessCode: String(row.access_code || row.accessCode || "").trim(),
+    phone: String(row.phone || "").trim(),
     isActive: row.is_active !== false,
     expiresAt: row.expires_at ? toEpochMs(row.expires_at) : null,
+    tenantId: row.tenant_id || row.tenantId || null,
     createdAt: toEpochMs(row.created_at) || Date.now(),
     updatedAt: toEpochMs(row.updated_at) || Date.now()
   };
@@ -493,12 +497,24 @@ function isMissingLearnerTable(error) {
   return error?.code === "42P01" || msg.includes("learner_access") && msg.includes("does not exist");
 }
 
+function applyLearnerTenantFilter(query, tenantId) {
+  if (tenantId === undefined || tenantId === null || tenantId === "") {
+    return query;
+  }
+  if (tenantId && tenantId !== "default") {
+    return query.eq("tenant_id", tenantId);
+  }
+  return query.or("tenant_id.is.null,tenant_id.eq.default");
+}
+
 async function readAllowedLearnersStore(tenantId) {
   if (USE_SUPABASE) {
-    const { data, error } = await supabase
+    let query = supabase
       .from("learner_access")
-      .select("email,is_active,expires_at,created_at,updated_at")
+      .select("email,name,access_code,phone,is_active,expires_at,tenant_id,created_at,updated_at")
       .order("updated_at", { ascending: false });
+    query = applyLearnerTenantFilter(query, tenantId);
+    const { data, error } = await query;
     if (!error) return (data || []).map(mapLearnerRow);
     if (!isMissingLearnerTable(error)) {
       console.error("Learner access read failed from Supabase, using file fallback:", error.message || error);
@@ -506,12 +522,12 @@ async function readAllowedLearnersStore(tenantId) {
   }
   const allLearners = readAllowedLearners();
   let filtered;
-  if (tenantId && tenantId !== "default") {
-    filtered = allLearners.filter((item) => item.tenantId === tenantId);
-  } else if (tenantId === "default" || !tenantId) {
-    filtered = allLearners.filter((item) => !item.tenantId || item.tenantId === "default");
-  } else {
+  if (tenantId === undefined || tenantId === null || tenantId === "") {
     filtered = allLearners;
+  } else if (tenantId && tenantId !== "default") {
+    filtered = allLearners.filter((item) => item.tenantId === tenantId);
+  } else {
+    filtered = allLearners.filter((item) => !item.tenantId || item.tenantId === "default");
   }
   return filtered
     .map((item) => ({
@@ -536,13 +552,17 @@ async function upsertAllowedLearnerStore({ email, name, accessCode, phone, isAct
   if (USE_SUPABASE) {
     const payload = {
       email: normalizedEmail,
+      name: name !== undefined ? String(name || "").trim() : "",
+      access_code: accessCode !== undefined ? String(accessCode || "").trim() : "",
+      phone: phone !== undefined ? String(phone || "").trim() : "",
       is_active: isActive !== false,
-      expires_at: normalizedExpiry ? toIso(normalizedExpiry) : null
+      expires_at: normalizedExpiry ? toIso(normalizedExpiry) : null,
+      tenant_id: tenantId && tenantId !== "default" ? tenantId : null
     };
     const { data, error } = await supabase
       .from("learner_access")
       .upsert(payload, { onConflict: "email" })
-      .select("email,is_active,expires_at,created_at,updated_at")
+      .select("email,name,access_code,phone,is_active,expires_at,tenant_id,created_at,updated_at")
       .single();
     if (!error) return mapLearnerRow(data);
     if (!isMissingLearnerTable(error)) {
@@ -853,10 +873,10 @@ function isExpired(expiryTs) {
   return ts > 0 && Date.now() > ts;
 }
 
-async function getLearnerAccessRecord(email) {
+async function getLearnerAccessRecord(email, tenantId) {
   const target = normalizeEmail(email);
   if (!target) return null;
-  const learners = await readAllowedLearnersStore();
+  const learners = await readAllowedLearnersStore(tenantId);
   return learners.find((item) => normalizeEmail(item.email) === target) || null;
 }
 
@@ -911,10 +931,13 @@ function createCohort({ name, accessCode, questionLimit, isActive, expiresAt, te
   return newCohort;
 }
 
-function updateCohort({ cohortId, name, accessCode, questionLimit, isActive, expiresAt }) {
+function updateCohort({ cohortId, name, accessCode, questionLimit, isActive, expiresAt, tenantId }) {
   const cohorts = readCohorts();
   const idx = cohorts.findIndex((c) => c.id === cohortId);
   if (idx < 0) throw new Error("Cohort not found");
+  if (tenantId !== undefined && (cohorts[idx].tenantId || null) !== (tenantId || null)) {
+    throw new Error("Forbidden");
+  }
 
   if (name !== undefined) {
     const cleanName = sanitizeCohortName(name);
@@ -2286,7 +2309,8 @@ const server = http.createServer(async (req, res) => {
       const body = await parseBody(req);
       const email = normalizeEmail(body.email || "");
       if (!email) return json(res, 200, { valid: false, reason: "email_required_for_learner_access" });
-      const learner = await getLearnerAccessRecord(email);
+      const tenant = resolveTenant(req);
+      const learner = await getLearnerAccessRecord(email, tenant.id);
       if (!learner) return json(res, 200, { valid: false, reason: "email_not_allowlisted" });
       if (learner.isActive === false) return json(res, 200, { valid: false, reason: "learner_inactive" });
       if (isExpired(learner.expiresAt)) return json(res, 200, { valid: false, reason: "learner_access_expired" });
@@ -3370,8 +3394,8 @@ const server = http.createServer(async (req, res) => {
     const key = getInstituteKey(req);
     const tenant = resolveInstituteFromKey(key);
     if (!tenant) return json(res, 401, { error: "Invalid institute key" });
-    const allLearners = readAllowedLearners();
-    const usedSeats = allLearners.filter((l) => l.tenantId === tenant.id).length;
+    const allLearners = await readAllowedLearnersStore(tenant.id);
+    const usedSeats = allLearners.length;
     return json(res, 200, {
       name: tenant.name,
       slug: tenant.slug,
@@ -3399,10 +3423,10 @@ const server = http.createServer(async (req, res) => {
       const email = normalizeEmail(body.email);
       if (!email) return json(res, 400, { error: "Email is required" });
       // Enforce maxUsers cap (only count if adding new)
-      const allLearners = readAllowedLearners();
+      const allLearners = await readAllowedLearnersStore(tenant.id);
       const existing = allLearners.find((l) => normalizeEmail(l.email) === email);
       if (!existing) {
-        const usedSeats = allLearners.filter((l) => l.tenantId === tenant.id).length;
+        const usedSeats = allLearners.length;
         const maxUsers = (tenant.settings || {}).maxUsers || 50;
         if (usedSeats >= maxUsers) return json(res, 400, { error: `Seat limit reached (${maxUsers} max)` });
       }
@@ -3430,9 +3454,8 @@ const server = http.createServer(async (req, res) => {
       const email = normalizeEmail(body.email);
       if (!email) return json(res, 400, { error: "Email is required" });
       // Only allow removal of learners belonging to this tenant
-      const allLearners = readAllowedLearners();
-      const learner = allLearners.find((l) => normalizeEmail(l.email) === email);
-      if (learner && learner.tenantId !== tenant.id) return json(res, 403, { error: "Forbidden" });
+      const learner = await getLearnerAccessRecord(email, tenant.id);
+      if (!learner) return json(res, 403, { error: "Forbidden" });
       const removed = await removeAllowedLearnerStore(email);
       return json(res, 200, { removed });
     } catch (err) {
@@ -3461,7 +3484,8 @@ const server = http.createServer(async (req, res) => {
           accessCode: body.accessCode,
           questionLimit: body.questionLimit,
           isActive: body.isActive,
-          expiresAt: body.expiresAt
+          expiresAt: body.expiresAt,
+          tenantId: tenant.id
         });
       } else {
         cohort = createCohort({
@@ -3485,7 +3509,7 @@ const server = http.createServer(async (req, res) => {
     if (!tenant) return json(res, 401, { error: "Invalid institute key" });
     try {
       const sessions = readSessions().filter((s) => s.tenantId === tenant.id);
-      const allLearners = readAllowedLearners().filter((l) => l.tenantId === tenant.id);
+      const allLearners = await readAllowedLearnersStore(tenant.id);
       const byEmail = {};
       for (const s of sessions) {
         const email = String(s.userEmail || "").toLowerCase();

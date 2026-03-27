@@ -68,14 +68,24 @@ for each row execute function set_updated_at_import_review_queue();
 -- Learner allowlist for durable access control (survives redeploy/restart)
 create table if not exists learner_access (
   email text primary key,
+  name text,
+  access_code text,
+  phone text,
+  tenant_id text,
   is_active boolean not null default true,
   expires_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
+alter table learner_access add column if not exists name text;
+alter table learner_access add column if not exists access_code text;
+alter table learner_access add column if not exists phone text;
+alter table learner_access add column if not exists tenant_id text;
+
 create index if not exists idx_learner_access_active on learner_access(is_active);
 create index if not exists idx_learner_access_expires_at on learner_access(expires_at);
+create index if not exists idx_learner_access_tenant_id on learner_access(tenant_id);
 
 create or replace function set_updated_at_learner_access()
 returns trigger as $$
