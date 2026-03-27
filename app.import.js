@@ -1,4 +1,6 @@
 window.PBL_IMPORT = (() => {
+  let lastImportMeta = { detectedHeader: false, mappings: [] };
+
   function removeInvalidSurrogates(text) {
     const value = String(text || "");
     let out = "";
@@ -83,13 +85,68 @@ window.PBL_IMPORT = (() => {
 
   function parseRowsMatrix(rows) {
     if (!Array.isArray(rows) || !rows.length) return [];
-    const header = rows[0].map((x) => cleanImportText(x).toLowerCase());
+    const normalizeHeaderName = (value) => cleanImportText(value)
+      .toLowerCase()
+      .replace(/[\s\-\/]+/g, "_")
+      .replace(/[()]/g, "")
+      .replace(/__+/g, "_")
+      .replace(/^_+|_+$/g, "");
+
+    const HEADER_ALIASES = {
+      tag: ["tag", "tags", "category", "topic", "topics", "subject", "module", "domain"],
+      type: ["type", "question_type", "format"],
+      question: ["question", "questions", "question_text", "questiontext", "stem", "prompt"],
+      answer: ["answer", "answers", "short_answer", "shortanswer", "answer_key", "answerkey"],
+      rationale: ["rationale", "explanation", "reason", "notes", "description"],
+      option_a: ["option_a", "optiona", "option_1", "option1", "choice_a", "choicea", "choice_1", "choice1", "a"],
+      option_b: ["option_b", "optionb", "option_2", "option2", "choice_b", "choiceb", "choice_2", "choice2", "b"],
+      option_c: ["option_c", "optionc", "option_3", "option3", "choice_c", "choicec", "choice_3", "choice3", "c"],
+      option_d: ["option_d", "optiond", "option_4", "option4", "choice_d", "choiced", "choice_4", "choice4", "d"],
+      correct_option: [
+        "correct_option",
+        "correctoption",
+        "correct_answer",
+        "correctanswer",
+        "right_answer",
+        "rightanswer",
+        "correct",
+        "answer_letter",
+        "correct_choice"
+      ]
+    };
+
+    const header = rows[0].map((x) => normalizeHeaderName(x));
     const headerMap = {};
     header.forEach((name, idx) => {
       headerMap[name] = idx;
     });
 
-    const hasNamedHeader = header.includes("question") && (header.includes("answer") || header.includes("option_a"));
+    const resolveHeaderIndex = (canonicalName) => {
+      const aliases = HEADER_ALIASES[canonicalName] || [canonicalName];
+      for (const alias of aliases) {
+        if (Object.prototype.hasOwnProperty.call(headerMap, alias)) {
+          return { idx: headerMap[alias], alias };
+        }
+      }
+      return { idx: -1, alias: "" };
+    };
+
+    const resolvedHeaders = {};
+    Object.keys(HEADER_ALIASES).forEach((canonicalName) => {
+      resolvedHeaders[canonicalName] = resolveHeaderIndex(canonicalName);
+    });
+
+    const hasNamedHeader =
+      resolvedHeaders.question.idx >= 0 &&
+      (resolvedHeaders.answer.idx >= 0 || resolvedHeaders.option_a.idx >= 0);
+
+    lastImportMeta = {
+      detectedHeader: hasNamedHeader,
+      mappings: Object.entries(resolvedHeaders)
+        .filter(([canonicalName, info]) => info.idx >= 0 && info.alias && info.alias !== canonicalName)
+        .map(([canonicalName, info]) => ({ canonicalName, matchedHeader: info.alias }))
+    };
+
     const startAt = hasNamedHeader ? 1 : 0;
 
     const getCell = (row, idx) => cleanImportText(idx >= 0 ? row[idx] : "");
@@ -103,16 +160,16 @@ window.PBL_IMPORT = (() => {
     };
 
     return rows.slice(startAt).map((row) => {
-      const tag = getByName(row, ["tag", "tags", "category", "topic"], 0) || "General";
-      const type = (getByName(row, ["type"], 1) || (hasNamedHeader ? "short" : "")).toLowerCase();
-      const question = getByName(row, ["question"], hasNamedHeader ? -1 : 1);
-      const answer = getByName(row, ["answer"], hasNamedHeader ? -1 : 2);
-      const rationale = getByName(row, ["rationale", "explanation"], -1);
-      const optionA = getByName(row, ["option_a", "optiona", "a"], -1);
-      const optionB = getByName(row, ["option_b", "optionb", "b"], -1);
-      const optionC = getByName(row, ["option_c", "optionc", "c"], -1);
-      const optionD = getByName(row, ["option_d", "optiond", "d"], -1);
-      const correctOption = getByName(row, ["correct_option", "correctoption", "correct"], -1).toUpperCase();
+      const tag = getByName(row, HEADER_ALIASES.tag, 0) || "General";
+      const type = (getByName(row, HEADER_ALIASES.type, 1) || (hasNamedHeader ? "short" : "")).toLowerCase();
+      const question = getByName(row, HEADER_ALIASES.question, hasNamedHeader ? -1 : 1);
+      const answer = getByName(row, HEADER_ALIASES.answer, hasNamedHeader ? -1 : 2);
+      const rationale = getByName(row, HEADER_ALIASES.rationale, -1);
+      const optionA = getByName(row, HEADER_ALIASES.option_a, -1);
+      const optionB = getByName(row, HEADER_ALIASES.option_b, -1);
+      const optionC = getByName(row, HEADER_ALIASES.option_c, -1);
+      const optionD = getByName(row, HEADER_ALIASES.option_d, -1);
+      const correctOption = getByName(row, HEADER_ALIASES.correct_option, -1).toUpperCase();
 
       return {
         tag,
@@ -197,6 +254,7 @@ window.PBL_IMPORT = (() => {
     parseCsv,
     parseExcelArrayBuffer,
     formatCardsForTextarea,
+    getLastImportMeta: () => ({ ...lastImportMeta, mappings: [...(lastImportMeta.mappings || [])] }),
     importSeverity,
     mergeImportStatus
   };

@@ -565,6 +565,15 @@ async function importCsv() {
     return;
   }
 
+  const importMeta = typeof getLastImportMeta === "function" ? getLastImportMeta() : null;
+  if (importMeta?.mappings?.length) {
+    const mappingText = importMeta.mappings
+      .slice(0, 4)
+      .map((item) => `${item.matchedHeader} -> ${item.canonicalName}`)
+      .join(", ");
+    setStatus(dom.importStatus, `Recognized alternate headers: ${mappingText}.`, "success");
+  }
+
   await prepareImportPreview(parsed);
 }
 
@@ -584,6 +593,14 @@ async function importCsvFile() {
     if (!parsed.length) {
       setStatus(dom.importStatus, "File has no valid cards.", "error");
       return;
+    }
+    const importMeta = typeof getLastImportMeta === "function" ? getLastImportMeta() : null;
+    if (importMeta?.mappings?.length) {
+      const mappingText = importMeta.mappings
+        .slice(0, 5)
+        .map((item) => `${item.matchedHeader} -> ${item.canonicalName}`)
+        .join(", ");
+      setStatus(dom.importStatus, `Headers auto-mapped: ${mappingText}.`, "success");
     }
     dom.csvInput.value = formatCardsForTextarea(parsed);
     await prepareImportPreview(parsed);
