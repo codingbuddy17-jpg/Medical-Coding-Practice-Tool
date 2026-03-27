@@ -335,7 +335,8 @@ async function startSession() {
   state.role = role;
   state.trainerKey = trainerKey;
   state.trainerKeyVerified = role === "trainer";
-  state.adaptiveEnabled = role === "trial" || role === "trainee";
+  state.weakDrillEnabled = false;
+  state.adaptiveEnabled = false;
   state.currentCardIndex = 0;
   state.session.id = uid("session");
   state.session.startedAt = Date.now();
@@ -383,6 +384,7 @@ async function startSession() {
   }
 
   updateRoleUI();
+  if (dom.weakDrillToggle) dom.weakDrillToggle.checked = state.weakDrillEnabled;
   if (dom.adaptiveToggle) dom.adaptiveToggle.checked = state.adaptiveEnabled;
   updateMetrics();
   setStatus(dom.examStatus, "Exam mode inactive.");
