@@ -1,9 +1,10 @@
-function checkAnswer(userInput, expectedAnswer, card = null) {
+function checkAnswer(userInput, expectedAnswer, card = null, renderOverride = null) {
   const type = String(card?.type || "").toLowerCase();
 
   if (type === "mcq") {
-    const options = Array.isArray(card?.options) ? card.options : [];
-    const correctOption = toMcqOptionKey(card?.correctOption);
+    const options = Array.isArray(renderOverride?.options) ? renderOverride.options
+      : Array.isArray(card?.options) ? card.options : [];
+    const correctOption = toMcqOptionKey(renderOverride?.correctOption || card?.correctOption);
     const selected = toMcqOptionKey(userInput);
     const isCorrect = selected && correctOption && selected === correctOption;
     const correctIdx = correctOption ? correctOption.charCodeAt(0) - 65 : -1;
@@ -59,20 +60,55 @@ function resetStudyOrder(tagKey = null) {
     delete state.studyOrder.queues[tagKey];
     delete state.studyOrder.cursors[tagKey];
     delete state.studyOrder.seeds[tagKey];
+    delete state.studyOrder.cycles[tagKey];
     return;
   }
   state.studyOrder.queues = {};
   state.studyOrder.cursors = {};
   state.studyOrder.seeds = {};
+  state.studyOrder.cycles = {};
+}
+
+// For ALL tag: interleave cards across topics so learner sees variety
+// rather than getting 20 CPT questions in a row
+function buildInterleavedQueue(seed) {
+  const tagMap = {};
+  state.deck.forEach((card) => {
+    const tag = String(card.tag || "OTHER").toUpperCase();
+    if (!tagMap[tag]) tagMap[tag] = [];
+    tagMap[tag].push(card.id);
+  });
+  const rng = seed ? createSeededRng(seed) : null;
+  // Shuffle each tag pool independently, then shuffle pool order for topic variety
+  const pools = shuffledCopy(Object.values(tagMap).map((ids) => shuffledCopy(ids, rng)), rng);
+  const result = [];
+  let i = 0;
+  let hasMore = true;
+  while (hasMore) {
+    hasMore = false;
+    for (const pool of pools) {
+      if (i < pool.length) { result.push(pool[i]); hasMore = true; }
+    }
+    i++;
+  }
+  return result;
 }
 
 function buildStudyQueueForTag(tagKey) {
-  const ids = getCardsForTag(tagKey).map((card) => card.id);
-  const seed =
-    state.studyOrder.seeds[tagKey] ||
-    (state.session.shuffleSeed ? `${state.session.shuffleSeed}|practice|${tagKey || "ALL"}` : "");
-  const rng = seed ? createSeededRng(seed) : null;
-  state.studyOrder.queues[tagKey] = shuffledCopy(ids, rng);
+  const cycle = state.studyOrder.cycles[tagKey] || 0;
+  const baseSeed = state.session.shuffleSeed
+    ? `${state.session.shuffleSeed}|practice|${tagKey || "ALL"}`
+    : "";
+  const seed = cycle > 0 ? `${baseSeed}|cycle${cycle}` : baseSeed;
+  state.studyOrder.seeds[tagKey] = seed;
+
+  if (tagKey === "ALL") {
+    state.studyOrder.queues[tagKey] = buildInterleavedQueue(seed);
+  } else {
+    const ids = getCardsForTag(tagKey).map((card) => card.id);
+    const rng = seed ? createSeededRng(seed) : null;
+    state.studyOrder.queues[tagKey] = shuffledCopy(ids, rng);
+  }
   state.studyOrder.cursors[tagKey] = 0;
 }
 
@@ -96,7 +132,10 @@ function ensureStudyQueue(tagKey) {
     state.studyOrder.cursors[tagKey] = 0;
   }
   if (state.studyOrder.cursors[tagKey] >= queue.length) {
-    state.studyOrder.cursors[tagKey] = 0;
+    // Re-shuffle for next cycle so second pass isn't identical
+    state.studyOrder.cycles[tagKey] = (state.studyOrder.cycles[tagKey] || 0) + 1;
+    delete state.studyOrder.seeds[tagKey];
+    buildStudyQueueForTag(tagKey);
   }
   return queue;
 }
@@ -427,8 +466,10 @@ function renderCard() {
   if (card.type === "mcq") {
     dom.userAnswer.classList.add("hidden");
     dom.mcqOptions.classList.remove("hidden");
+    const mcqRender = getShuffledMcqRender(card);
+    state.currentCardRender = mcqRender;
     const labels = ["A", "B", "C", "D"];
-    dom.mcqOptions.innerHTML = (card.options || [])
+    dom.mcqOptions.innerHTML = (mcqRender.options || [])
       .map((opt, idx) => {
         const key = labels[idx];
         const isSelected = state.selectedMcqOption === key;
@@ -442,6 +483,8 @@ function renderCard() {
       .join("");
     dom.checkBtn.disabled = hasSessionLimitReached();
     dom.nextBtn.disabled = true;
+  } else {
+    state.currentCardRender = null;
   }
 
   setStatus(dom.feedback, "");

@@ -51,6 +51,28 @@ function finishExam(reason) {
   // Show Modal
   const resultOverlay = document.createElement("div");
   resultOverlay.className = "exam-result-overlay";
+  // Build quick topic breakdown from session stats
+  const catStats = state.session.categoryStats || {};
+  const topicRows = Object.keys(catStats)
+    .filter((k) => catStats[k]?.attempted > 0)
+    .map((k) => ({
+      tag: k,
+      acc: Math.round((catStats[k].correct / catStats[k].attempted) * 100),
+      attempted: catStats[k].attempted
+    }))
+    .sort((a, b) => a.acc - b.acc);
+  const weakTopicsHtml = topicRows.length > 0
+    ? `<div class="result-topics">
+        <p class="result-detail" style="font-weight:600;margin-bottom:4px">Topic Breakdown:</p>
+        ${topicRows.slice(0, 5).map((t) =>
+          `<p class="result-topic-row" style="font-size:0.82rem;margin:2px 0">
+            <span style="color:${t.acc >= 70 ? "#15803d" : t.acc >= 50 ? "#b45309" : "#dc2626"}">${t.acc}%</span>
+            &nbsp;${escapeHtml(t.tag)} <span style="color:#888">(${t.attempted}q)</span>
+          </p>`
+        ).join("")}
+      </div>`
+    : "";
+
   resultOverlay.innerHTML = `
     <div class="exam-result-card ${passed ? "pass" : "fail"}">
       <h2>Exam Completed</h2>
@@ -59,8 +81,10 @@ function finishExam(reason) {
       <p class="result-detail">Correct: ${state.exam.correct} | Wrong: ${state.exam.wrong} | Attempted: ${attempted}</p>
       <p class="result-detail">Avg Time/Question: ${avgExamLabel}</p>
       <p class="result-note">Threshold: ${passThreshold}%</p>
+      ${weakTopicsHtml}
       <div class="result-actions">
         <button class="primary-btn" onclick="window.location.reload()">Return to Dashboard</button>
+        <button class="ghost-btn" onclick="exportPdfReport();this.textContent='Downloading...';this.disabled=true" style="margin-top:8px">Download Full Report</button>
       </div>
     </div>
   `;
@@ -128,6 +152,33 @@ function startExamTimer() {
     }
     updateExamStatusUI();
   }, 1000);
+}
+
+// MCQ option shuffle helpers
+const ANCHORED_OPTION_PATTERN = /\b(all|none|both)\b.*\babove\b|\b[a-d]\s+and\s+[a-d]\b/i;
+
+function shouldShuffleMcqOptions(options) {
+  return !options.some((opt) => ANCHORED_OPTION_PATTERN.test(String(opt || "")));
+}
+
+function getShuffledMcqRender(card) {
+  const options = Array.isArray(card.options) ? [...card.options] : [];
+  if (options.length < 2 || !shouldShuffleMcqOptions(options)) {
+    return { options, correctOption: card.correctOption };
+  }
+  const seed = `${state.session.shuffleSeed || ""}|mcqrender|${card.id}`;
+  const rng = createSeededRng(seed);
+  const originalCorrectIdx = card.correctOption
+    ? card.correctOption.toUpperCase().charCodeAt(0) - 65
+    : -1;
+  const indexed = options.map((opt, i) => ({ opt, i }));
+  const shuffled = shuffledCopy(indexed, rng);
+  const newOptions = shuffled.map((item) => item.opt);
+  const newCorrectIdx = shuffled.findIndex((item) => item.i === originalCorrectIdx);
+  const newCorrectOption = newCorrectIdx >= 0
+    ? String.fromCharCode(65 + newCorrectIdx)
+    : card.correctOption;
+  return { options: newOptions, correctOption: newCorrectOption };
 }
 
 function hashSeedToInt(seed) {

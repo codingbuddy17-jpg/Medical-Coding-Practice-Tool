@@ -127,8 +127,10 @@ const state = {
   studyOrder: {
     queues: {},
     cursors: {},
-    seeds: {}
+    seeds: {},
+    cycles: {}
   },
+  currentCardRender: null,
   accessConfig: {
     trialQuestionLimit: 20,
     maxSessionQuestions: 250,
