@@ -2725,3 +2725,86 @@ code {
   .iv-question-meta { flex-direction: column; align-items: flex-start; gap: 8px; }
   .iv-type-label { min-width: 100px; font-size: 0.75rem; }
 }
+
+/* ── Login Guide ── */
+.auth-layout-wrap {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  align-items: start;
+  max-width: 860px;
+  margin: 0 auto;
+}
+.auth-layout-wrap #authPanel { margin: 0; }
+
+.login-guide {
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-radius: 14px;
+  padding: 18px 16px;
+  position: sticky;
+  top: 80px;
+}
+.login-guide-inner { font-size: 0.85rem; }
+
+.lg-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #99f6e4;
+}
+.lg-icon { font-size: 1.5rem; line-height: 1; }
+.lg-header strong { display: block; font-size: 0.92rem; color: #0f766e; }
+.lg-header p { margin: 2px 0 0; font-size: 0.78rem; color: #64748b; }
+
+.lg-steps { list-style: none; padding: 0; margin: 0 0 12px; display: flex; flex-direction: column; gap: 10px; }
+.lg-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.lg-num {
+  background: #0f766e;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.lg-step > div { display: flex; flex-direction: column; gap: 1px; }
+.lg-step strong { font-size: 0.82rem; color: #0f172a; font-weight: 600; }
+.lg-sub { font-size: 0.74rem; color: #64748b; }
+
+.lg-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.76rem;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.lg-track { }
+.lg-track.hidden { display: none; }
+
+@media (max-width: 700px) {
+  .auth-layout-wrap {
+    grid-template-columns: 1fr;
+  }
+  .login-guide {
+    position: static;
+    order: -1; /* show guide ABOVE the form on mobile */
+  }
+}

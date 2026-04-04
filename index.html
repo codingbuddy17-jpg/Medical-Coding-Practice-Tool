@@ -89,6 +89,7 @@
       </div>
     </section>
 
+    <div class="auth-layout-wrap">
     <section class="auth panel" id="authPanel">
       <h2>Start Session</h2>
       <p class="status auth-hint">Enter your details and choose how you want to access the lab.</p>
@@ -150,6 +151,100 @@
       <p id="sessionStatus" class="status" aria-live="polite"></p>
     </section>
 
+    <!-- Login Guide — sits beside the auth panel, updates on role change -->
+    <aside class="login-guide" id="loginGuide" aria-label="Login help">
+      <div class="login-guide-inner">
+
+        <!-- Trial guide -->
+        <div class="lg-track" id="lgTrial">
+          <div class="lg-header">
+            <span class="lg-icon">🚀</span>
+            <div>
+              <strong>Trial Access</strong>
+              <p>No code needed — start instantly</p>
+            </div>
+          </div>
+          <ol class="lg-steps">
+            <li class="lg-step">
+              <span class="lg-num">1</span>
+              <div><strong>Enter your name</strong><span class="lg-sub">Just your first name is fine</span></div>
+            </li>
+            <li class="lg-step">
+              <span class="lg-num">2</span>
+              <div><strong>Role is already set to Trial</strong><span class="lg-sub">No changes needed</span></div>
+            </li>
+            <li class="lg-step">
+              <span class="lg-num">3</span>
+              <div><strong>Tap Start</strong><span class="lg-sub">You're in — 30 questions included</span></div>
+            </li>
+          </ol>
+          <div class="lg-note">
+            <span>💡</span>
+            <span>Enjoyed the trial? Ask your trainer for full access.</span>
+          </div>
+        </div>
+
+        <!-- Learner guide -->
+        <div class="lg-track hidden" id="lgLearner">
+          <div class="lg-header">
+            <span class="lg-icon">🎓</span>
+            <div>
+              <strong>Learner Access</strong>
+              <p>You'll need the code from your trainer</p>
+            </div>
+          </div>
+          <ol class="lg-steps">
+            <li class="lg-step">
+              <span class="lg-num">1</span>
+              <div><strong>Enter your name</strong><span class="lg-sub">Use the name your trainer knows you by</span></div>
+            </li>
+            <li class="lg-step">
+              <span class="lg-num">2</span>
+              <div><strong>Select Learner Access</strong><span class="lg-sub">From the Role dropdown</span></div>
+            </li>
+            <li class="lg-step">
+              <span class="lg-num">3</span>
+              <div><strong>Enter your access code</strong><span class="lg-sub">Shared by your trainer or institute</span></div>
+            </li>
+            <li class="lg-step">
+              <span class="lg-num">4</span>
+              <div><strong>Tap Start</strong><span class="lg-sub">Your session begins</span></div>
+            </li>
+          </ol>
+          <div class="lg-note">
+            <span>📩</span>
+            <span>No code yet? WhatsApp or email your trainer to get one.</span>
+          </div>
+        </div>
+
+        <!-- Trainer guide (minimal) -->
+        <div class="lg-track hidden" id="lgTrainer">
+          <div class="lg-header">
+            <span class="lg-icon">🔑</span>
+            <div>
+              <strong>Mentor Console</strong>
+              <p>For trainers &amp; administrators only</p>
+            </div>
+          </div>
+          <ol class="lg-steps">
+            <li class="lg-step">
+              <span class="lg-num">1</span>
+              <div><strong>Enter your name</strong><span class="lg-sub">Any name to identify your session</span></div>
+            </li>
+            <li class="lg-step">
+              <span class="lg-num">2</span>
+              <div><strong>Enter your Mentor Key</strong><span class="lg-sub">Set up in your access configuration</span></div>
+            </li>
+            <li class="lg-step">
+              <span class="lg-num">3</span>
+              <div><strong>Tap Start</strong><span class="lg-sub">Full console unlocks</span></div>
+            </li>
+          </ol>
+        </div>
+
+      </div>
+    </aside>
+    </div><!-- /.auth-layout-wrap -->
     <section class="panel institute-login-panel hidden" id="instituteLoginPanel">
       <h2>Institute Login</h2>
       <p class="status">Institute admins: enter your key to access your dashboard.</p>

@@ -10,6 +10,7 @@ function bindEvents() {
     state.role = dom.roleSelect.value;
     if (state.role !== "trainer") state.trainerKeyVerified = false;
     updateRoleUI();
+    updateLoginGuide(state.role);
     saveLocal();
   });
 
@@ -537,6 +538,7 @@ async function init() {
   setRecommendedTags([]);
   renderBlueprintSelectors();
   updateRoleUI();
+  updateLoginGuide(state.role || "trial");
   updateSessionIdentityLock();
   updateMetrics();
   renderCategoryScorecards();
@@ -755,3 +757,11 @@ function updateDashboardWidgets() {
 }
 
 // Sub-nav listeners are bound via bindEvents() after cacheDOM()
+
+/* ── Login Guide ── */
+function updateLoginGuide(role) {
+  const tracks = { trial: "lgTrial", trainee: "lgLearner", trainer: "lgTrainer" };
+  Object.values(tracks).forEach(id => document.getElementById(id)?.classList.add("hidden"));
+  const activeId = tracks[role] || "lgTrial";
+  document.getElementById(activeId)?.classList.remove("hidden");
+}
