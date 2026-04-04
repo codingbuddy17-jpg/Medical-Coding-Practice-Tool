@@ -1591,6 +1591,8 @@ async function storageListSessions(tenantId = "default") {
     return sessions.map((s) => ({
       id: s.id,
       userName: s.userName,
+      userEmail: s.userEmail || "",
+      userPhone: s.userPhone || "",
       role: s.role,
       startedAt: s.startedAt,
       endedAt: s.endedAt,
@@ -1600,9 +1602,9 @@ async function storageListSessions(tenantId = "default") {
 
   let query = supabase
     .from("sessions")
-    .select("session_id,user_name,role,started_at,ended_at,correct,wrong,attempted,score")
+    .select("session_id,user_name,user_email,user_phone,role,started_at,ended_at,correct,wrong,attempted,score")
     .order("started_at", { ascending: false })
-    .limit(500);
+    .limit(2000);
 
   if (tenantId === "default") {
     query = query.or("tenant_id.is.null,tenant_id.eq.default");
@@ -1617,6 +1619,8 @@ async function storageListSessions(tenantId = "default") {
   return (data || []).map((row) => ({
     id: row.session_id,
     userName: row.user_name,
+    userEmail: row.user_email || "",
+    userPhone: row.user_phone || "",
     role: row.role,
     startedAt: Date.parse(row.started_at),
     endedAt: row.ended_at ? Date.parse(row.ended_at) : null,
@@ -3128,6 +3132,97 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { events });
   }
 
+  if (url.pathname === "/api/monetization/insights" && req.method === "GET") {
+    const trainerKey = getTrainerKey(req);
+    const access = readAccessConfig();
+    if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+
+    try {
+      const trialLimit = Number(access.trialQuestionLimit || 20);
+      let allSessions = [];
+
+      if (!USE_SUPABASE) {
+        const raw = readSessions();
+        allSessions = raw.map(s => ({
+          userName: s.userName,
+          userEmail: s.userEmail || "",
+          userPhone: s.userPhone || "",
+          role: s.role,
+          attempted: s.summary?.attempted || 0,
+          startedAt: s.startedAt,
+          endedAt: s.endedAt
+        }));
+      } else {
+        const { data } = await supabase
+          .from("sessions")
+          .select("user_name,user_email,user_phone,role,attempted,started_at,ended_at")
+          .order("started_at", { ascending: false })
+          .limit(5000);
+        allSessions = (data || []).map(r => ({
+          userName: r.user_name,
+          userEmail: r.user_email || "",
+          userPhone: r.user_phone || "",
+          role: r.role,
+          attempted: Number(r.attempted || 0),
+          startedAt: Date.parse(r.started_at),
+          endedAt: r.ended_at ? Date.parse(r.ended_at) : null
+        }));
+      }
+
+      const trialSessions = allSessions.filter(s => s.role === "trial");
+      const learnSessions = allSessions.filter(s => s.role === "trainee");
+
+      // Dedupe by email for unique users
+      const trialByEmail = {};
+      trialSessions.forEach(s => {
+        const key = s.userEmail || s.userName;
+        if (!trialByEmail[key]) trialByEmail[key] = { ...s, sessions: 0, maxAttempted: 0 };
+        trialByEmail[key].sessions++;
+        trialByEmail[key].maxAttempted = Math.max(trialByEmail[key].maxAttempted, s.attempted);
+      });
+      const trialUsers = Object.values(trialByEmail);
+
+      // CTA events
+      let ctaEvents = [];
+      if (!USE_SUPABASE) {
+        ctaEvents = readCtaEvents().slice(0, 200);
+      } else {
+        const { data: ctaData } = await supabase
+          .from("cta_events")
+          .select("type,user_name,user_email,user_phone,role,at")
+          .order("at", { ascending: false })
+          .limit(200);
+        ctaEvents = (ctaData || []).map(r => ({
+          type: r.type, userName: r.user_name, userEmail: r.user_email,
+          userPhone: r.user_phone, role: r.role, at: Date.parse(r.at)
+        }));
+      }
+
+      const hotLeads = trialUsers.filter(u => u.maxAttempted >= trialLimit - 5).sort((a,b) => b.maxAttempted - a.maxAttempted);
+      const warmLeads = trialUsers.filter(u => u.maxAttempted >= 10 && u.maxAttempted < trialLimit - 5).sort((a,b) => b.maxAttempted - a.maxAttempted);
+      const coldLeads = trialUsers.filter(u => u.maxAttempted < 10);
+      const returningTrialUsers = trialUsers.filter(u => u.sessions > 1).sort((a,b) => b.sessions - a.sessions);
+
+      return json(res, 200, {
+        trialLimit,
+        summary: {
+          totalTrialSessions: trialSessions.length,
+          totalTrialUsers: trialUsers.length,
+          totalLearnerSessions: learnSessions.length,
+          engaged: trialUsers.filter(u => u.maxAttempted >= 10).length,
+          hotLeads: hotLeads.length,
+          ctaClicks: ctaEvents.length
+        },
+        hotLeads: hotLeads.slice(0, 50),
+        warmLeads: warmLeads.slice(0, 50),
+        returningTrialUsers: returningTrialUsers.slice(0, 30),
+        ctaEvents: ctaEvents.slice(0, 50)
+      });
+    } catch (err) {
+      return json(res, 500, { error: err.message });
+    }
+  }
+
   if (url.pathname === "/api/session/start" && req.method === "POST") {
     try {
       const body = await parseBody(req);
@@ -3206,6 +3301,40 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (url.pathname === "/api/session/progress" && req.method === "PATCH") {
+    try {
+      const body = await parseBody(req);
+      const sessionId = String(body.sessionId || "").trim();
+      const correct = Number(body.correct || 0);
+      const wrong = Number(body.wrong || 0);
+      const attempted = Number(body.attempted || 0);
+      if (!sessionId) return json(res, 400, { error: "sessionId required" });
+
+      if (!USE_SUPABASE) {
+        const sessions = readSessions();
+        const idx = findSessionIndex(sessions, sessionId);
+        if (idx >= 0) {
+          sessions[idx].summary = sessions[idx].summary || {};
+          sessions[idx].summary.correct = correct;
+          sessions[idx].summary.wrong = wrong;
+          sessions[idx].summary.attempted = attempted;
+          sessions[idx].summary.score = attempted ? Math.round((correct / attempted) * 100) : 0;
+          writeSessions(sessions);
+        }
+        return json(res, 200, { ok: true });
+      }
+
+      const score = attempted ? Math.round((correct / attempted) * 100) : 0;
+      const { error } = await supabase.from("sessions")
+        .update({ correct, wrong, attempted, score })
+        .eq("session_id", sessionId);
+      if (error) throw error;
+      return json(res, 200, { ok: true });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
   if (url.pathname === "/api/session/end" && req.method === "POST") {
     try {
       const body = await parseBody(req);
@@ -3240,7 +3369,7 @@ const server = http.createServer(async (req, res) => {
 
     try {
       const sessions = await storageListSessions(tenant.id);
-      return json(res, 200, { sessions });
+      return json(res, 200, { sessions, total: sessions.length });
     } catch (err) {
       return json(res, 400, { error: err.message });
     }

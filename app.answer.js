@@ -1,3 +1,16 @@
+// Mid-session progress save — every 5 answered questions
+function maybeSaveSessionProgress() {
+  const attempted = state.session.attempted || 0;
+  if (attempted > 0 && attempted % 5 === 0 && state.session.id && state.session.isActive) {
+    apiRequest("/api/session/progress", "PATCH", {
+      sessionId: state.session.id,
+      correct: state.session.correct || 0,
+      wrong: state.session.wrong || 0,
+      attempted
+    }).catch(() => {}); // silent — never block the user
+  }
+}
+
 async function logAnswer(payload) {
   try {
     await apiRequest("/api/session/answer", "POST", payload);
@@ -68,6 +81,7 @@ async function validateCurrentAnswer() {
 
       recordCategoryAndCardStats(card, result.isCorrect, durationMs);
       updateMetrics(); // Sync top bar stats
+      maybeSaveSessionProgress();
 
       // Throttle to prevent double-clicks/execution
       await new Promise(r => setTimeout(r, 300));
@@ -102,6 +116,7 @@ async function validateCurrentAnswer() {
     trackRecentResult(result.isCorrect);
     recordCategoryAndCardStats(card, result.isCorrect, durationMs);
     updateMetrics();
+    maybeSaveSessionProgress();
     renderCategoryScorecards();
 
     await logAnswer({

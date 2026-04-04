@@ -707,7 +707,8 @@ async function loadSessions(silent = false) {
       const diff = total - prevCount;
       if (diff > 0) setStatus(dom.sessionLoadStatus, `${diff} new session(s) detected — ${now}`, "success");
     } else {
-      setStatus(dom.sessionLoadStatus, `Loaded ${total} sessions.`, "success");
+      const totalLabel = data.total && data.total > total ? ` (showing ${total} of ${data.total})` : "";
+      setStatus(dom.sessionLoadStatus, `Loaded ${total} sessions${totalLabel}.`, "success");
     }
     if (dom.sessionConsoleSummary) dom.sessionConsoleSummary.textContent = total > 0 ? String(total) : "";
   } catch (err) {
@@ -900,11 +901,13 @@ function filteredSessionsForConsole() {
   const role = String(dom.sessionRoleFilter.value || "");
   const windowDays = String(dom.sessionWindowFilter?.value || "all");
   const excludeTrial = Boolean(dom.excludeTrialToggle?.checked);
+  const engagedOnly = Boolean(document.getElementById("engagedOnlyToggle")?.checked);
   const now = Date.now();
   const windowMs = windowDays === "all" ? 0 : Number(windowDays) * 24 * 60 * 60 * 1000;
   return (state.sessionConsole.all || []).filter((s) => {
     if (role && String(s.role || "") !== role) return false;
     if (excludeTrial && String(s.role || "") === "trial") return false;
+    if (engagedOnly && (Number(s.summary?.attempted || s.attempted || 0) === 0)) return false;
     if (windowMs > 0) {
       const startedAt = Number(new Date(s.startedAt || 0));
       if (!startedAt || now - startedAt > windowMs) return false;
@@ -920,7 +923,7 @@ function filteredSessionsForConsole() {
 function renderSessionConsoleTable() {
   const sessions = filteredSessionsForConsole();
   if (!sessions.length) {
-    dom.sessionTableBody.innerHTML = '<tr><td colspan="7">No sessions found for current filter.</td></tr>';
+    dom.sessionTableBody.innerHTML = '<tr><td colspan="8">No sessions found for current filter.</td></tr>';
     updateDashboardWidgets();
     return;
   }
@@ -932,7 +935,18 @@ function renderSessionConsoleTable() {
       const wrong = s.summary?.wrong || 0;
       const score = attempted ? Math.round((correct / attempted) * 100) : 0;
       const started = new Date(s.startedAt).toLocaleString();
-      return `<tr><td>${escapeHtml(s.userName)}</td><td>${escapeHtml(toAccessTypeLabel(s.role))}</td><td>${attempted}</td><td>${correct}</td><td>${wrong}</td><td>${score}%</td><td>${escapeHtml(started)}</td></tr>`;
+      const engagedBadge = attempted > 0 ? "" : '<span class="session-zero-badge">No activity</span>';
+      const emailPhone = s.userEmail ? escapeHtml(s.userEmail) : (s.userPhone ? escapeHtml(s.userPhone) : "—");
+      return `<tr class="${attempted === 0 ? "session-row-inactive" : ""}">
+  <td>${escapeHtml(s.userName)}</td>
+  <td><span class="session-contact-info">${emailPhone}</span></td>
+  <td>${escapeHtml(toAccessTypeLabel(s.role))}</td>
+  <td>${attempted}${engagedBadge}</td>
+  <td>${correct}</td>
+  <td>${wrong}</td>
+  <td>${score}%</td>
+  <td>${escapeHtml(started)}</td>
+</tr>`;
     })
     .join("");
 
@@ -1783,3 +1797,77 @@ async function submitCounselingForm(event) {
     "cta_counseling_whatsapp_followup"
   );
 }
+
+async function loadMonetizationInsights() {
+  const trainerKey = state.trainerKey || dom.trainerKey?.value?.trim();
+  if (!trainerKey) return;
+  const el = document.getElementById("monetizationBody");
+  const statusEl = document.getElementById("monetizationStatus");
+  if (!el && !document.getElementById("monoHotLeadsBody")) return;
+  if (statusEl) statusEl.textContent = "Loading...";
+  try {
+    const data = await apiRequest("/api/monetization/insights", "GET", null, trainerKey);
+    const s = data.summary || {};
+
+    // Update funnel widgets
+    const setW = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+    setW("monoTrialTotal", s.totalTrialUsers || 0);
+    setW("monoEngaged", s.engaged || 0);
+    setW("monoHotLeads", s.hotLeads || 0);
+    setW("monoCTAClicks", s.ctaClicks || 0);
+    setW("monoLearnerTotal", s.totalLearnerSessions || 0);
+
+    // Hot leads table
+    const hotEl = document.getElementById("monoHotLeadsBody");
+    if (hotEl) {
+      if ((data.hotLeads || []).length === 0) {
+        hotEl.innerHTML = '<tr><td colspan="4">No hot leads yet.</td></tr>';
+      } else {
+        hotEl.innerHTML = (data.hotLeads || []).map(u => `
+          <tr>
+            <td>${escapeHtml(u.userName || "")}</td>
+            <td>${escapeHtml(u.userEmail || u.userPhone || "—")}</td>
+            <td><strong>${u.maxAttempted}</strong> / ${data.trialLimit}</td>
+            <td>${u.sessions} session${u.sessions > 1 ? "s" : ""}</td>
+          </tr>`).join("");
+      }
+    }
+
+    // CTA events
+    const ctaEl = document.getElementById("monoCTABody");
+    if (ctaEl) {
+      if ((data.ctaEvents || []).length === 0) {
+        ctaEl.innerHTML = '<tr><td colspan="4">No CTA events yet.</td></tr>';
+      } else {
+        ctaEl.innerHTML = (data.ctaEvents || []).map(e => `
+          <tr>
+            <td>${escapeHtml(e.type || "")}</td>
+            <td>${escapeHtml(e.userName || "")}</td>
+            <td>${escapeHtml(e.userEmail || e.userPhone || "—")}</td>
+            <td>${new Date(e.at).toLocaleDateString()}</td>
+          </tr>`).join("");
+      }
+    }
+
+    // Returning trial users
+    const retEl = document.getElementById("monoReturningBody");
+    if (retEl) {
+      if ((data.returningTrialUsers || []).length === 0) {
+        retEl.innerHTML = '<tr><td colspan="3">No returning trial users yet.</td></tr>';
+      } else {
+        retEl.innerHTML = (data.returningTrialUsers || []).map(u => `
+          <tr>
+            <td>${escapeHtml(u.userName || "")}</td>
+            <td>${escapeHtml(u.userEmail || u.userPhone || "—")}</td>
+            <td>${u.sessions} sessions · ${u.maxAttempted} questions max</td>
+          </tr>`).join("");
+      }
+    }
+
+    if (statusEl) statusEl.textContent = "";
+  } catch (err) {
+    if (statusEl) statusEl.textContent = `Could not load insights: ${err.message}`;
+  }
+}
+
+window.loadMonetizationInsights = loadMonetizationInsights;
