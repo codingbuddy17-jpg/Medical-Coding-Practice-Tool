@@ -2069,3 +2069,56 @@ async function loadMonetizationInsights() {
 }
 
 window.loadMonetizationInsights = loadMonetizationInsights;
+
+async function downloadInterviewTemplate() {
+  window.open("/assets/interview-questions-template.xlsx", "_blank");
+}
+
+async function importInterviewQuestions() {
+  const fileInput = document.getElementById("interviewImportFile");
+  const file = fileInput?.files?.[0];
+  if (!file) {
+    setStatus(document.getElementById("interviewImportStatus"), "Please select an Excel file first.", "error");
+    return;
+  }
+  const trainerKey = state.trainerKey || dom.trainerKey?.value?.trim();
+  if (!trainerKey) {
+    setStatus(document.getElementById("interviewImportStatus"), "Trainer key required.", "error");
+    return;
+  }
+
+  const statusEl = document.getElementById("interviewImportStatus");
+  setStatus(statusEl, "Uploading...", "");
+
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("/api/interview/import", {
+      method: "POST",
+      headers: { "X-Trainer-Key": trainerKey },
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Upload failed");
+
+    let msg = `Imported ${data.imported} questions across ${data.chains} chains.`;
+    if (data.skipped > 0) msg += ` ${data.skipped} rows skipped.`;
+    setStatus(statusEl, msg, "success");
+
+    if (Array.isArray(data.errors) && data.errors.length > 0) {
+      const errEl = document.getElementById("interviewImportErrors");
+      if (errEl) {
+        errEl.innerHTML = data.errors.map(e => `<li>${escapeHtml(e)}</li>`).join("");
+        errEl.closest(".interview-import-errors-wrap")?.classList.remove("hidden");
+      }
+    }
+
+    fileInput.value = "";
+  } catch (err) {
+    setStatus(statusEl, `Import failed: ${err.message}`, "error");
+  }
+}
+
+window.importInterviewQuestions = importInterviewQuestions;
+window.downloadInterviewTemplate = downloadInterviewTemplate;

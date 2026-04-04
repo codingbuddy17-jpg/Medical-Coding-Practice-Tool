@@ -924,7 +924,96 @@ function contentType(filePath) {
   if (ext === ".png") return "image/png";
   if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
   if (ext === ".pdf") return "application/pdf";
+  if (ext === ".xlsx") return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  if (ext === ".xls") return "application/vnd.ms-excel";
   return "text/plain; charset=utf-8";
+}
+
+/**
+ * Parse a multipart/form-data request and return the first file field as a Buffer.
+ * Returns { fieldName, fileName, buffer } or throws.
+ */
+function parseMultipartFile(req) {
+  return new Promise((resolve, reject) => {
+    const contentTypeHeader = req.headers["content-type"] || "";
+    const boundaryMatch = contentTypeHeader.match(/boundary=(?:"([^"]+)"|([^\s;]+))/i);
+    if (!boundaryMatch) return reject(new Error("No multipart boundary found"));
+    const boundary = boundaryMatch[1] || boundaryMatch[2];
+
+    const chunks = [];
+    let totalSize = 0;
+    const MAX = 20 * 1024 * 1024; // 20 MB limit
+
+    req.on("data", (chunk) => {
+      totalSize += chunk.length;
+      if (totalSize > MAX) {
+        reject(new Error("File too large (max 20 MB)"));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+
+    req.on("error", reject);
+
+    req.on("end", () => {
+      try {
+        const body = Buffer.concat(chunks);
+        const boundaryBuf = Buffer.from("--" + boundary);
+        const CRLF = Buffer.from("\r\n");
+        const CRLFCRLF = Buffer.from("\r\n\r\n");
+
+        // Find all parts
+        let pos = 0;
+        while (pos < body.length) {
+          const partStart = indexOf(body, boundaryBuf, pos);
+          if (partStart === -1) break;
+          pos = partStart + boundaryBuf.length;
+          // Skip CRLF after boundary
+          if (body[pos] === 0x0d && body[pos + 1] === 0x0a) pos += 2;
+          else if (body[pos] === 0x2d && body[pos + 1] === 0x2d) break; // final boundary --
+
+          // Find header/body separator
+          const headerEnd = indexOf(body, CRLFCRLF, pos);
+          if (headerEnd === -1) break;
+
+          const headerSection = body.slice(pos, headerEnd).toString("utf8");
+          pos = headerEnd + 4; // skip \r\n\r\n
+
+          // Find end of this part
+          const partEnd = indexOf(body, Buffer.concat([CRLF, boundaryBuf]), pos);
+          const partBody = partEnd === -1 ? body.slice(pos) : body.slice(pos, partEnd);
+
+          // Parse Content-Disposition
+          const dispMatch = headerSection.match(/Content-Disposition:[^\r\n]*name="([^"]+)"(?:[^\r\n]*filename="([^"]+)")?/i);
+          if (!dispMatch) continue;
+          const fieldName = dispMatch[1];
+          const fileName = dispMatch[2] || "";
+
+          if (fileName) {
+            return resolve({ fieldName, fileName, buffer: partBody });
+          }
+
+          if (partEnd !== -1) pos = partEnd + CRLF.length + boundaryBuf.length;
+        }
+        reject(new Error("No file part found in multipart body"));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+}
+
+function indexOf(buf, search, start) {
+  start = start || 0;
+  for (let i = start; i <= buf.length - search.length; i++) {
+    let found = true;
+    for (let j = 0; j < search.length; j++) {
+      if (buf[i + j] !== search[j]) { found = false; break; }
+    }
+    if (found) return i;
+  }
+  return -1;
 }
 
 function serveFile(reqPath, res) {
@@ -3928,6 +4017,185 @@ const server = http.createServer(async (req, res) => {
         });
       }
       return json(res, 200, { cohort });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/interview/import" && req.method === "POST") {
+    const trainerKey = getTrainerKey(req);
+    const access = readAccessConfig();
+    if (!access.trainerKey || trainerKey !== access.trainerKey) {
+      return json(res, 403, { error: "Forbidden" });
+    }
+    try {
+      const { buffer } = await parseMultipartFile(req);
+      const XLSX = require("xlsx");
+      const workbook = XLSX.read(buffer, { type: "buffer" });
+      const sheet = workbook.Sheets["Questions"];
+      if (!sheet) throw new Error("Sheet 'Questions' not found in uploaded file");
+      const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+      // Normalise column keys (trim + lowercase)
+      const rows = rawRows.map(r => {
+        const out = {};
+        for (const [k, v] of Object.entries(r)) {
+          out[k.trim().toLowerCase()] = typeof v === "string" ? v.trim() : String(v ?? "").trim();
+        }
+        return out;
+      });
+
+      const VALID_TRACKS = ["fresher", "fresher_certified", "experienced"];
+      const VALID_SPECIALTIES = ["surgery", "ed_coding", "inpatient", ""];
+      const VALID_TYPES = ["clinical_knowledge", "coding_accuracy", "reasoning"];
+      const VALID_OPTIONS = ["A", "B", "C", "D"];
+
+      const errors = [];
+      const chainMap = {}; // chain_id -> { meta, questions[] }
+      let skipped = 0;
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowLabel = `Row ${i + 2}`; // 1-indexed + header
+
+        const chainId = row["chain_id"] || "";
+        const chainTitle = row["chain_title"] || "";
+        const scenario = row["scenario"] || "";
+        const track = row["track"] || "";
+        const specialty = (row["specialty"] || "").toLowerCase();
+        const questionType = row["question_type"] || "";
+        const question = row["question"] || "";
+        const rationale = row["rationale"] || "";
+        const optionA = row["option_a"] || "";
+        const optionB = row["option_b"] || "";
+        const optionC = row["option_c"] || "";
+        const optionD = row["option_d"] || "";
+        const correctOption = (row["correct_option"] || "").toUpperCase();
+        const answer = row["answer"] || "";
+        const position = Number(row["position"] || 0) || (chainMap[chainId] ? chainMap[chainId].questions.length + 1 : 1);
+
+        // Validate required fields
+        const missing = [];
+        if (!chainId) missing.push("chain_id");
+        if (!chainTitle) missing.push("chain_title");
+        if (!scenario) missing.push("scenario");
+        if (!track) missing.push("track");
+        if (!question) missing.push("question");
+        if (!rationale) missing.push("rationale");
+
+        if (missing.length) {
+          errors.push(`${rowLabel}: Missing required field(s): ${missing.join(", ")}`);
+          skipped++;
+          continue;
+        }
+
+        if (!VALID_TRACKS.includes(track)) {
+          errors.push(`${rowLabel}: Invalid track "${track}". Must be one of: ${VALID_TRACKS.join(", ")}`);
+          skipped++;
+          continue;
+        }
+
+        if (!VALID_TYPES.includes(questionType)) {
+          errors.push(`${rowLabel}: Invalid question_type "${questionType}". Must be one of: ${VALID_TYPES.join(", ")}`);
+          skipped++;
+          continue;
+        }
+
+        if (!optionA || !optionB || !optionC || !optionD) {
+          errors.push(`${rowLabel}: Missing one or more MCQ options (option_a through option_d required)`);
+          skipped++;
+          continue;
+        }
+
+        if (!VALID_OPTIONS.includes(correctOption)) {
+          errors.push(`${rowLabel}: Invalid correct_option "${correctOption}". Must be A, B, C, or D`);
+          skipped++;
+          continue;
+        }
+
+        if (track === "experienced" && specialty && !VALID_SPECIALTIES.includes(specialty)) {
+          errors.push(`${rowLabel}: Invalid specialty "${specialty}" for experienced track. Must be one of: ${VALID_SPECIALTIES.filter(Boolean).join(", ")}`);
+          skipped++;
+          continue;
+        }
+
+        // Build remediation if present
+        let remediation = null;
+        const remQ = row["remediation_question"] || "";
+        if (remQ) {
+          const remA = row["remediation_option_a"] || "";
+          const remB = row["remediation_option_b"] || "";
+          const remC = row["remediation_option_c"] || "";
+          const remD = row["remediation_option_d"] || "";
+          const remCorrect = (row["remediation_correct_option"] || "").toUpperCase();
+          const remAnswer = row["remediation_answer"] || "";
+          const remRationale = row["remediation_rationale"] || "";
+          remediation = {
+            question: remQ,
+            isMcq: true,
+            options: [remA, remB, remC, remD],
+            correctOption: remCorrect || "A",
+            answer: remAnswer,
+            rationale: remRationale
+          };
+        }
+
+        // Build question object
+        const safeChainId = chainId.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const questionObj = {
+          id: `q_${safeChainId}_${position}`,
+          position,
+          questionType,
+          question,
+          isMcq: true,
+          options: [optionA, optionB, optionC, optionD],
+          correctOption,
+          answer,
+          rationale,
+          timeLimit: 60
+        };
+        if (remediation) questionObj.remediation = remediation;
+
+        if (!chainMap[chainId]) {
+          chainMap[chainId] = {
+            id: chainId,
+            track,
+            specialty: specialty || null,
+            title: chainTitle,
+            scenario,
+            questions: []
+          };
+        }
+        chainMap[chainId].questions.push(questionObj);
+      }
+
+      // Sort questions within each chain by position
+      for (const chain of Object.values(chainMap)) {
+        chain.questions.sort((a, b) => a.position - b.position);
+      }
+
+      // Merge with existing chains
+      const iqPath = path.join(__dirname, "data/interview-questions.json");
+      let existing = { chains: [] };
+      try {
+        existing = JSON.parse(fs.readFileSync(iqPath, "utf8"));
+        if (!Array.isArray(existing.chains)) existing.chains = [];
+      } catch {}
+
+      const newChainsById = chainMap;
+      const merged = existing.chains.filter(c => !newChainsById[c.id]);
+      const imported = Object.values(newChainsById);
+      merged.push(...imported);
+
+      fs.writeFileSync(iqPath, JSON.stringify({ chains: merged }, null, 2), "utf8");
+
+      const importedQuestions = imported.reduce((acc, c) => acc + c.questions.length, 0);
+      return json(res, 200, {
+        imported: importedQuestions,
+        chains: imported.length,
+        skipped,
+        errors
+      });
     } catch (err) {
       return json(res, 400, { error: err.message });
     }

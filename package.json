@@ -11,13 +11,17 @@
     "test": "jest"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4"
+    "@supabase/supabase-js": "^2.57.4",
+    "xlsx": "^0.18.5"
   },
   "engines": {
     "node": ">=20"
   },
   "jest": {
-    "testPathIgnorePatterns": ["/node_modules/", "/.claude/"]
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/.claude/"
+    ]
   },
   "license": "UNLICENSED",
   "devDependencies": {
