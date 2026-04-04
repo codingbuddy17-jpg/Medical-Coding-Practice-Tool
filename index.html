@@ -39,7 +39,6 @@
       <span id="topbarSessionSummary" class="topbar-session-summary hidden" aria-live="polite"></span>
       <div id="topbarSessionActions" class="panel-actions topbar-session-actions hidden">
         <button id="exportReportBtn" class="ghost-btn" type="button">Export PDF Report</button>
-        <button id="googleSignOutBtn" class="ghost-btn hidden" type="button">Logout</button>
         <button id="endSessionBtn" class="ghost-btn" type="button">End Session</button>
       </div>
       <button id="onboardingReplayBtn" class="onboarding-help-btn" type="button" aria-label="Show app tour">?</button>
@@ -51,7 +50,7 @@
         <button class="nav-item" data-tab="exam">Mock Exam</button>
         <button class="nav-item" data-tab="analytics">Analytics</button>
         <button id="navMentorItem" class="nav-item hidden" data-tab="mentor">Mentor HQ</button>
-        <button class="nav-item" data-tab="interview" id="navInterviewItem">Interview Sim</button>
+        <button class="nav-item" data-tab="interview" id="navInterviewItem">Interview Mode</button>
       </div>
     </nav>
 
@@ -1516,7 +1515,7 @@
       <section id="interviewPanel" class="panel">
         <!-- Setup Screen -->
         <div id="ivSetupScreen">
-          <h2 class="iv-heading">Interview Simulator</h2>
+          <h2 class="iv-heading">Interview Mode</h2>
           <p class="iv-subtitle">Simulate a real medical coding interview with scenario-based, linked questions. Answers are revealed only at the end.</p>
 
           <div class="iv-section-label">Select Your Track</div>
@@ -1589,7 +1588,7 @@
 
         <!-- Results Screen -->
         <div id="ivResultsScreen" class="hidden">
-          <h2 class="iv-heading">Interview Complete</h2>
+          <h2 class="iv-heading">Interview Mode — Results</h2>
           <div id="ivBandLabel" class="iv-band">HIRE</div>
           <p id="ivOverallScore" class="iv-overall-score"></p>
 
