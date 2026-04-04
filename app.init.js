@@ -505,6 +505,7 @@ async function init() {
   dom.userName.value = state.userName;
   dom.userEmail.value = state.userEmail;
   dom.userPhone.value = state.userPhone;
+  restoreAuthDraft();
   dom.roleSelect.value = state.role;
   dom.traineeCode.value = "";
   dom.trainerKey.value = sessionRestored ? state.trainerKey : "";

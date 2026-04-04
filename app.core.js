@@ -590,6 +590,40 @@ function updateGoogleAuthUI() {
   }
 }
 
+const AUTH_DRAFT_KEY = "pb_auth_draft";
+
+function saveAuthDraft() {
+  try {
+    sessionStorage.setItem(AUTH_DRAFT_KEY, JSON.stringify({
+      role: String(dom.roleSelect?.value || state.role || "trial"),
+      userName: String(dom.userName?.value || "").trim(),
+      userPhone: String(dom.userPhone?.value || "").trim()
+    }));
+  } catch {
+    // ignore draft persistence errors
+  }
+}
+
+function restoreAuthDraft() {
+  try {
+    const raw = sessionStorage.getItem(AUTH_DRAFT_KEY);
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+    if (draft.role && dom.roleSelect && !state.session.isActive) {
+      state.role = draft.role;
+      dom.roleSelect.value = draft.role;
+    }
+    if (draft.userName && dom.userName && !dom.userName.value) {
+      dom.userName.value = draft.userName;
+    }
+    if (draft.userPhone && dom.userPhone && !dom.userPhone.value) {
+      dom.userPhone.value = draft.userPhone;
+    }
+  } catch {
+    // ignore malformed draft state
+  }
+}
+
 async function signOutGoogleAuth() {
   if (!supabaseAuthClient) return;
   try {
@@ -640,6 +674,7 @@ async function startGoogleAuth() {
     return;
   }
   try {
+    saveAuthDraft();
     const redirectTo = `${window.location.origin}${window.location.pathname}`;
     const { error } = await supabaseAuthClient.auth.signInWithOAuth({
       provider: "google",
