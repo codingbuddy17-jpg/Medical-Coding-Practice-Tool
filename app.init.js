@@ -455,6 +455,11 @@ async function init() {
   loadLocal();
   bindEvents(); // Bind listeners immediately so buttons work even if data loads slowly
 
+  // Initialize Interview Simulator listeners
+  if (typeof initInterviewListeners === "function") {
+    initInterviewListeners();
+  }
+
   state.session.isActive = false;
   state.trainerKeyVerified = false;
   await loadTenantInfo();
@@ -547,7 +552,9 @@ const navDom = {
   navItems: document.querySelectorAll(".nav-item"),
   viewPractice: document.getElementById("view-practice"),
   viewMentor: document.getElementById("view-mentor"),
-  navMentorItem: document.getElementById("navMentorItem")
+  viewInterview: document.getElementById("view-interview"),
+  navMentorItem: document.getElementById("navMentorItem"),
+  navInterviewItem: document.getElementById("navInterviewItem")
 };
 
 // Add Listeners
@@ -572,6 +579,7 @@ function handleTabSwitch(tabName) {
   // 2. Hide All Views
   if (navDom.viewPractice) navDom.viewPractice.classList.remove("active");
   if (navDom.viewMentor) navDom.viewMentor.classList.remove("active");
+  if (navDom.viewInterview) navDom.viewInterview.classList.remove("active");
 
   // 3. Auto-Close Mock Exam Panel if not on Exam tab
   // 3. Auto-Close Mock Exam Panel only if leaving Practice/Exam context
@@ -627,6 +635,12 @@ function handleTabSwitch(tabName) {
       const dashboard = document.querySelector(".dashboard");
       if (dashboard) dashboard.scrollIntoView({ behavior: "smooth", block: "start" });
       else window.scrollTo(0, 0);
+    }
+  }
+  else if (tabName === "interview") {
+    if (navDom.viewInterview) {
+      navDom.viewInterview.classList.add("active");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }
 }

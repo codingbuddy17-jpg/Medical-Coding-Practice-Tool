@@ -1,0 +1,1039 @@
+{
+  "chains": [
+    {
+      "id": "chain_fresher_resp_001",
+      "track": "fresher",
+      "specialty": null,
+      "title": "Respiratory System",
+      "scenario": "A patient presents to the clinic with shortness of breath, productive cough, and fever for 3 days. The physician suspects a respiratory infection.",
+      "questions": [
+        {
+          "id": "q_fr_resp_001_1",
+          "position": 1,
+          "questionType": "clinical_knowledge",
+          "question": "Which anatomical structure is primarily responsible for gas exchange in the lungs?",
+          "isMcq": true,
+          "options": ["Trachea", "Bronchi", "Alveoli", "Pleura"],
+          "correctOption": "C",
+          "answer": "Alveoli",
+          "rationale": "The alveoli are tiny air sacs at the end of the bronchioles where oxygen and carbon dioxide are exchanged between the lungs and the bloodstream.",
+          "timeLimit": 60,
+          "remediation": {
+            "question": "The alveoli are the functional units of gas exchange. Which term describes inflammation of the lung parenchyma including the alveoli?",
+            "isMcq": true,
+            "options": ["Pleuritis", "Pneumonia", "Bronchitis", "Atelectasis"],
+            "correctOption": "B",
+            "answer": "Pneumonia",
+            "rationale": "Pneumonia refers to inflammation of the lung tissue, primarily affecting the alveoli."
+          }
+        },
+        {
+          "id": "q_fr_resp_001_2",
+          "position": 2,
+          "questionType": "reasoning",
+          "question": "Based on the symptoms described — shortness of breath, productive cough, and fever — which disease process is most likely occurring?",
+          "isMcq": true,
+          "options": ["Pleural effusion", "Pneumonia", "Asthma", "Pulmonary embolism"],
+          "correctOption": "B",
+          "answer": "Pneumonia",
+          "rationale": "The combination of productive cough, fever, and shortness of breath is classic for pneumonia, an infectious process causing inflammation in the lung tissue.",
+          "timeLimit": 60,
+          "remediation": {
+            "question": "Pneumonia is an infectious process, while asthma is obstructive. Which symptom in this scenario is most specific to an infection rather than a mechanical cause?",
+            "isMcq": true,
+            "options": ["Shortness of breath", "Productive cough", "Fever", "Chest tightness"],
+            "correctOption": "C",
+            "answer": "Fever",
+            "rationale": "Fever indicates an immune response to infection. It is not typically seen in mechanical causes like asthma or pleural effusion unless secondary infection is present."
+          }
+        },
+        {
+          "id": "q_fr_resp_001_3",
+          "position": 3,
+          "questionType": "clinical_knowledge",
+          "question": "The physician documents 'lobar pneumonia.' What does the term 'lobar' indicate about the extent of the infection?",
+          "isMcq": true,
+          "options": ["Affecting the pleura", "Affecting an entire lobe of the lung", "Affecting both lungs", "Affecting the bronchial tubes only"],
+          "correctOption": "B",
+          "answer": "Affecting an entire lobe of the lung",
+          "rationale": "'Lobar' refers to a lobe of the lung. Lobar pneumonia means the infection has consolidated within one complete lobe, which is more extensive than bronchopneumonia.",
+          "timeLimit": 60,
+          "remediation": {
+            "question": "The right lung has 3 lobes. How many lobes does the left lung have?",
+            "isMcq": true,
+            "options": ["1", "2", "3", "4"],
+            "correctOption": "B",
+            "answer": "2",
+            "rationale": "The left lung has 2 lobes (upper and lower) to accommodate the cardiac notch where the heart sits. The right lung has 3 lobes: upper, middle, and lower."
+          }
+        }
+      ]
+    },
+    {
+      "id": "chain_fresher_cardio_001",
+      "track": "fresher",
+      "specialty": null,
+      "title": "Cardiovascular Disease Process",
+      "scenario": "A 58-year-old patient presents to the ED with crushing chest pain radiating to the left arm and diaphoresis.",
+      "questions": [
+        {
+          "id": "q_fr_cardio_001_1",
+          "position": 1,
+          "questionType": "clinical_knowledge",
+          "question": "What cardiac event does this presentation — crushing chest pain radiating to the left arm with diaphoresis — most suggest?",
+          "isMcq": true,
+          "options": ["Stable angina", "Myocardial infarction", "Pericarditis", "Aortic dissection"],
+          "correctOption": "B",
+          "answer": "Myocardial infarction",
+          "rationale": "Crushing chest pain radiating to the left arm with diaphoresis (sweating) is the classic presentation of a myocardial infarction (heart attack), caused by complete blockage of a coronary artery.",
+          "timeLimit": 60,
+          "remediation": {
+            "question": "When cardiac muscle is damaged during a myocardial infarction, which biomarker is released into the bloodstream and used diagnostically?",
+            "isMcq": true,
+            "options": ["Amylase", "Troponin", "Creatinine", "Albumin"],
+            "correctOption": "B",
+            "answer": "Troponin",
+            "rationale": "Troponin (specifically troponin I and T) is released from damaged cardiac muscle cells and is the gold standard biomarker for diagnosing myocardial infarction."
+          }
+        },
+        {
+          "id": "q_fr_cardio_001_2",
+          "position": 2,
+          "questionType": "reasoning",
+          "question": "Which coronary artery is most commonly involved in a myocardial infarction affecting the anterior wall of the heart?",
+          "isMcq": true,
+          "options": ["Right coronary artery", "Left circumflex artery", "Left anterior descending artery", "Posterior descending artery"],
+          "correctOption": "C",
+          "answer": "Left anterior descending artery",
+          "rationale": "The left anterior descending (LAD) artery supplies the anterior wall and interventricular septum. It is so frequently involved in MI that it is sometimes called 'the widow maker.'",
+          "timeLimit": 60,
+          "remediation": {
+            "question": "The LAD artery is critically important because of the area it supplies. Which portion of the heart does the LAD primarily supply blood to?",
+            "isMcq": true,
+            "options": ["Posterior wall and inferior surface", "Lateral wall only", "Anterior wall and interventricular septum", "Right ventricle only"],
+            "correctOption": "C",
+            "answer": "Anterior wall and interventricular septum",
+            "rationale": "The LAD supplies the anterior wall of the left ventricle and the interventricular septum, making LAD occlusion particularly dangerous."
+          }
+        },
+        {
+          "id": "q_fr_cardio_001_3",
+          "position": 3,
+          "questionType": "clinical_knowledge",
+          "question": "What medical term describes the death of cardiac tissue due to insufficient blood supply?",
+          "isMcq": true,
+          "options": ["Ischemia", "Infarction", "Angina", "Fibrillation"],
+          "correctOption": "B",
+          "answer": "Infarction",
+          "rationale": "Infarction refers to tissue death (necrosis) due to inadequate blood supply. Myocardial infarction specifically means death of heart muscle tissue.",
+          "timeLimit": 60,
+          "remediation": {
+            "question": "Ischemia and infarction are related but distinct terms. What is the key difference between ischemia and infarction?",
+            "isMcq": true,
+            "options": ["They mean the same thing", "Ischemia is reversible reduced blood flow; infarction is irreversible cell death", "Ischemia only affects the brain", "Infarction is reversible; ischemia is permanent"],
+            "correctOption": "B",
+            "answer": "Ischemia is reversible reduced blood flow; infarction is irreversible cell death",
+            "rationale": "Ischemia is insufficient blood flow that can be reversed if treated promptly. Infarction occurs when ischemia is prolonged enough to cause permanent, irreversible cell death."
+          }
+        }
+      ]
+    },
+    {
+      "id": "chain_fresher_dm_001",
+      "track": "fresher",
+      "specialty": null,
+      "title": "Diabetes Complications",
+      "scenario": "A patient with a 15-year history of Type 2 diabetes presents with a non-healing wound on the right foot and tingling in both feet.",
+      "questions": [
+        {
+          "id": "q_fr_dm_001_1",
+          "position": 1,
+          "questionType": "clinical_knowledge",
+          "question": "What metabolic abnormality is the hallmark of diabetes mellitus?",
+          "isMcq": true,
+          "options": ["Hypoglycemia", "Hyperglycemia", "Hypercalcemia", "Hyponatremia"],
+          "correctOption": "B",
+          "answer": "Hyperglycemia",
+          "rationale": "Diabetes mellitus is defined by chronic hyperglycemia (elevated blood glucose) resulting from defects in insulin secretion, insulin action, or both.",
+          "timeLimit": 60,
+          "remediation": {
+            "question": "Which hormone is primarily responsible for moving glucose from the bloodstream into body cells?",
+            "isMcq": true,
+            "options": ["Glucagon", "Cortisol", "Insulin", "Epinephrine"],
+            "correctOption": "C",
+            "answer": "Insulin",
+            "rationale": "Insulin, produced by beta cells of the pancreas, facilitates the uptake of glucose into cells. Without adequate insulin or insulin response, glucose accumulates in the blood."
+          }
+        },
+        {
+          "id": "q_fr_dm_001_2",
+          "position": 2,
+          "questionType": "reasoning",
+          "question": "The patient has tingling and numbness in both feet. Which long-term diabetic complication does this bilateral symptom most suggest?",
+          "isMcq": true,
+          "options": ["Retinopathy", "Nephropathy", "Neuropathy", "Cardiomyopathy"],
+          "correctOption": "C",
+          "answer": "Neuropathy",
+          "rationale": "Bilateral tingling and numbness in the feet is the classic presentation of diabetic peripheral neuropathy, caused by chronic high blood glucose damaging the peripheral nerves.",
+          "timeLimit": 60,
+          "remediation": {
+            "question": "The suffix '-pathy' means disease of. In the word 'neuropathy,' what does the prefix 'neuro-' refer to?",
+            "isMcq": true,
+            "options": ["Blood vessels", "Kidneys", "Nerve or nervous system", "Eyes"],
+            "correctOption": "C",
+            "answer": "Nerve or nervous system",
+            "rationale": "'Neuro-' refers to the nerve or nervous system. Neuropathy therefore means disease of the nerves. This helps distinguish it from nephropathy (kidney) and retinopathy (retina)."
+          }
+        },
+        {
+          "id": "q_fr_dm_001_3",
+          "position": 3,
+          "questionType": "clinical_knowledge",
+          "question": "The physician finds the non-healing wound involves exposed bone on imaging. Which serious complication has most likely developed?",
+          "isMcq": true,
+          "options": ["Cellulitis", "Osteomyelitis", "Deep vein thrombosis", "Abscess formation"],
+          "correctOption": "B",
+          "answer": "Osteomyelitis",
+          "rationale": "When a diabetic foot wound extends to expose bone, osteomyelitis (bone infection) is highly likely. Chronic hyperglycemia impairs immune function and healing, allowing infection to spread to bone.",
+          "timeLimit": 60,
+          "remediation": {
+            "question": "What does the prefix 'osteo-' mean in medical terminology?",
+            "isMcq": true,
+            "options": ["Muscle", "Bone", "Joint", "Skin"],
+            "correctOption": "B",
+            "answer": "Bone",
+            "rationale": "'Osteo-' means bone. Combined with '-myel-' (marrow) and '-itis' (inflammation), osteomyelitis literally means inflammation of the bone and bone marrow due to infection."
+          }
+        }
+      ]
+    },
+    {
+      "id": "chain_cert_icd_001",
+      "track": "fresher_certified",
+      "specialty": null,
+      "title": "ICD-10-CM Sequencing",
+      "scenario": "A patient is admitted for acute exacerbation of COPD. The patient also has Type 2 diabetes managed with oral medication and stage 3 chronic kidney disease.",
+      "questions": [
+        {
+          "id": "q_cert_icd_001_1",
+          "position": 1,
+          "questionType": "coding_accuracy",
+          "question": "Which condition should be sequenced as the principal diagnosis for this inpatient admission?",
+          "isMcq": true,
+          "options": ["Type 2 diabetes mellitus", "Acute exacerbation of COPD", "Chronic kidney disease stage 3", "Any of the above may be sequenced equally"],
+          "correctOption": "B",
+          "answer": "Acute exacerbation of COPD",
+          "rationale": "Per UHDDS guidelines, the principal diagnosis is the condition established after study to be chiefly responsible for the admission. The patient was admitted for acute exacerbation of COPD, making it the principal diagnosis.",
+          "timeLimit": 90,
+          "remediation": {
+            "question": "Per the UHDDS definition, the principal diagnosis is the condition found after study to be chiefly responsible for what event?",
+            "isMcq": true,
+            "options": ["The patient's death", "The admission or hospitalization", "The longest hospital stay", "The most expensive treatment"],
+            "correctOption": "B",
+            "answer": "The admission or hospitalization",
+            "rationale": "The UHDDS definition states the principal diagnosis is the condition established, after study, to be chiefly responsible for occasioning the admission of the patient to the hospital for care."
+          }
+        },
+        {
+          "id": "q_cert_icd_001_2",
+          "position": 2,
+          "questionType": "reasoning",
+          "question": "The physician also documents acute respiratory failure in the discharge summary. Which ICD-10-CM sequencing rule applies to this additional diagnosis?",
+          "isMcq": true,
+          "options": ["Respiratory failure is always sequenced as principal diagnosis", "Code as an additional diagnosis after the principal diagnosis", "Do not code respiratory failure at all", "Query the physician before coding respiratory failure"],
+          "correctOption": "B",
+          "answer": "Code as an additional diagnosis after the principal diagnosis",
+          "rationale": "Acute respiratory failure is coded as an additional diagnosis. While it can sometimes be principal diagnosis, here COPD exacerbation drove the admission. ICD-10-CM guidelines allow respiratory failure to be sequenced first in some circumstances, but not here.",
+          "timeLimit": 90,
+          "remediation": {
+            "question": "When two conditions equally meet the principal diagnosis criteria per ICD-10-CM guidelines, what sequencing option do the guidelines allow?",
+            "isMcq": true,
+            "options": ["Always sequence the more specific code first", "Either condition may be sequenced as the principal diagnosis", "The physician must be queried to decide", "Sequence alphabetically by code"],
+            "correctOption": "B",
+            "answer": "Either condition may be sequenced as the principal diagnosis",
+            "rationale": "Per ICD-10-CM guidelines Section II.C, when two or more diagnoses equally meet the definition of principal diagnosis, either may be selected as the principal diagnosis."
+          }
+        },
+        {
+          "id": "q_cert_icd_001_3",
+          "position": 3,
+          "questionType": "coding_accuracy",
+          "question": "For Type 2 DM with CKD, ICD-10-CM requires a combination code approach. What does a combination code mean in this context?",
+          "isMcq": true,
+          "options": ["Assign one code for DM and a completely separate, unlinked code for CKD", "Use a single ICD-10-CM code that captures both the DM and the CKD together", "Only code the diabetes and ignore the CKD", "Only code the CKD because it is more serious"],
+          "correctOption": "B",
+          "answer": "Use a single ICD-10-CM code that captures both the DM and the CKD together",
+          "rationale": "ICD-10-CM combination codes capture two conditions in one code. For Type 2 DM with CKD, a single combination code from category E11 is assigned, linking both conditions to indicate the DM is the cause of the CKD.",
+          "timeLimit": 90,
+          "remediation": {
+            "question": "In ICD-10-CM, Category E11 contains combination codes for Type 2 diabetes with various complications. What specific code category covers Type 2 diabetes mellitus with diabetic CKD?",
+            "isMcq": true,
+            "options": ["E11.21", "E11.40", "E11.65", "E11.9"],
+            "correctOption": "C",
+            "answer": "E11.65",
+            "rationale": "E11.65 is the ICD-10-CM combination code for Type 2 diabetes mellitus with hyperglycemia and chronic kidney disease. This links both conditions in a single code."
+          }
+        }
+      ]
+    },
+    {
+      "id": "chain_cert_em_001",
+      "track": "fresher_certified",
+      "specialty": null,
+      "title": "CPT E&M Guidelines",
+      "scenario": "An established patient presents to the office with three chronic conditions: hypertension, Type 2 diabetes, and COPD. The physician reviews labs, adjusts two medications, and spends 35 minutes total with the patient.",
+      "questions": [
+        {
+          "id": "q_cert_em_001_1",
+          "position": 1,
+          "questionType": "coding_accuracy",
+          "question": "Under the 2021 AMA E&M guidelines for office visits, what are the two ways to select the level of an E&M service?",
+          "isMcq": true,
+          "options": ["History and physical exam documentation only", "Total time on the date of service OR medical decision making (MDM) alone", "RVU calculation and number of diagnoses", "Number of diagnoses and complexity of treatment"],
+          "correctOption": "B",
+          "answer": "Total time on the date of service OR medical decision making (MDM) alone",
+          "rationale": "Effective January 2021, AMA revised office visit E&M guidelines. The level is now selected based on either (1) total time spent on the date of service or (2) Medical Decision Making (MDM) complexity — not history and exam.",
+          "timeLimit": 90,
+          "remediation": {
+            "question": "What does MDM stand for in the context of E&M coding under the 2021 AMA guidelines?",
+            "isMcq": true,
+            "options": ["Minimum Documentation Metric", "Medical Decision Making", "Managed Diagnosis Method", "Multi-Diagnosis Management"],
+            "correctOption": "B",
+            "answer": "Medical Decision Making",
+            "rationale": "MDM stands for Medical Decision Making. It is assessed based on three elements: number and complexity of problems, amount and complexity of data reviewed, and risk of complications."
+          }
+        },
+        {
+          "id": "q_cert_em_001_2",
+          "position": 2,
+          "questionType": "reasoning",
+          "question": "Managing three chronic conditions with prescription drug management represents what level of Medical Decision Making (MDM)?",
+          "isMcq": true,
+          "options": ["Straightforward", "Low", "Moderate", "High"],
+          "correctOption": "C",
+          "answer": "Moderate",
+          "rationale": "Under 2021 AMA MDM guidelines, managing multiple chronic illnesses (2 or more stable chronic conditions) with prescription drug management falls under Moderate MDM complexity.",
+          "timeLimit": 90,
+          "remediation": {
+            "question": "High MDM complexity requires which combination of elements?",
+            "isMcq": true,
+            "options": ["Single chronic illness with minimal data reviewed", "Two stable chronic conditions with moderate risk", "Multiple diagnoses AND extensive data reviewed AND high risk of complications", "Any new problem requiring workup"],
+            "correctOption": "C",
+            "answer": "Multiple diagnoses AND extensive data reviewed AND high risk of complications",
+            "rationale": "High MDM requires at least two of the three MDM elements to meet the High threshold: problems (high complexity), data (extensive), and risk (drug therapy requiring intensive monitoring or high risk conditions)."
+          }
+        },
+        {
+          "id": "q_cert_em_001_3",
+          "position": 3,
+          "questionType": "coding_accuracy",
+          "question": "Based on total time of 35 minutes for an established patient office visit, which CPT code applies under the 2021 AMA time-based thresholds?",
+          "isMcq": true,
+          "options": ["99213 (20-29 minutes)", "99214 (30-39 minutes)", "99215 (40-54 minutes)", "99212 (10-19 minutes)"],
+          "correctOption": "B",
+          "answer": "99214 (30-39 minutes)",
+          "rationale": "Under 2021 AMA time-based E&M coding, 35 minutes of total time on the date of service for an established patient maps to CPT 99214, which covers 30-39 minutes.",
+          "timeLimit": 90,
+          "remediation": {
+            "question": "Under the 2021 AMA E&M time-based guidelines, does the reported time include only face-to-face time with the patient, or total time on the date of service?",
+            "isMcq": true,
+            "options": ["Face-to-face time only", "Total time on the date of service", "Only telephone consultation time", "Only the time spent documenting"],
+            "correctOption": "B",
+            "answer": "Total time on the date of service",
+            "rationale": "The 2021 AMA guidelines changed time-based E&M to count total time on the date of the encounter, including pre- and post-visit activities like reviewing records, ordering tests, and documentation — not just face-to-face time."
+          }
+        }
+      ]
+    },
+    {
+      "id": "chain_cert_pcs_001",
+      "track": "fresher_certified",
+      "specialty": null,
+      "title": "ICD-10-PCS Basics",
+      "scenario": "An inpatient is taken to the OR for a total knee replacement of the right knee due to severe osteoarthritis.",
+      "questions": [
+        {
+          "id": "q_cert_pcs_001_1",
+          "position": 1,
+          "questionType": "clinical_knowledge",
+          "question": "ICD-10-PCS codes are constructed with 7 characters. What does the FIRST character of an ICD-10-PCS code represent?",
+          "isMcq": true,
+          "options": ["Body part being operated on", "The surgical approach used", "The section or type of procedure", "The device implanted"],
+          "correctOption": "C",
+          "answer": "The section or type of procedure",
+          "rationale": "In ICD-10-PCS, the first character represents the Section, which defines the broad category of the procedure (e.g., Medical and Surgical, Imaging, Mental Health, etc.).",
+          "timeLimit": 90,
+          "remediation": {
+            "question": "Which section code (first character value) is used for Medical and Surgical procedures in ICD-10-PCS?",
+            "isMcq": true,
+            "options": ["1", "0", "B", "X"],
+            "correctOption": "B",
+            "answer": "0",
+            "rationale": "The digit '0' represents the Medical and Surgical section in ICD-10-PCS, which covers the majority of operative procedures performed in the OR."
+          }
+        },
+        {
+          "id": "q_cert_pcs_001_2",
+          "position": 2,
+          "questionType": "coding_accuracy",
+          "question": "In the ICD-10-PCS code structure for this total knee replacement, which character position represents the 'Approach'?",
+          "isMcq": true,
+          "options": ["Character 3 (Root Operation)", "Character 4 (Body Part)", "Character 5 (Approach)", "Character 6 (Device)"],
+          "correctOption": "C",
+          "answer": "Character 5 (Approach)",
+          "rationale": "In ICD-10-PCS Medical and Surgical codes, Character 5 represents the Approach — the technique used to reach the operative site (e.g., Open, Endoscopic, Percutaneous).",
+          "timeLimit": 90,
+          "remediation": {
+            "question": "A total knee replacement is performed through a surgical incision exposing the joint directly. Which ICD-10-PCS approach value does this represent?",
+            "isMcq": true,
+            "options": ["Percutaneous (3)", "Endoscopic (4)", "Open (0)", "External (X)"],
+            "correctOption": "C",
+            "answer": "Open (0)",
+            "rationale": "An Open approach (value 0) means cutting through the skin or mucous membranes and any other body layers necessary to expose the site. A total knee replacement requires an open surgical incision."
+          }
+        },
+        {
+          "id": "q_cert_pcs_001_3",
+          "position": 3,
+          "questionType": "reasoning",
+          "question": "ICD-10-PCS requires the coder to identify and code the device implanted. For a total knee replacement, which device character value is most appropriate?",
+          "isMcq": true,
+          "options": ["No device (Z)", "Drainage device (0)", "Synthetic substitute (J)", "Internal fixation device (4)"],
+          "correctOption": "C",
+          "answer": "Synthetic substitute (J)",
+          "rationale": "A total knee replacement involves implanting an artificial (synthetic) joint prosthesis to replace the natural knee joint. In ICD-10-PCS, this is classified as a Synthetic Substitute with the value 'J'.",
+          "timeLimit": 90,
+          "remediation": {
+            "question": "Synthetic substitutes in ICD-10-PCS are man-made materials that replace a body part. What letter value represents Synthetic Substitute in ICD-10-PCS device characters?",
+            "isMcq": true,
+            "options": ["S", "K", "J", "Z"],
+            "correctOption": "C",
+            "answer": "J",
+            "rationale": "The letter 'J' represents Synthetic Substitute in ICD-10-PCS. This applies to prosthetic joints, meshes, patches, and other man-made implants that replace the function of a body part."
+          }
+        }
+      ]
+    },
+    {
+      "id": "chain_exp_surg_lap_001",
+      "track": "experienced",
+      "specialty": "surgery",
+      "title": "Laparoscopic to Open Conversion",
+      "scenario": "A 28-year-old presents with acute appendicitis. The surgeon begins a laparoscopic appendectomy but finds a perforated appendix with diffuse peritonitis and converts to an open procedure.",
+      "questions": [
+        {
+          "id": "q_exp_surg_lap_001_1",
+          "position": 1,
+          "questionType": "coding_accuracy",
+          "question": "When a laparoscopic procedure is converted to an open procedure, which CPT code is reported for reimbursement?",
+          "isMcq": true,
+          "options": ["The laparoscopic CPT code only", "The open procedure CPT code only", "Both codes — laparoscopic and open — with modifier -51", "The laparoscopic code with modifier -22 for increased complexity"],
+          "correctOption": "B",
+          "answer": "The open procedure CPT code only",
+          "rationale": "CPT and ACS guidelines state that when a procedure is converted from laparoscopic to open, only the code for the procedure actually completed (the open procedure) is reported. The laparoscopic attempt is not separately coded.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "ACS and CPT guidelines state the code should reflect the procedure that was actually completed and brought the case to its conclusion. In this scenario, which procedure was actually completed?",
+            "isMcq": true,
+            "options": ["Laparoscopic appendectomy", "Open appendectomy", "Diagnostic laparoscopy only", "Drainage of peritoneum"],
+            "correctOption": "B",
+            "answer": "Open appendectomy",
+            "rationale": "Because the surgeon converted to open and completed the appendectomy via open technique, the open appendectomy CPT code is the appropriate code — the laparoscopic attempt is included and not separately billed."
+          }
+        },
+        {
+          "id": "q_exp_surg_lap_001_2",
+          "position": 2,
+          "questionType": "reasoning",
+          "question": "The diagnosis is 'perforated appendix with generalized peritonitis.' Which ICD-10-CM code best captures this specific presentation?",
+          "isMcq": true,
+          "options": ["K35.2 (Acute appendicitis with peritoneal abscess)", "K35.20 (Acute appendicitis with perforation and peritonitis, without abscess)", "K35.21 (Acute appendicitis with perforation and peritonitis, with abscess)", "K37 (Unspecified appendicitis)"],
+          "correctOption": "B",
+          "answer": "K35.20 (Acute appendicitis with perforation and peritonitis, without abscess)",
+          "rationale": "K35.20 captures perforated appendicitis with generalized peritonitis without abscess. The scenario describes diffuse peritonitis without mention of an abscess, making K35.20 the most specific code.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "Generalized peritonitis differs from localized peritonitis. How does ICD-10-CM distinguish these for perforated appendicitis?",
+            "isMcq": true,
+            "options": ["ICD-10-CM uses a single code for all perforated appendicitis", "Separate codes under K35 are provided based on peritonitis type and presence of abscess", "Only the severity is coded — mild, moderate, or severe", "The distinction is based on organism causing peritonitis"],
+            "correctOption": "B",
+            "answer": "Separate codes under K35 are provided based on peritonitis type and presence of abscess",
+            "rationale": "ICD-10-CM category K35 distinguishes perforated appendicitis with and without abscess (K35.20 vs K35.21), allowing precise coding of the clinical picture."
+          }
+        },
+        {
+          "id": "q_exp_surg_lap_001_3",
+          "position": 3,
+          "questionType": "coding_accuracy",
+          "question": "Modifier -22 is considered for increased procedural complexity. What documentation is required to support a modifier -22 claim?",
+          "isMcq": true,
+          "options": ["The ICD-10-CM code for perforation is sufficient documentation", "An operative report explicitly documenting substantially increased time, effort, and complexity", "Physician verbal attestation only — no written documentation needed", "Payer prior authorization for the complex case"],
+          "correctOption": "B",
+          "answer": "An operative report explicitly documenting substantially increased time, effort, and complexity",
+          "rationale": "Modifier -22 requires detailed operative report documentation describing why the service was substantially more complex than usual — including specifics on increased time, technical difficulty, and clinical factors.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "When modifier -22 is successfully supported with documentation, what is the typical percentage increase in reimbursement associated with a successful modifier -22 claim?",
+            "isMcq": true,
+            "options": ["5-10%", "20-30%", "50%", "100%"],
+            "correctOption": "B",
+            "answer": "20-30%",
+            "rationale": "A well-documented modifier -22 claim typically results in a 20-30% increase in reimbursement from most payers, though the exact amount varies by payer contract and level of complexity documented."
+          }
+        }
+      ]
+    },
+    {
+      "id": "chain_exp_surg_mod_001",
+      "track": "experienced",
+      "specialty": "surgery",
+      "title": "Surgical Modifiers",
+      "scenario": "A surgeon performs a bilateral inguinal hernia repair with mesh during the same operative session.",
+      "questions": [
+        {
+          "id": "q_exp_surg_mod_001_1",
+          "position": 1,
+          "questionType": "coding_accuracy",
+          "question": "For bilateral procedures performed during the same operative session, which CPT modifier applies?",
+          "isMcq": true,
+          "options": ["Modifier -50 (Bilateral Procedure)", "Modifier -51 (Multiple Procedures)", "Modifier -59 (Distinct Procedural Service)", "Modifier -76 (Repeat Procedure by Same Physician)"],
+          "correctOption": "A",
+          "answer": "Modifier -50 (Bilateral Procedure)",
+          "rationale": "Modifier -50 is appended to indicate a procedure was performed bilaterally during the same operative session. It informs the payer that the procedure was performed on both sides of the body.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "How is modifier -50 typically reported — on one line or two lines on the claim?",
+            "isMcq": true,
+            "options": ["Always on one line only", "Always on two separate lines", "Varies by payer — one line with modifier or two lines per payer-specific guidelines", "Never used for hernia repairs"],
+            "correctOption": "C",
+            "answer": "Varies by payer — one line with modifier or two lines per payer-specific guidelines",
+            "rationale": "Some payers require modifier -50 on one line at 150% of the fee, while others require two lines — the first without modifier at 100% and the second with modifier -50 at 50%. Always follow payer-specific guidelines."
+          }
+        },
+        {
+          "id": "q_exp_surg_mod_001_2",
+          "position": 2,
+          "questionType": "reasoning",
+          "question": "If the hernia on one side was incarcerated and the other was reducible (not incarcerated), does this clinical difference affect CPT code selection?",
+          "isMcq": true,
+          "options": ["No, the same code applies to both sides equally", "Yes, separate CPT codes should be reported for the incarcerated vs. reducible hernia", "Only report the more complex code (incarcerated) for both sides", "Report with modifier -52 to indicate reduced service on one side"],
+          "correctOption": "B",
+          "answer": "Yes, separate CPT codes should be reported for the incarcerated vs. reducible hernia",
+          "rationale": "CPT has separate codes for incarcerated/strangulated versus reducible inguinal hernias. When the clinical picture differs side to side, separate codes accurately capture the complexity and are appropriate.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "Why does incarceration matter in hernia CPT code selection?",
+            "isMcq": true,
+            "options": ["It has no effect — all hernias are coded the same", "It represents increased complexity and risk, warranting a higher-specificity code", "It only affects ICD-10-CM coding, not CPT", "It always triggers a modifier -22"],
+            "correctOption": "B",
+            "answer": "It represents increased complexity and risk, warranting a higher-specificity code",
+            "rationale": "An incarcerated hernia — where contents are trapped and blood supply may be compromised — is significantly more complex to repair than a reducible one. CPT provides distinct codes to reflect this difference."
+          }
+        },
+        {
+          "id": "q_exp_surg_mod_001_3",
+          "position": 3,
+          "questionType": "coding_accuracy",
+          "question": "Mesh is used in both hernia repairs. How is the mesh typically addressed in CPT coding for inguinal hernia repair?",
+          "isMcq": true,
+          "options": ["Mesh is always coded separately with a supply code", "Mesh is included in the hernia repair CPT code and is not separately reportable", "Mesh always requires modifier -22 to capture the additional complexity", "Mesh use requires a separate PCS device code"],
+          "correctOption": "B",
+          "answer": "Mesh is included in the hernia repair CPT code and is not separately reportable",
+          "rationale": "For inguinal hernia repair, the CPT codes include the use of mesh as part of the procedure. Mesh is not separately billable as a supply code — it is bundled into the surgical CPT code.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "Are there exceptions where implant materials can be separately billed in surgical coding?",
+            "isMcq": true,
+            "options": ["No exceptions — all implants are always bundled", "Yes, in some cases with payer-specific allowances or when specifically listed as separately reportable in CPT", "Yes, whenever the implant costs more than $500", "Only for cardiac implants"],
+            "correctOption": "B",
+            "answer": "Yes, in some cases with payer-specific allowances or when specifically listed as separately reportable in CPT",
+            "rationale": "While mesh in hernia repair is bundled, some high-cost implants (like certain cardiac devices or spinal hardware) may be separately billable depending on payer contracts and explicit CPT/HCPCS guidance."
+          }
+        }
+      ]
+    },
+    {
+      "id": "chain_exp_surg_post_001",
+      "track": "experienced",
+      "specialty": "surgery",
+      "title": "Postoperative Complications",
+      "scenario": "A patient returns 5 days after a colectomy with fever, elevated WBC, and CT showing an anastomotic leak.",
+      "questions": [
+        {
+          "id": "q_exp_surg_post_001_1",
+          "position": 1,
+          "questionType": "reasoning",
+          "question": "Is this return visit for an anastomotic leak coded as a postoperative complication or a new, unrelated problem?",
+          "isMcq": true,
+          "options": ["A new problem unrelated to the surgery", "A postoperative complication, since it occurred within the global period", "Requires physician query before any coding decision", "Depends solely on whether the patient was readmitted or seen in the ED"],
+          "correctOption": "B",
+          "answer": "A postoperative complication, since it occurred within the global period",
+          "rationale": "An anastomotic leak 5 days after colectomy is a recognized postoperative complication directly related to the surgery. It is coded as a complication because it occurred within the global period and is causally related to the procedure.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "The global period for a major surgery like a colectomy is typically how many days?",
+            "isMcq": true,
+            "options": ["10 days", "30 days", "90 days", "180 days"],
+            "correctOption": "C",
+            "answer": "90 days",
+            "rationale": "Major surgical procedures carry a 90-day global period, during which follow-up care related to the surgery is included in the original surgical payment. Minor procedures carry a 10-day global period."
+          }
+        },
+        {
+          "id": "q_exp_surg_post_001_2",
+          "position": 2,
+          "questionType": "coding_accuracy",
+          "question": "The anastomotic leak is surgically managed. Which ICD-10-CM code category captures postoperative complications specifically related to the digestive system?",
+          "isMcq": true,
+          "options": ["K91 (Intraoperative and postprocedural complications and disorders of digestive system)", "K92 (Other diseases of digestive system)", "T81 (Complications of procedures, not elsewhere classified)", "K63 (Other diseases of intestine)"],
+          "correctOption": "A",
+          "answer": "K91 (Intraoperative and postprocedural complications and disorders of digestive system)",
+          "rationale": "Category K91 contains codes specific to intraoperative and postprocedural complications of the digestive system, including anastomotic leak, which is more specific than the general T81 category.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "What additional code should always be assigned alongside a postoperative complication code when applicable?",
+            "isMcq": true,
+            "options": ["A code for the original surgery performed", "A code for the specific complication itself — such as the anastomotic leak or the condition causing it", "Always a T81 code regardless of specificity", "A code for the surgeon performing the repair"],
+            "correctOption": "B",
+            "answer": "A code for the specific complication itself — such as the anastomotic leak or the condition causing it",
+            "rationale": "ICD-10-CM guidelines often require an additional code to describe the specific nature of the complication (e.g., peritonitis, abscess) when it adds clinical detail beyond the complication category code."
+          }
+        },
+        {
+          "id": "q_exp_surg_post_001_3",
+          "position": 3,
+          "questionType": "coding_accuracy",
+          "question": "The surgeon returns the patient to the OR within the 90-day global period for the anastomotic leak. How is this return-to-OR service coded for reimbursement?",
+          "isMcq": true,
+          "options": ["Full fee for the return procedure without any modifier", "Modifier -78 for unplanned return to the OR for a related complication during the postoperative period", "Modifier -79 for an unrelated procedure during the postoperative period", "Modifier -76 for a repeat procedure by the same physician"],
+          "correctOption": "B",
+          "answer": "Modifier -78 for unplanned return to the OR for a related complication during the postoperative period",
+          "rationale": "Modifier -78 is the correct modifier when a surgeon must return a patient to the OR during the global period for management of a complication directly related to the original procedure.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "Modifier -78 signals the return was related to the original procedure. What is the typical reimbursement impact of modifier -78?",
+            "isMcq": true,
+            "options": ["Full fee — 100% of the fee schedule", "Reduced payment, typically 70-80% of the full fee, as the global period applies", "No payment — all global period procedures are denied", "Double payment for the additional complexity"],
+            "correctOption": "B",
+            "answer": "Reduced payment, typically 70-80% of the full fee, as the global period applies",
+            "rationale": "With modifier -78, the return-to-OR procedure is typically reimbursed at 70-80% of the normal fee, reflecting that the global period's base work value (pre- and post-operative care) has already been paid with the original procedure."
+          }
+        }
+      ]
+    },
+    {
+      "id": "chain_exp_ed_em_001",
+      "track": "experienced",
+      "specialty": "ed_coding",
+      "title": "ED E&M Level Selection",
+      "scenario": "A 52-year-old presents to the ED with acute chest pain. The physician performs a comprehensive history and physical, orders EKG, serial troponins, and chest X-ray. After ruling out ACS, the patient is discharged with a diagnosis of atypical chest pain.",
+      "questions": [
+        {
+          "id": "q_exp_ed_em_001_1",
+          "position": 1,
+          "questionType": "reasoning",
+          "question": "ED E&M codes (99281-99285) are still based on which E&M framework as of 2023?",
+          "isMcq": true,
+          "options": ["MDM or total time only — like revised office visits since 2021", "The traditional 3 key components: history, examination, and MDM", "Time-based coding only, using minutes of physician presence", "Complexity-only scoring without reference to history or exam"],
+          "correctOption": "B",
+          "answer": "The traditional 3 key components: history, examination, and MDM",
+          "rationale": "ED E&M codes (99281-99285) continue to use the traditional 3-key-component framework (history, exam, MDM), unlike office visit codes which were revised in 2021 to use time or MDM alone.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "Why were ED E&M codes excluded from the 2021/2023 office visit E&M revisions?",
+            "isMcq": true,
+            "options": ["ED codes were already revised separately in 2020", "CMS and AMA determined ED settings have unique documentation and workflow needs requiring separate guidelines", "ED codes are not subject to AMA guidelines", "Emergency departments are paid under DRGs, not E&M codes"],
+            "correctOption": "B",
+            "answer": "CMS and AMA determined ED settings have unique documentation and workflow needs requiring separate guidelines",
+            "rationale": "The ED environment has distinct characteristics — team-based care, undifferentiated presentations, unpredictable complexity — that the traditional 3-component framework better accommodates. The AMA deferred ED revisions for further study."
+          }
+        },
+        {
+          "id": "q_exp_ed_em_001_2",
+          "position": 2,
+          "questionType": "coding_accuracy",
+          "question": "This case involves comprehensive history, comprehensive exam, and high-complexity MDM (extensive workup for ACS). Which ED E&M CPT code applies?",
+          "isMcq": true,
+          "options": ["99283 (moderate severity)", "99284 (high severity)", "99285 (highest severity)", "99291 (critical care)"],
+          "correctOption": "C",
+          "answer": "99285 (highest severity)",
+          "rationale": "CPT 99285 requires comprehensive history, comprehensive exam, and high-complexity MDM. This case meets all three elements — a comprehensive ACS workup with multiple diagnostic studies qualifies for the highest ED E&M level.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "CPT 99291 is critical care, not a standard ED E&M code. What specific clinical condition is required to bill 99291 instead of 99285?",
+            "isMcq": true,
+            "options": ["Any high-acuity patient with abnormal vital signs", "Patient requiring constant physician attention for a critical, life-threatening condition with documented time of 30+ minutes", "Any patient admitted to the ICU from the ED", "Any patient with chest pain and abnormal EKG"],
+            "correctOption": "B",
+            "answer": "Patient requiring constant physician attention for a critical, life-threatening condition with documented time of 30+ minutes",
+            "rationale": "Critical care (99291) requires the patient to have a critical illness or injury with impaired vital organ function, requiring physician constant attention. The minimum time threshold is 30 minutes of critical care time."
+          }
+        },
+        {
+          "id": "q_exp_ed_em_001_3",
+          "position": 3,
+          "questionType": "coding_accuracy",
+          "question": "The 'rule out ACS' workup is completed but ACS is excluded. What ICD-10-CM code is used as the primary diagnosis for this ED visit?",
+          "isMcq": true,
+          "options": ["Code the suspected ACS as if it were confirmed", "Code the presenting sign or symptom — chest pain — as the primary diagnosis", "Query the physician for a definitive diagnosis before coding", "Code 'rule out ACS' directly as the primary diagnosis"],
+          "correctOption": "B",
+          "answer": "Code the presenting sign or symptom — chest pain — as the primary diagnosis",
+          "rationale": "ICD-10-CM outpatient and ED guidelines state that when a diagnosis is not confirmed at the time of discharge, the coder reports the sign or symptom that prompted the visit — not the suspected or 'rule out' diagnosis.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "For outpatient and ED encounters, ICD-10-CM guidelines state you should code the confirmed diagnosis or the presenting sign/symptom when a definitive diagnosis is not established?",
+            "isMcq": true,
+            "options": ["Always code the suspected diagnosis even if not confirmed", "Code the presenting sign or symptom — confirmed diagnoses are only coded for outpatient if confirmed at the time of the encounter", "Code 'rule out' as a valid primary diagnosis", "Query the physician and wait before submitting the claim"],
+            "correctOption": "B",
+            "answer": "Code the presenting sign or symptom — confirmed diagnoses are only coded for outpatient if confirmed at the time of the encounter",
+            "rationale": "Per ICD-10-CM outpatient guidelines Section IV, uncertain diagnoses ('possible,' 'probable,' 'rule out') are NOT coded for outpatient or ED. The sign/symptom (e.g., chest pain) is coded as the primary diagnosis."
+          }
+        }
+      ]
+    },
+    {
+      "id": "chain_exp_ed_cc_001",
+      "track": "experienced",
+      "specialty": "ed_coding",
+      "title": "Critical Care vs ED Visit",
+      "scenario": "A patient arrives via EMS in respiratory failure with SpO2 of 72%. The ED physician spends 45 continuous minutes managing the patient, orders intubation, and arranges ICU transfer.",
+      "questions": [
+        {
+          "id": "q_exp_ed_cc_001_1",
+          "position": 1,
+          "questionType": "coding_accuracy",
+          "question": "The physician documents 'critical care management.' What is the minimum time threshold for reporting CPT 99291 (critical care, first 30-74 minutes)?",
+          "isMcq": true,
+          "options": ["20 minutes", "30 minutes", "45 minutes", "60 minutes"],
+          "correctOption": "B",
+          "answer": "30 minutes",
+          "rationale": "CPT 99291 requires a minimum of 30 minutes of critical care time. The code covers the first 30-74 minutes. For 45 minutes in this scenario, 99291 alone is reported.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "Critical care time must be which type of time — strictly face-to-face at the bedside, only continuous uninterrupted time, or cumulative time spent on critical care activities?",
+            "isMcq": true,
+            "options": ["Only face-to-face time at the bedside", "Must be continuous and uninterrupted", "Cumulative time spent on critical care activities for that patient, not necessarily continuous at bedside", "Only time spent performing procedures"],
+            "correctOption": "C",
+            "answer": "Cumulative time spent on critical care activities for that patient, not necessarily continuous at bedside",
+            "rationale": "CPT guidelines state critical care time is cumulative — it includes time reviewing records, discussing the case with other providers, and performing activities directly related to the patient's critical condition, even when not continuously at the bedside."
+          }
+        },
+        {
+          "id": "q_exp_ed_cc_001_2",
+          "position": 2,
+          "questionType": "reasoning",
+          "question": "Can the endotracheal intubation (CPT 31500) be separately reported alongside the critical care code for this patient?",
+          "isMcq": true,
+          "options": ["No, intubation is always bundled with critical care and cannot be separately reported", "Yes, intubation is always separately reportable alongside critical care", "Yes, if it is not bundled per CCI edits for that specific payer", "Only if the physician performs the intubation and documents it separately from critical care time"],
+          "correctOption": "C",
+          "answer": "Yes, if it is not bundled per CCI edits for that specific payer",
+          "rationale": "Whether 31500 (intubation) can be separately billed with critical care depends on Correct Coding Initiative (CCI) edits and payer policy. Some payers allow it; others bundle intubation into critical care. Always verify CCI edits.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "Where would a medical coder look to determine whether a procedure is bundled with critical care for a specific payer?",
+            "isMcq": true,
+            "options": ["The CPT code descriptor only", "CCI (Correct Coding Initiative) edits and payer-specific coding guidelines", "The ICD-10-CM tabular index", "The hospital charge master"],
+            "correctOption": "B",
+            "answer": "CCI (Correct Coding Initiative) edits and payer-specific coding guidelines",
+            "rationale": "The CMS Correct Coding Initiative (CCI) edits define which procedure codes are bundled together. Payers may have additional bundling edits beyond CCI. Coders must check both before separately reporting procedures with critical care."
+          }
+        },
+        {
+          "id": "q_exp_ed_cc_001_3",
+          "position": 3,
+          "questionType": "coding_accuracy",
+          "question": "The physician spends 45 minutes in critical care management. Which CPT code or codes are reported?",
+          "isMcq": true,
+            "options": ["99291 only (covers 30-74 minutes)", "99291 + 99292 (add-on for additional 30-minute increments)", "99291 x 2 units", "99285 (highest ED E&M level)"],
+          "correctOption": "A",
+          "answer": "99291 only (covers 30-74 minutes)",
+          "rationale": "CPT 99291 covers critical care from 30-74 minutes. At 45 minutes, only 99291 is reported. The add-on code 99292 is not added until the total critical care time reaches 75 minutes or more.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "At what total threshold of critical care time would you begin adding 99292 as an add-on code to 99291?",
+            "isMcq": true,
+            "options": ["At 60 minutes total", "At 75 minutes total (one unit of 99292 per additional 30 minutes)", "At 90 minutes total", "After 100 minutes"],
+            "correctOption": "B",
+            "answer": "At 75 minutes total (one unit of 99292 per additional 30 minutes)",
+            "rationale": "99292 is the add-on code for each additional 30 minutes of critical care beyond the first 74 minutes. It is first added when total critical care time reaches 75 minutes, and then once more for each additional 30-minute increment."
+          }
+        }
+      ]
+    },
+    {
+      "id": "chain_exp_ed_obs_001",
+      "track": "experienced",
+      "specialty": "ed_coding",
+      "title": "Observation vs Inpatient",
+      "scenario": "A patient presents to the ED and is placed under observation status for chest pain monitoring overnight. The following morning, the attending physician determines the patient can be discharged.",
+      "questions": [
+        {
+          "id": "q_exp_ed_obs_001_1",
+          "position": 1,
+          "questionType": "reasoning",
+          "question": "Observation status is a billing classification, not necessarily a physical location. Which description best characterizes observation status?",
+          "isMcq": true,
+          "options": ["An inpatient admission for patients staying less than 24 hours", "An outpatient billing classification for patients who need monitoring or treatment to determine if inpatient admission is necessary", "A payer denial status when admission criteria are not met", "An ICU-level classification for critically ill patients"],
+          "correctOption": "B",
+          "answer": "An outpatient billing classification for patients who need monitoring or treatment to determine if inpatient admission is necessary",
+          "rationale": "Observation is an outpatient classification used when a patient requires hospital-level monitoring or treatment to determine whether formal inpatient admission is warranted. The patient is not admitted as an inpatient.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "Why does observation status particularly matter for Medicare patients compared to inpatient status?",
+            "isMcq": true,
+            "options": ["Medicare pays more for observation than inpatient", "Medicare patients in observation pay cost-sharing as outpatients and may be responsible for medication costs not covered under Part A", "Observation always results in a Medicare audit", "Observation patients cannot be transferred to a skilled nursing facility"],
+            "correctOption": "B",
+            "answer": "Medicare patients in observation pay cost-sharing as outpatients and may be responsible for medication costs not covered under Part A",
+            "rationale": "Under Medicare, observation patients are outpatients and may face higher cost-sharing under Part B. They also may not qualify for Part A-covered skilled nursing facility care after discharge, a significant financial impact."
+          }
+        },
+        {
+          "id": "q_exp_ed_obs_001_2",
+          "position": 2,
+          "questionType": "coding_accuracy",
+          "question": "If the same physician provides the initial ED E&M and then places the patient in observation status on the same date, how are these services coded?",
+          "isMcq": true,
+          "options": ["Report both the ED E&M code and a separate observation admission code", "Report the observation admission code only — the ED E&M is included and not separately reported", "Report two separate E&M codes with modifier -25 on the ED code", "Report only the ED E&M code and ignore the observation placement"],
+          "correctOption": "B",
+          "answer": "Report the observation admission code only — the ED E&M is included and not separately reported",
+          "rationale": "Per CPT guidelines, when the same physician provides an ED E&M and initiates observation status on the same date, only the observation admission code is reported. The ED E&M is included in the observation admission service.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "CPT guidelines state the ED E&M is included in the observation admission when performed by the same physician on the same date. Which observation admission code range covers initial observation care?",
+            "isMcq": true,
+            "options": ["99217-99220", "99234-99236", "99221-99223", "99281-99285"],
+            "correctOption": "B",
+            "answer": "99234-99236",
+            "rationale": "CPT codes 99234-99236 are the same-day observation codes (admit and discharge on the same date). For initial observation care only (no same-day discharge), the initial observation codes 99218-99220 apply."
+          }
+        },
+        {
+          "id": "q_exp_ed_obs_001_3",
+          "position": 3,
+          "questionType": "coding_accuracy",
+          "question": "The observation patient is discharged the following morning. If the admission and discharge occur on the same calendar date, which CPT code set is used?",
+          "isMcq": true,
+          "options": ["Separate observation admission code + separate observation discharge code on two lines", "Same-day observation admit and discharge codes (99234-99236)", "Standard outpatient E&M code for the discharge visit", "Inpatient discharge management code (99238-99239)"],
+          "correctOption": "B",
+          "answer": "Same-day observation admit and discharge codes (99234-99236)",
+          "rationale": "CPT codes 99234-99236 are specifically designed for observation patients whose admission and discharge occur on the same calendar date. These all-inclusive codes cover both the admission and discharge services.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "Same-day observation codes 99234-99236 require what minimum time or complexity to be appropriately billed?",
+            "isMcq": true,
+            "options": ["Minimum 2 hours of observation only", "Minimum 8 hours of observation AND the appropriate MDM or time requirement matching the code level", "No minimum time required, only MDM", "Any duration with a comprehensive history and exam"],
+            "correctOption": "B",
+            "answer": "Minimum 8 hours of observation AND the appropriate MDM or time requirement matching the code level",
+            "rationale": "CMS guidelines require a minimum of 8 hours of observation time to bill same-day observation codes 99234-99236. The level within that range (99234, 99235, or 99236) is selected based on MDM complexity."
+          }
+        }
+      ]
+    },
+    {
+      "id": "chain_exp_ip_pdx_001",
+      "track": "experienced",
+      "specialty": "inpatient",
+      "title": "Principal Diagnosis Selection",
+      "scenario": "A patient is admitted with altered mental status. Workup reveals a urinary tract infection caused by E. coli. The patient also has documented Alzheimer's dementia and hypertension.",
+      "questions": [
+        {
+          "id": "q_exp_ip_pdx_001_1",
+          "position": 1,
+          "questionType": "reasoning",
+          "question": "Per UHDDS guidelines, the principal diagnosis is defined as which of the following?",
+          "isMcq": true,
+          "options": ["The most serious or life-threatening condition present at admission", "The condition established after study to be chiefly responsible for occasioning the admission", "The first condition listed by the physician in the H&P", "The condition requiring the most hospital resources or the longest length of stay"],
+          "correctOption": "B",
+          "answer": "The condition established after study to be chiefly responsible for occasioning the admission",
+          "rationale": "The UHDDS (Uniform Hospital Discharge Data Set) defines the principal diagnosis as the condition established, after study, to be chiefly responsible for occasioning the admission of the patient to the hospital for care.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "UHDDS stands for Uniform Hospital Discharge Data Set. After what clinical process is the principal diagnosis determined — at admission or after evaluation?",
+            "isMcq": true,
+            "options": ["At the time of admission before any workup", "After study — meaning after workup and evaluation are complete, not necessarily what prompted the visit", "After discharge only", "Based on the chief complaint alone"],
+            "correctOption": "B",
+            "answer": "After study — meaning after workup and evaluation are complete, not necessarily what prompted the visit",
+            "rationale": "The phrase 'after study' is critical — it means the principal diagnosis is determined after the workup is complete. The condition that drove the admission may not always be the same as what brought the patient in initially."
+          }
+        },
+        {
+          "id": "q_exp_ip_pdx_001_2",
+          "position": 2,
+          "questionType": "coding_accuracy",
+          "question": "The UTI is confirmed as caused by E. coli. ICD-10-CM requires an additional code for the causative organism. Which code category captures E. coli as the causative agent?",
+          "isMcq": true,
+          "options": ["B96 (Other specified bacterial agents as the cause of diseases classified elsewhere)", "Z16 (Resistance to antimicrobial drugs)", "B95 (Streptococcus, Staphylococcus, and Enterococcus)", "A41 (Other sepsis)"],
+          "correctOption": "A",
+          "answer": "B96 (Other specified bacterial agents as the cause of diseases classified elsewhere)",
+          "rationale": "ICD-10-CM category B96 includes codes for bacterial organisms (other than streptococcus/staphylococcus) as causative agents. E. coli falls under B96.20 (Unspecified Escherichia coli) or more specific subcategories.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "The instructional note at the UTI code in ICD-10-CM says 'Use additional code to identify infectious agent.' What does this instruction mean for code sequencing?",
+            "isMcq": true,
+            "options": ["The organism code is sequenced as the principal diagnosis", "The organism code is sequenced as an additional code following the UTI code, not as the principal diagnosis", "The organism code replaces the UTI code", "Both codes are sequenced interchangeably"],
+            "correctOption": "B",
+            "answer": "The organism code is sequenced as an additional code following the UTI code, not as the principal diagnosis",
+            "rationale": "'Use additional code' instructions direct the coder to add the organism or other specified code as a secondary code. It does not change sequencing — the UTI remains the principal diagnosis."
+          }
+        },
+        {
+          "id": "q_exp_ip_pdx_001_3",
+          "position": 3,
+          "questionType": "coding_accuracy",
+          "question": "The dementia is documented as 'Alzheimer's disease with behavioral disturbance.' How is this coded under ICD-10-CM?",
+          "isMcq": true,
+          "options": ["Single code for Alzheimer's disease unspecified (G30.9) only", "Alzheimer's disease code (G30.-) PLUS an additional code for the behavioral disturbance (F02.8-)", "Code only the behavioral disturbance, not the Alzheimer's disease", "Query the physician for more specificity before coding"],
+          "correctOption": "B",
+          "answer": "Alzheimer's disease code (G30.-) PLUS an additional code for the behavioral disturbance (F02.8-)",
+          "rationale": "ICD-10-CM requires two codes for Alzheimer's with behavioral disturbance: a G30 code for the type of Alzheimer's disease, followed by an F02.8- code to capture the behavioral disturbance (F02.81 for wandering, F02.811 for agitation, etc.).",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "Under ICD-10-CM, Alzheimer's disease is coded from category G30. The behavioral disturbance is captured by an additional code from which category?",
+            "isMcq": true,
+            "options": ["G31 (Other degenerative diseases of nervous system)", "F02 (Dementia in other diseases classified elsewhere)", "F01 (Vascular dementia)", "G20 (Parkinson's disease)"],
+            "correctOption": "B",
+            "answer": "F02 (Dementia in other diseases classified elsewhere)",
+            "rationale": "Category F02 captures dementia in diseases classified elsewhere, including Alzheimer's disease. F02.8- subcodes specify the behavioral disturbances. This mandatory dual-coding approach ensures both the underlying disease and its manifestation are captured."
+          }
+        }
+      ]
+    },
+    {
+      "id": "chain_exp_ip_drg_001",
+      "track": "experienced",
+      "specialty": "inpatient",
+      "title": "CC/MCC and DRG Impact",
+      "scenario": "A patient is admitted for sepsis secondary to a urinary source. Documentation also includes acute kidney injury and respiratory failure requiring mechanical ventilation.",
+      "questions": [
+        {
+          "id": "q_exp_ip_drg_001_1",
+          "position": 1,
+          "questionType": "reasoning",
+          "question": "What is the significance of a Complication or Comorbidity (CC) or Major CC (MCC) in inpatient coding?",
+          "isMcq": true,
+          "options": ["They determine the physician's professional fee for the admission", "They affect DRG assignment and can significantly impact hospital reimbursement", "They are only relevant for coding compliance audits and have no payment impact", "They apply only to surgical DRGs, not medical DRGs"],
+          "correctOption": "B",
+          "answer": "They affect DRG assignment and can significantly impact hospital reimbursement",
+          "rationale": "CCs and MCCs are secondary diagnoses that, when present, move the DRG to a higher-paying tier. An MCC (like respiratory failure) typically generates more reimbursement than a CC, which generates more than no CC/MCC.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "DRG stands for Diagnosis Related Group. What does a DRG specifically determine in the hospital reimbursement system?",
+            "isMcq": true,
+            "options": ["The exact daily room rate the hospital charges", "The base payment amount the hospital receives from Medicare or the payer for an inpatient stay", "The physician's reimbursement rate under Medicare Part B", "The maximum number of days the payer will authorize"],
+            "correctOption": "B",
+            "answer": "The base payment amount the hospital receives from Medicare or the payer for an inpatient stay",
+            "rationale": "DRGs are the foundation of the Medicare Inpatient Prospective Payment System (IPPS). Each DRG has an assigned relative weight, which is multiplied by the hospital's base payment rate to determine the total payment for that admission."
+          }
+        },
+        {
+          "id": "q_exp_ip_drg_001_2",
+          "position": 2,
+          "questionType": "coding_accuracy",
+          "question": "Acute kidney injury (AKI) in this case is documented as present at the time of admission. What Present on Admission (POA) indicator should be assigned?",
+          "isMcq": true,
+          "options": ["Y — Yes, condition was present at the time of inpatient admission", "N — No, condition was not present at admission (hospital-acquired)", "U — Unknown, documentation is insufficient to determine", "W — Clinically undetermined"],
+          "correctOption": "A",
+          "answer": "Y — Yes, condition was present at the time of inpatient admission",
+          "rationale": "If documentation supports that the AKI was present at the time of admission (not hospital-acquired), the POA indicator is 'Y'. This is important for differentiating pre-existing conditions from hospital-acquired complications.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "What is the primary purpose of the Present on Admission (POA) indicator in inpatient coding?",
+            "isMcq": true,
+            "options": ["To track which physician admitted the patient", "To distinguish between conditions that existed at the time of admission versus conditions acquired during the hospital stay, for quality and payment purposes", "To document which diagnosis was principal", "To determine the patient's discharge disposition"],
+            "correctOption": "B",
+            "answer": "To distinguish between conditions that existed at the time of admission versus conditions acquired during the hospital stay, for quality and payment purposes",
+            "rationale": "POA indicators help CMS identify Hospital-Acquired Conditions (HACs). Conditions coded as 'N' (not present on admission) may trigger HAC policies, potentially reducing hospital payment and flagging quality concerns."
+          }
+        },
+        {
+          "id": "q_exp_ip_drg_001_3",
+          "position": 3,
+          "questionType": "reasoning",
+          "question": "The patient requires mechanical ventilation for 48 hours. How does the duration of mechanical ventilation affect ICD-10-PCS coding and DRG assignment?",
+          "isMcq": true,
+          "options": ["Duration has no impact on PCS coding or DRG assignment", "Duration affects which ICD-10-PCS procedure code is assigned, which can change the DRG to a higher-paying grouping", "Duration only affects physician billing for critical care, not facility coding", "Mechanical ventilation is not coded in ICD-10-PCS for inpatient stays"],
+          "correctOption": "B",
+          "answer": "Duration affects which ICD-10-PCS procedure code is assigned, which can change the DRG to a higher-paying grouping",
+          "rationale": "ICD-10-PCS provides distinct codes for mechanical ventilation based on duration thresholds. The PCS code assigned directly affects MS-DRG grouping — longer ventilation duration typically maps to a higher-weighted DRG.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "ICD-10-PCS mechanical ventilation codes are differentiated by duration thresholds. What is the key duration threshold that determines which ventilation code is assigned?",
+            "isMcq": true,
+            "options": ["24 hours or more vs. less than 24 hours", "48 hours or more vs. less than 48 hours", "96 hours or more vs. less than 96 hours", "72 hours or more vs. less than 72 hours"],
+            "correctOption": "C",
+            "answer": "96 hours or more vs. less than 96 hours",
+            "rationale": "ICD-10-PCS respiratory ventilation codes are classified based on whether ventilation duration is less than 24 hours, 24-96 hours, or greater than 96 hours. These thresholds directly map to different MS-DRGs with varying reimbursement weights."
+          }
+        }
+      ]
+    },
+    {
+      "id": "chain_exp_ip_poa_001",
+      "track": "experienced",
+      "specialty": "inpatient",
+      "title": "Inpatient Complications and POA",
+      "scenario": "A 70-year-old patient is admitted for hip fracture repair. On day 3, nursing documents a stage 2 pressure ulcer on the sacrum. The patient also develops a DVT on day 4.",
+      "questions": [
+        {
+          "id": "q_exp_ip_poa_001_1",
+          "position": 1,
+          "questionType": "coding_accuracy",
+          "question": "The pressure ulcer was not documented in the H&P at admission. What POA indicator applies to this pressure ulcer?",
+          "isMcq": true,
+          "options": ["Y (Yes, present on admission)", "N (No, not present on admission — developed during the stay)", "U (Unknown — unable to determine)", "W (Clinically undetermined)"],
+          "correctOption": "B",
+          "answer": "N (No, not present on admission — developed during the stay)",
+          "rationale": "A pressure ulcer first documented on day 3 with no mention in the admission H&P is coded as POA = N, indicating it was not present at admission but developed during the hospitalization.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "A pressure ulcer coded with POA indicator 'N' is classified as what type of adverse event under CMS quality and payment policies?",
+            "isMcq": true,
+            "options": ["A routine postoperative finding — no payment impact", "A Hospital-Acquired Condition (HAC), which may trigger payment reduction or quality reporting penalties", "An expected complication excluded from quality metrics", "A coding error requiring physician correction"],
+            "correctOption": "B",
+            "answer": "A Hospital-Acquired Condition (HAC), which may trigger payment reduction or quality reporting penalties",
+            "rationale": "CMS designates certain conditions (including stage 3/4 pressure ulcers and some stage 2 pressure ulcers) as Hospital-Acquired Conditions (HACs). When coded as POA = N, CMS may reduce payment and flag the case for quality review."
+          }
+        },
+        {
+          "id": "q_exp_ip_poa_001_2",
+          "position": 2,
+          "questionType": "reasoning",
+          "question": "The DVT is identified on day 4 of hospitalization. Which physician query opportunity would most improve documentation accuracy and clinical specificity?",
+          "isMcq": true,
+          "options": ["Query whether the DVT was pre-existing before admission", "Query for the specific type and anatomical location of the DVT", "No query is needed — report unspecified DVT", "Query for the presence of sepsis instead"],
+          "correctOption": "B",
+          "answer": "Query for the specific type and anatomical location of the DVT",
+          "rationale": "ICD-10-CM classifies DVT by anatomical location (femoral, popliteal, tibial, iliac, etc.) and laterality. Querying for the specific vessel ensures the most accurate and complete code is assigned.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "Why does the specificity of DVT documentation and coding matter in ICD-10-CM?",
+            "isMcq": true,
+            "options": ["It has no impact — all DVT codes map to the same DRG", "ICD-10-CM distinguishes DVT by anatomical location and laterality, which affects code specificity, clinical accuracy, and potentially DRG assignment", "Specificity only matters for billing to commercial payers, not Medicare", "DVT location only matters if the patient requires anticoagulation"],
+            "correctOption": "B",
+            "answer": "ICD-10-CM distinguishes DVT by anatomical location and laterality, which affects code specificity, clinical accuracy, and potentially DRG assignment",
+            "rationale": "ICD-10-CM category I82 includes highly specific DVT codes by vessel (femoral, popliteal, tibial, etc.) and laterality. More specific codes reflect true clinical complexity and support accurate DRG assignment and quality reporting."
+          }
+        },
+        {
+          "id": "q_exp_ip_poa_001_3",
+          "position": 3,
+          "questionType": "coding_accuracy",
+          "question": "For the pressure ulcer coding, ICD-10-CM requires documentation of both the anatomical location AND which other element?",
+          "isMcq": true,
+          "options": ["The duration of the ulcer", "The stage of the pressure ulcer", "The patient's age", "The causative factor (friction, moisture, etc.)"],
+          "correctOption": "B",
+          "answer": "The stage of the pressure ulcer",
+          "rationale": "ICD-10-CM pressure ulcer codes (category L89) require both the anatomical location (e.g., sacrum, heel, hip) and the stage (Stage 1, 2, 3, 4, unstageable, deep tissue injury) to assign the most specific code.",
+          "timeLimit": 120,
+          "remediation": {
+            "question": "If the staging of a pressure ulcer is not documented by the physician, what should the medical coder do to ensure proper coding?",
+            "isMcq": true,
+            "options": ["Default to Stage 1 as the least severe", "Query the physician for the stage; if clinically supported, use the 'unstageable' code if documentation indicates the wound cannot be assessed", "Code as unspecified pressure ulcer without stage", "Skip coding the pressure ulcer until the next documentation review"],
+            "correctOption": "B",
+            "answer": "Query the physician for the stage; if clinically supported, use the 'unstageable' code if documentation indicates the wound cannot be assessed",
+            "rationale": "The coder should query the physician for staging. If the wound is covered by eschar, slough, or a device and cannot be visually staged, and this is documented, the 'unstageable' pressure ulcer code is appropriate. Do not default to an assumed stage."
+          }
+        }
+      ]
+    }
+  ]
+}
