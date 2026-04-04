@@ -643,6 +643,7 @@
           <nav class="sub-nav">
             <button class="sub-nav-item active" data-subtab="users">Sessions & Analytics</button>
             <button class="sub-nav-item" data-subtab="bank">Question Bank</button>
+            <button class="sub-nav-item" data-subtab="interview">Interview Mode</button>
             <button class="sub-nav-item" data-subtab="tools">Administration</button>
           </nav>
         </div>
@@ -1102,12 +1103,22 @@
             <p id="flagQueueStatus" class="status"></p>
           </section>
 
-          <!-- Interview Questions Import -->
-          <details class="mentor-section" id="interviewImportSection">
-            <summary class="section-title">Interview Questions <span class="summary-badge">Upload Excel</span></summary>
+        </div>
+
+        <!-- Sub-View: Interview Mode Management -->
+        <div id="subview-interview" class="sub-view full-width hidden">
+          <section class="panel">
+            <h3 class="section-title">Interview Question Bank</h3>
+            <p class="status">Manage interview scenarios and question chains used in Interview Mode. Tracks: Fresher, Fresher Certified, Experienced (Surgery / ED / Inpatient).</p>
+          </section>
+
+          <details class="mentor-section" id="interviewImportSection" open>
+            <summary class="section-title">Upload Interview Questions <span class="summary-badge">Excel Import</span></summary>
             <div class="mentor-section-body">
               <p style="font-size:0.85rem;color:#475569;margin-bottom:12px;">
-                Upload interview scenarios and questions using the Excel template. Chains with existing IDs will be replaced; new chains will be appended.
+                Upload interview scenarios and question chains using the Excel template below.
+                Chains with existing IDs will be replaced; new chains will be appended.
+                This is <strong>separate</strong> from the practice question bank.
               </p>
               <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
                 <a href="/assets/interview-questions-template.xlsx" download class="ghost-btn" style="font-size:0.82rem;">&#11015; Download Template</a>

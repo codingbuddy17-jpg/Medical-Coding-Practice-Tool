@@ -713,10 +713,10 @@ function handleMentorSubTab(subTab) {
   document.getElementById("subview-kpi").classList.add("hidden");
   document.getElementById("subview-tools").classList.add("hidden");
   document.getElementById("subview-bank").classList.add("hidden");
+  document.getElementById("subview-interview")?.classList.add("hidden");
 
   // Show target
   if (subTab === "users") {
-    // Show users view
     document.getElementById("subview-users").classList.remove("hidden");
     loadSessions();
     startSessionPoll();
@@ -724,17 +724,17 @@ function handleMentorSubTab(subTab) {
     document.getElementById("subview-kpi").classList.remove("hidden");
     loadMonetizationInsights();
   } else if (subTab === "tools") {
-    // Show Administration view
     document.getElementById("subview-tools").classList.remove("hidden");
     loadAdminData();
   } else if (subTab === "bank") {
-    // Show Question Bank view
     document.getElementById("subview-bank").classList.remove("hidden");
     loadQuestionBank();
     loadFlagQueue();
     loadImportBatches();
     loadImportReviewQueue();
     loadTagRegistryManager(true);
+  } else if (subTab === "interview") {
+    document.getElementById("subview-interview").classList.remove("hidden");
   }
 }
 
