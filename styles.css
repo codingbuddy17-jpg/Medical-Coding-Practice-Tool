@@ -2634,7 +2634,8 @@ code {
 #interviewPanel { max-width: 780px; margin: 0 auto; }
 .iv-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 8px; }
 .iv-header-row-active { margin-bottom: 16px; }
-.iv-exit-btn { white-space: nowrap; margin-top: 2px; }
+.iv-exit-btn { white-space: nowrap; margin-top: 2px; background: #fee2e2; color: #991b1b; border: 1.5px solid #fca5a5; border-radius: 8px; padding: 7px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.iv-exit-btn:hover { background: #fecaca; }
 .iv-heading { font-size: 1.4rem; font-weight: 700; color: var(--teal-dark, #0f766e); margin-bottom: 6px; }
 .iv-subtitle { color: #64748b; margin-bottom: 20px; font-size: 0.95rem; }
 .iv-section-label { font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 10px; margin-top: 18px; }

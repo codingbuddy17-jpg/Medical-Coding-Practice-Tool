@@ -501,94 +501,192 @@ function downloadInterviewReport() {
   const doc = new jsPDF();
 
   const userName = (typeof state !== "undefined" && state.userName) ? state.userName : "Candidate";
-  const trackLabel = { fresher: "Fresher", fresher_certified: "Fresher – Certified", experienced: "Experienced" }[ivState.track] || ivState.track;
-  const specialtyLabel = { surgery: "Surgery", ed_coding: "ED Coding", inpatient: "Inpatient" }[ivState.specialty] || (ivState.specialty || "General");
+  const trackLabel = { fresher: "Fresher", fresher_certified: "Fresher \u2013 Certified", experienced: "Experienced" }[ivState.track] || ivState.track;
+  const specialtyLabel = { surgery: "Surgery", ed_coding: "ED Coding", inpatient: "Inpatient" }[ivState.specialty] || (ivState.specialty || "");
+  const trackFull = trackLabel + (specialtyLabel ? " \u2014 " + specialtyLabel : "");
   const dateStr = new Date(ivState.sessionStartedAt).toLocaleString();
+  const durationMin = ivState.endedAt ? Math.round((ivState.endedAt - ivState.sessionStartedAt) / 60000) : 0;
 
-  // Header
-  doc.setFillColor(15, 118, 110);
-  doc.rect(0, 0, 210, 30, "F");
-  doc.setFillColor(0, 163, 217);
-  doc.rect(0, 30, 210, 6, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(15);
-  doc.text("PracticeBuddy Lab \u2014 Interview Module", 14, 13);
-  doc.setFontSize(10);
-  doc.text("CodingBuddy360 | Medical Coding Interview Assessment Report", 14, 20);
-  doc.setFontSize(9);
-  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 27);
-
-  let y = 44;
-  doc.setTextColor(15, 23, 42);
-  doc.setFontSize(11);
-  doc.text(`Candidate: ${userName}`, 14, y); y += 7;
-  doc.text(`Track: ${trackLabel}${ivState.specialty ? " \u2014 " + specialtyLabel : ""}`, 14, y); y += 7;
-  doc.text(`Session Date: ${dateStr}`, 14, y); y += 10;
-
-  // Band box
   const bandColors = { HIRE: [220, 252, 231], MAYBE: [254, 243, 199], PASS: [254, 226, 226] };
   const bandStroke = { HIRE: [134, 239, 172], MAYBE: [252, 211, 77], PASS: [252, 165, 165] };
-  const bandText = { HIRE: [22, 101, 52], MAYBE: [146, 64, 14], PASS: [153, 27, 27] };
-  const bc = bandColors[score.band] || [240, 240, 240];
-  const bs = bandStroke[score.band] || [200, 200, 200];
-  const bt = bandText[score.band] || [50, 50, 50];
-  doc.setFillColor(...bc);
-  doc.setDrawColor(...bs);
-  doc.roundedRect(14, y, 182, 22, 3, 3, "FD");
-  doc.setFontSize(14);
-  doc.setTextColor(...bt);
-  doc.text(`Recommendation: ${score.band}`, 18, y + 9);
-  doc.setFontSize(10);
-  doc.text(`Overall Score: ${score.overall}%  (${score.correct} correct / ${score.total} total)`, 18, y + 16);
-  y += 30;
+  const bandText =  { HIRE: [22, 101, 52],   MAYBE: [146, 64, 14],   PASS: [153, 27, 27] };
+  const bc = bandColors[score.band] || [240,240,240];
+  const bs = bandStroke[score.band] || [200,200,200];
+  const bt = bandText[score.band]  || [50,50,50];
 
-  // Type breakdown
-  doc.setFontSize(11);
-  doc.setTextColor(0, 126, 167);
-  doc.text("Performance by Question Type", 14, y); y += 7;
+  const drawBar = (label, pct, yPos) => {
+    const safe = Math.max(0, Math.min(100, Number(pct || 0)));
+    const col = safe >= 75 ? [22,101,52] : safe >= 55 ? [146,64,14] : [153,27,27];
+    doc.setFontSize(9); doc.setTextColor(15,23,42);
+    doc.text(`${label}`, 14, yPos);
+    doc.text(`${safe}%`, 88, yPos);
+    doc.setFillColor(226,232,240); doc.roundedRect(96, yPos-3.5, 100, 4, 1,1,"F");
+    doc.setFillColor(...col); doc.roundedRect(96, yPos-3.5, Math.max(2, safe), 4, 1,1,"F");
+  };
+
+  // ── HEADER ──
+  doc.setFillColor(15,118,110); doc.rect(0,0,210,30,"F");
+  doc.setFillColor(0,163,217);  doc.rect(0,30,210,6,"F");
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(15); doc.text("PracticeBuddy Lab \u2014 Interview Mode", 14, 13);
+  doc.setFontSize(10); doc.text("CodingBuddy360 | Medical Coding Interview Assessment", 14, 20);
+  doc.setFontSize(9);  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 27);
+
+  let y = 42;
+  doc.setTextColor(15,23,42); doc.setFontSize(10);
+  doc.text(`Candidate: ${userName}`, 14, y);        y += 6;
+  doc.text(`Track: ${trackFull}`, 14, y);            y += 6;
+  doc.text(`Session: ${dateStr}  |  Duration: ${durationMin} min`, 14, y); y += 10;
+
+  // ── RECOMMENDATION BAND ──
+  doc.setFillColor(...bc); doc.setDrawColor(...bs);
+  doc.roundedRect(14, y, 182, 24, 3,3,"FD");
+  doc.setFontSize(16); doc.setTextColor(...bt);
+  doc.text(`Recommendation: ${score.band}`, 18, y+10);
+  doc.setFontSize(9); doc.setTextColor(15,23,42);
+  const bandDesc = {
+    HIRE: "Strong overall performance. Candidate demonstrates solid coding knowledge and reasoning ability.",
+    MAYBE: "Moderate performance. Candidate shows potential but has identifiable gaps to address before the interview.",
+    PASS: "Performance below hiring threshold. Significant preparation needed across multiple competency areas."
+  }[score.band] || "";
+  const descLines = doc.splitTextToSize(bandDesc, 174);
+  doc.text(descLines, 18, y+17);
+  y += 32;
+
+  // ── OVERALL SCORE SUMMARY ──
+  doc.setFontSize(11); doc.setTextColor(0,126,167);
+  doc.text("Overall Performance Summary", 14, y); y += 7;
+
+  const timedOut = ivState.answers.filter(a => a.timedOut).length;
+  const avgTime = ivState.answers.length
+    ? Math.round(ivState.answers.reduce((s,a) => s + (a.timeSpent||0), 0) / ivState.answers.length)
+    : 0;
+
+  doc.setFontSize(9); doc.setTextColor(15,23,42);
+  const summaryItems = [
+    [`Total Questions`, `${score.total}`],
+    [`Correct Answers`, `${score.correct}  (${score.overall}%)`],
+    [`Incorrect Answers`, `${score.wrong}`],
+    [`Timed Out`, `${timedOut}`],
+    [`Avg Time per Question`, `${avgTime}s`],
+    [`Duration`, `${durationMin} min`]
+  ];
+  const colW = 91;
+  summaryItems.forEach(([label, val], i) => {
+    const col = i % 2 === 0 ? 14 : 14 + colW;
+    const row = Math.floor(i / 2);
+    const yy = y + row * 7;
+    doc.setTextColor(100,116,139); doc.text(label + ":", col, yy);
+    doc.setTextColor(15,23,42);   doc.text(val, col + 46, yy);
+  });
+  y += Math.ceil(summaryItems.length / 2) * 7 + 6;
+
+  // ── COMPETENCY BREAKDOWN ──
+  doc.setFontSize(11); doc.setTextColor(0,126,167);
+  doc.text("Competency Breakdown", 14, y); y += 8;
   Object.entries(score.byType).forEach(([type, data]) => {
-    doc.setFontSize(9);
-    doc.setTextColor(15, 23, 42);
-    doc.text(`${formatQuestionType(type)}: ${data.pct}% (${data.correct}/${data.total})`, 14, y);
-    const barColor = data.pct >= 75 ? [22, 101, 52] : data.pct >= 55 ? [146, 64, 14] : [153, 27, 27];
-    doc.setFillColor(220, 220, 220);
-    doc.roundedRect(95, y - 3.5, 100, 4, 1, 1, "F");
-    doc.setFillColor(...barColor);
-    const barW = Math.max(2, data.pct);
-    doc.roundedRect(95, y - 3.5, barW, 4, 1, 1, "F");
+    drawBar(formatQuestionType(type), data.pct, y);
+    doc.setFontSize(8); doc.setTextColor(100,116,139);
+    doc.text(`${data.correct}/${data.total} correct`, 170, y);
+    y += 8;
+  });
+  y += 4;
+
+  // ── SCENARIO PERFORMANCE ──
+  doc.setFontSize(11); doc.setTextColor(0,126,167);
+  doc.text("Scenario-by-Scenario Performance", 14, y); y += 7;
+
+  const byChain = {};
+  ivState.answers.forEach(a => {
+    if (!byChain[a.chainTitle]) byChain[a.chainTitle] = { correct:0, total:0, types:[] };
+    byChain[a.chainTitle].total++;
+    if (a.correct) byChain[a.chainTitle].correct++;
+    if (!byChain[a.chainTitle].types.includes(a.questionType)) byChain[a.chainTitle].types.push(a.questionType);
+  });
+
+  Object.entries(byChain).forEach(([title, data]) => {
+    if (y > 265) { doc.addPage(); y = 18; }
+    const pct = data.total ? Math.round((data.correct/data.total)*100) : 0;
+    const band = pct >= 75 ? "Strong" : pct >= 55 ? "Developing" : "Needs Work";
+    const bandCol = pct >= 75 ? [22,101,52] : pct >= 55 ? [146,64,14] : [153,27,27];
+    doc.setFontSize(9); doc.setTextColor(15,23,42);
+    doc.text(`\u25B6 ${title}`, 14, y);
+    doc.setTextColor(...bandCol);
+    doc.text(`${band} (${pct}%)`, 120, y);
+    doc.setTextColor(100,116,139);
+    doc.text(`${data.correct}/${data.total} correct`, 170, y);
+    y += 5;
+    doc.setFontSize(8);
+    doc.text(`Competencies tested: ${data.types.map(formatQuestionType).join(", ")}`, 18, y);
     y += 7;
   });
-  y += 5;
 
-  // Per-question breakdown
-  doc.setFontSize(11);
-  doc.setTextColor(0, 126, 167);
-  doc.text("Question-by-Question Review", 14, y); y += 7;
-  ivState.answers.forEach((a, i) => {
-    if (y > 265) { doc.addPage(); y = 18; }
-    const resultStr = a.correct ? "\u2713" : a.timedOut ? "\u23f1" : "\u2717";
-    doc.setFontSize(8);
-    doc.setTextColor(15, 23, 42);
-    const qLine = `${resultStr} Q${i+1} [${formatQuestionType(a.questionType)}] \u2014 ${(a.question || "").slice(0, 80)}${(a.question || "").length > 80 ? "\u2026" : ""}`;
-    doc.text(qLine, 14, y); y += 5;
-    if (a.rationale) {
-      doc.setTextColor(80, 80, 80);
-      const wrapped = doc.splitTextToSize(`\u2192 ${a.rationale}`, 182);
-      doc.text(wrapped, 16, y);
-      y += wrapped.length * 4.5;
-    }
-    y += 2;
+  // ── STRENGTHS & GAPS ──
+  if (y > 240) { doc.addPage(); y = 18; }
+  doc.setFontSize(11); doc.setTextColor(0,126,167);
+  doc.text("Strengths & Development Areas", 14, y); y += 7;
+
+  const typeEntries = Object.entries(score.byType);
+  const strengths = typeEntries.filter(([,d]) => d.pct >= 70).map(([t]) => formatQuestionType(t));
+  const gaps      = typeEntries.filter(([,d]) => d.pct <  55).map(([t]) => formatQuestionType(t));
+  const developing= typeEntries.filter(([,d]) => d.pct >= 55 && d.pct < 70).map(([t]) => formatQuestionType(t));
+
+  doc.setFontSize(9);
+  if (strengths.length) {
+    doc.setTextColor(22,101,52);
+    doc.text("\u2713 Strengths: " + strengths.join(", "), 14, y); y += 6;
+  }
+  if (developing.length) {
+    doc.setTextColor(146,64,14);
+    doc.text("\u25B2 Developing: " + developing.join(", "), 14, y); y += 6;
+  }
+  if (gaps.length) {
+    doc.setTextColor(153,27,27);
+    doc.text("\u2717 Needs Focus: " + gaps.join(", "), 14, y); y += 6;
+  }
+  y += 4;
+
+  // ── RECOMMENDED NEXT STEPS ──
+  if (y > 240) { doc.addPage(); y = 18; }
+  doc.setFontSize(11); doc.setTextColor(0,126,167);
+  doc.text("Recommended Next Steps", 14, y); y += 7;
+
+  const nextSteps = [];
+  if (score.band === "HIRE") {
+    nextSteps.push("Continue reinforcing strengths with timed mock exams under exam conditions.");
+    nextSteps.push("Focus on specialty-specific edge cases and audit/compliance scenarios.");
+    nextSteps.push("Practice articulating coding rationale verbally — interviewers often ask 'why'.");
+  } else if (score.band === "MAYBE") {
+    if (gaps.length) nextSteps.push(`Prioritise study in: ${gaps.join(", ")} — these had the lowest scores.`);
+    nextSteps.push("Attempt at least 50 questions daily in weak topic areas using Adaptive Drill mode.");
+    nextSteps.push("Re-attempt this interview simulation after 1 week of focused practice.");
+    nextSteps.push("Review ICD-10-CM/CPT official guidelines for any topic scoring below 55%.");
+  } else {
+    if (gaps.length) nextSteps.push(`Critical gaps identified in: ${gaps.join(", ")} — these require structured review.`);
+    nextSteps.push("Start with foundational modules: Clinical Terminology, ICD-10-CM basics, CPT structure.");
+    nextSteps.push("Complete a minimum of 100 daily practice questions before re-attempting.");
+    nextSteps.push("Consider requesting a structured study plan from your trainer.");
+    if (timedOut > 0) nextSteps.push(`${timedOut} question(s) timed out — work on answering within 60 seconds per question.`);
+  }
+
+  doc.setFontSize(9); doc.setTextColor(15,23,42);
+  nextSteps.forEach((step, i) => {
+    if (y > 270) { doc.addPage(); y = 18; }
+    const lines = doc.splitTextToSize(`${i+1}. ${step}`, 180);
+    doc.text(lines, 14, y);
+    y += lines.length * 5 + 2;
   });
 
-  // Footer
-  if (y > 275) { doc.addPage(); y = 18; }
-  doc.setFontSize(8);
-  doc.setTextColor(100, 116, 139);
-  doc.text("PracticeBuddy Lab | CodingBuddy360 | Medical Coding Interview Assessment", 14, 290);
+  // ── FOOTER ──
+  const pageCount = doc.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setFontSize(8); doc.setTextColor(100,116,139);
+    doc.text(`PracticeBuddy Lab | CodingBuddy360 | Interview Mode Assessment  |  Page ${p} of ${pageCount}`, 14, 290);
+  }
 
-  const safeName = (userName).replace(/[^a-z0-9]+/gi, "_").toLowerCase();
-  const fileName = `interview_report_${safeName}_${Date.now()}.pdf`;
-  doc.save(fileName);
+  const safeName = userName.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
+  doc.save(`interview_mode_report_${safeName}_${Date.now()}.pdf`);
 }
 
 /* ── Reset ── */
