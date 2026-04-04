@@ -162,6 +162,7 @@ function updatePreSessionLandingUI() {
     if (!isInstituteMode) {
       dom.preSessionLanding.classList.remove("hidden", "landing-hidden");
       if (dom.authPanel) dom.authPanel.classList.remove("hidden");
+      if (dom.loginGuide) dom.loginGuide.classList.remove("hidden");
       if (dom.brandIntro) dom.brandIntro.classList.remove("hidden");
     }
     // Institute panel stays hidden in normal mode; only shown by ?mode=institute
@@ -172,12 +173,14 @@ function updatePreSessionLandingUI() {
     if (navDom.mainNav) navDom.mainNav.classList.add("hidden");
     if (navDom.viewPractice) navDom.viewPractice.classList.remove("active");
     if (navDom.viewMentor) navDom.viewMentor.classList.remove("active");
-    if (navDom.topbarSessionActions) navDom.topbarSessionActions.classList.add("hidden");
-    if (navDom.topbarSessionSummary) navDom.topbarSessionSummary.classList.add("hidden");
+    if (navDom.viewInterview) navDom.viewInterview.classList.remove("active");
+    if (dom.topbarSessionActions) dom.topbarSessionActions.classList.add("hidden");
+    if (dom.topbarSessionSummary) dom.topbarSessionSummary.classList.add("hidden");
   } else {
     // Hide Landing & Auth
     dom.preSessionLanding.classList.add("landing-hidden");
     if (dom.authPanel) dom.authPanel.classList.add("hidden");
+    if (dom.loginGuide) dom.loginGuide.classList.add("hidden");
     if (dom.brandIntro) dom.brandIntro.classList.add("hidden");
     // Always hide institute panel once a normal session is active
     if (dom.instituteLoginPanel) dom.instituteLoginPanel.classList.add("hidden");
@@ -505,4 +508,3 @@ function isTextMatchFlexible(userInput, option) {
   if (maxLen <= 16) return distance <= 2;
   return distance / maxLen <= 0.12;
 }
-
