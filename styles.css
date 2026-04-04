@@ -2629,9 +2629,12 @@ code {
   margin-bottom: 1rem;
 }
 
-/* ── Interview Simulator ────────────────────────────────── */
+/* ── Interview Module ────────────────────────────────── */
 #view-interview { padding: 0 0 32px; }
 #interviewPanel { max-width: 780px; margin: 0 auto; }
+.iv-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 8px; }
+.iv-header-row-active { margin-bottom: 16px; }
+.iv-exit-btn { white-space: nowrap; margin-top: 2px; }
 .iv-heading { font-size: 1.4rem; font-weight: 700; color: var(--teal-dark, #0f766e); margin-bottom: 6px; }
 .iv-subtitle { color: #64748b; margin-bottom: 20px; font-size: 0.95rem; }
 .iv-section-label { font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 10px; margin-top: 18px; }
@@ -2691,11 +2694,19 @@ code {
 .iv-action-row { display: flex; justify-content: flex-end; }
 
 /* Results */
+.iv-scorecard-hero { display: grid; grid-template-columns: 220px 1fr; gap: 18px; align-items: center; margin: 18px 0 22px; }
 .iv-band { font-size: 2rem; font-weight: 900; text-align: center; padding: 14px 28px; border-radius: 12px; margin: 16px auto; max-width: 200px; letter-spacing: 0.1em; }
 .iv-band-hire { background: #d1fae5; color: #065f46; border: 2px solid #6ee7b7; }
 .iv-band-maybe { background: #fef3c7; color: #92400e; border: 2px solid #fcd34d; }
 .iv-band-pass { background: #fee2e2; color: #991b1b; border: 2px solid #fca5a5; }
-.iv-overall-score { text-align: center; font-size: 1rem; color: #475569; margin-bottom: 24px; }
+.iv-scorecard-summary { background: linear-gradient(135deg, #f8fafc, #ecfeff); border: 1px solid #cbd5e1; border-radius: 14px; padding: 18px; }
+.iv-scorecard-kicker { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: #0f766e; margin: 0 0 8px; }
+.iv-overall-score { text-align: left; font-size: 1.2rem; color: #0f172a; margin-bottom: 8px; font-weight: 700; }
+.iv-score-narrative { margin: 0; color: #475569; line-height: 1.6; font-size: 0.92rem; }
+.iv-scorecard-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.iv-scorecard-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
+.iv-scorecard-label { display: block; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; font-weight: 700; margin-bottom: 8px; }
+.iv-scorecard-value { font-size: 1.35rem; color: #0f172a; font-weight: 800; }
 
 .iv-results-section { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
 .iv-results-section h3 { font-size: 0.95rem; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
@@ -2716,12 +2727,16 @@ code {
 .iv-q-result.correct { color: #059669; }
 .iv-q-result.wrong { color: #dc2626; }
 .iv-q-text { font-size: 0.88rem; color: #0f172a; margin-bottom: 4px; }
+.iv-q-metric { font-size: 0.78rem; color: #64748b; margin-bottom: 6px; }
 .iv-rationale-text { font-size: 0.82rem; color: #475569; line-height: 1.5; }
 
 .iv-results-actions { display: flex; gap: 12px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
 
 @media (max-width: 600px) {
   .iv-track-grid { grid-template-columns: 1fr; }
+  .iv-header-row { flex-direction: column; }
+  .iv-scorecard-hero { grid-template-columns: 1fr; }
+  .iv-scorecard-grid { grid-template-columns: 1fr 1fr; }
   .iv-question-meta { flex-direction: column; align-items: flex-start; gap: 8px; }
   .iv-type-label { min-width: 100px; font-size: 0.75rem; }
 }

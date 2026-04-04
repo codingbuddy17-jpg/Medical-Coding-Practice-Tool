@@ -1582,8 +1582,13 @@
       <section id="interviewPanel" class="panel">
         <!-- Setup Screen -->
         <div id="ivSetupScreen">
-          <h2 class="iv-heading">Interview Module</h2>
-          <p class="iv-subtitle">Practice a real medical coding interview with scenario-based, linked questions. Answers are revealed only at the end.</p>
+          <div class="iv-header-row">
+            <div>
+              <h2 class="iv-heading">Interview Module</h2>
+              <p class="iv-subtitle">Practice a real medical coding interview with scenario-based, linked questions. Answers are revealed only at the end.</p>
+            </div>
+            <button id="ivExitSetupBtn" class="ghost-btn iv-exit-btn" type="button">Exit Interview Module</button>
+          </div>
 
           <div class="iv-section-label">Select Your Track</div>
           <div class="iv-track-grid">
@@ -1621,6 +1626,13 @@
 
         <!-- Active Interview Screen -->
         <div id="ivActiveScreen" class="hidden">
+          <div class="iv-header-row iv-header-row-active">
+            <div>
+              <h2 class="iv-heading">Interview in Progress</h2>
+              <p class="iv-subtitle">Stay in interview mode until you finish or exit.</p>
+            </div>
+            <button id="ivExitActiveBtn" class="ghost-btn iv-exit-btn" type="button">Exit Interview Module</button>
+          </div>
           <div class="iv-progress-bar-wrap">
             <span id="ivChainProgress" class="iv-progress-label">Scenario 1 of 3</span>
             <span id="ivQuestionProgress" class="iv-progress-label right">Question 1 of 3</span>
@@ -1655,17 +1667,49 @@
 
         <!-- Results Screen -->
         <div id="ivResultsScreen" class="hidden">
-          <h2 class="iv-heading">Interview Complete</h2>
-          <div id="ivBandLabel" class="iv-band">HIRE</div>
-          <p id="ivOverallScore" class="iv-overall-score"></p>
+          <div class="iv-header-row">
+            <div>
+              <h2 class="iv-heading">Interview Scorecard</h2>
+              <p class="iv-subtitle">A structured summary of interview readiness, response quality, and improvement areas.</p>
+            </div>
+            <button id="ivExitResultsBtn" class="ghost-btn iv-exit-btn" type="button">Exit Interview Module</button>
+          </div>
+
+          <div class="iv-scorecard-hero">
+            <div id="ivBandLabel" class="iv-band">HIRE</div>
+            <div class="iv-scorecard-summary">
+              <p class="iv-scorecard-kicker">Overall Interview Readiness</p>
+              <p id="ivOverallScore" class="iv-overall-score"></p>
+              <p id="ivScoreNarrative" class="iv-score-narrative"></p>
+            </div>
+          </div>
+
+          <div class="iv-scorecard-grid">
+            <div class="iv-scorecard-card">
+              <span class="iv-scorecard-label">Questions Evaluated</span>
+              <strong id="ivTotalQuestions" class="iv-scorecard-value">0</strong>
+            </div>
+            <div class="iv-scorecard-card">
+              <span class="iv-scorecard-label">Correct Responses</span>
+              <strong id="ivCorrectResponses" class="iv-scorecard-value">0</strong>
+            </div>
+            <div class="iv-scorecard-card">
+              <span class="iv-scorecard-label">Timed Out / Missed</span>
+              <strong id="ivTimedOutResponses" class="iv-scorecard-value">0</strong>
+            </div>
+            <div class="iv-scorecard-card">
+              <span class="iv-scorecard-label">Avg Response Time</span>
+              <strong id="ivAvgResponseTime" class="iv-scorecard-value">0s</strong>
+            </div>
+          </div>
 
           <div class="iv-results-section">
-            <h3>Performance by Question Type</h3>
+            <h3>Competency Scorecard</h3>
             <div id="ivTypeBreakdown"></div>
           </div>
 
           <div class="iv-results-section">
-            <h3>Question Review &amp; Rationale</h3>
+            <h3>Question Review &amp; Coaching Notes</h3>
             <div id="ivRationaleList"></div>
           </div>
 

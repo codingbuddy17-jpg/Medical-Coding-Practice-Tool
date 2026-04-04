@@ -94,6 +94,19 @@ function initInterviewListeners() {
       resetInterview();
       return;
     }
+
+    // Exit module
+    if (
+      e.target.id === "ivExitSetupBtn" ||
+      e.target.id === "ivExitActiveBtn" ||
+      e.target.id === "ivExitResultsBtn" ||
+      e.target.closest("#ivExitSetupBtn") ||
+      e.target.closest("#ivExitActiveBtn") ||
+      e.target.closest("#ivExitResultsBtn")
+    ) {
+      exitInterviewModule();
+      return;
+    }
   });
 }
 
@@ -377,7 +390,11 @@ function computeScore() {
   const answers = ivState.answers;
   const total = answers.length;
   const correct = answers.filter(a => a.correct).length;
+  const timedOut = answers.filter(a => a.timedOut).length;
   const overall = total ? Math.round((correct / total) * 100) : 0;
+  const avgTime = total
+    ? Math.round(answers.reduce((sum, a) => sum + Number(a.timeSpent || 0), 0) / total)
+    : 0;
 
   const byType = {};
   answers.forEach(a => {
@@ -398,7 +415,17 @@ function computeScore() {
   if (overall >= HIRE_THRESHOLD && !anyTypeBelowPass) band = "HIRE";
   else if (overall >= MAYBE_THRESHOLD) band = "MAYBE";
 
-  return { overall, total, correct, wrong: total - correct, byType: typeScores, band };
+  return { overall, total, correct, wrong: total - correct, timedOut, avgTime, byType: typeScores, band };
+}
+
+function interviewNarrative(score) {
+  if (score.band === "HIRE") {
+    return "Strong interview readiness with consistent performance across the evaluated competency areas.";
+  }
+  if (score.band === "MAYBE") {
+    return "Promising baseline with some interview gaps. Focused practice on weaker areas should improve readiness.";
+  }
+  return "This attempt shows foundational gaps. More guided practice and review are recommended before a live interview setting.";
 }
 
 function renderResults() {
@@ -414,6 +441,16 @@ function renderResults() {
   // Overall score
   const scoreEl = document.getElementById("ivOverallScore");
   if (scoreEl) scoreEl.textContent = `${score.overall}% (${score.correct}/${score.total} correct)`;
+  const narrativeEl = document.getElementById("ivScoreNarrative");
+  if (narrativeEl) narrativeEl.textContent = interviewNarrative(score);
+  const totalEl = document.getElementById("ivTotalQuestions");
+  if (totalEl) totalEl.textContent = String(score.total);
+  const correctEl = document.getElementById("ivCorrectResponses");
+  if (correctEl) correctEl.textContent = String(score.correct);
+  const timedOutEl = document.getElementById("ivTimedOutResponses");
+  if (timedOutEl) timedOutEl.textContent = String(score.timedOut + Math.max(0, score.wrong - score.timedOut));
+  const avgTimeEl = document.getElementById("ivAvgResponseTime");
+  if (avgTimeEl) avgTimeEl.textContent = `${score.avgTime}s`;
 
   // Type breakdown
   const typeEl = document.getElementById("ivTypeBreakdown");
@@ -438,13 +475,14 @@ function renderResults() {
   const rationaleEl = document.getElementById("ivRationaleList");
   if (rationaleEl) {
     rationaleEl.innerHTML = ivState.answers.map((a, i) => `
-      <div class="iv-rationale-item ${a.correct ? "correct" : "wrong"}">
+        <div class="iv-rationale-item ${a.correct ? "correct" : "wrong"}">
         <div class="iv-rationale-header">
           <span class="iv-q-num">Q${i + 1}</span>
           <span class="iv-q-chain">${a.chainTitle || ""}</span>
           <span class="iv-q-result ${a.correct ? "correct" : "wrong"}">${a.correct ? "\u2713 Correct" : a.timedOut ? "\u23f1 Timed Out" : "\u2717 Wrong"}</span>
         </div>
         <p class="iv-q-text">${a.question}</p>
+        <p class="iv-q-metric">Response time: ${a.timeSpent || 0}s</p>
         <p class="iv-rationale-text">${a.rationale || "No rationale available."}</p>
       </div>
     `).join("");
@@ -574,8 +612,20 @@ function resetInterview() {
   document.getElementById("ivResultsScreen")?.classList.add("hidden");
 }
 
+function exitInterviewModule() {
+  resetInterview();
+  if (typeof handleTabSwitch === "function") {
+    handleTabSwitch(state?.role === "trainer" ? "mentor" : "practice");
+  } else {
+    document.getElementById("view-interview")?.classList.remove("active");
+    document.getElementById("view-practice")?.classList.add("active");
+  }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 // Expose for app.init.js
 window.initInterviewListeners = initInterviewListeners;
 window.resetInterview = resetInterview;
+window.exitInterviewModule = exitInterviewModule;
 
 })();
