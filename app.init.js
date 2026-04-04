@@ -352,6 +352,8 @@ function bindEvents() {
     }
   });
 
+  document.getElementById("interviewImportBtn")?.addEventListener("click", importInterviewQuestions);
+
   if (dom.userAnswer) dom.userAnswer.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
