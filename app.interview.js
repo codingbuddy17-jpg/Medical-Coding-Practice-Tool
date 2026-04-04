@@ -228,7 +228,7 @@ function renderCurrentQuestion() {
   if (submitBtn) submitBtn.disabled = true;
 
   // Start timer
-  const timeLimit = q.timeLimit || question.timeLimit || (ivState.track === "fresher" ? 60 : ivState.track === "fresher_certified" ? 90 : 120);
+  const timeLimit = 60; // 60 seconds for all tracks
   startTimer(timeLimit);
 
   ivState.questionStartedAt = Date.now();
@@ -268,20 +268,18 @@ function updateTimerUI() {
   const chain = ivState.chains[ivState.currentChainIdx];
   const question = chain?.questions?.[ivState.currentQuestionIdx];
   const q = ivState.inRemediation ? question?.remediation : question;
-  const totalTime = q?.timeLimit || question?.timeLimit || (ivState.track === "fresher" ? 60 : ivState.track === "fresher_certified" ? 90 : 120);
+  const totalTime = 60; // 60 seconds for all tracks
 
   if (timerEl) {
     timerEl.textContent = `${ivState.timeRemaining}s`;
     timerEl.className = "iv-timer";
-    if (ivState.timeRemaining <= totalTime * 0.2) timerEl.classList.add("danger");
-    else if (ivState.timeRemaining <= totalTime * 0.5) timerEl.classList.add("warning");
+    if (ivState.timeRemaining <= 30) timerEl.classList.add("danger"); // red at 30s remaining
   }
   if (timerBar) {
     const pct = Math.max(0, (ivState.timeRemaining / totalTime) * 100);
     timerBar.style.width = `${pct}%`;
     timerBar.className = "iv-timer-bar-fill";
-    if (ivState.timeRemaining <= totalTime * 0.2) timerBar.classList.add("danger");
-    else if (ivState.timeRemaining <= totalTime * 0.5) timerBar.classList.add("warning");
+    if (ivState.timeRemaining <= 30) timerBar.classList.add("danger"); // red at 30s remaining
   }
 }
 
