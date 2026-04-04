@@ -620,7 +620,7 @@
         <div class="dashboard-header full-width">
           <div class="stats-widget-row">
             <div class="stats-widget">
-              <span class="widget-label">Active Students</span>
+              <span class="widget-label">Engaged / Total</span>
               <strong id="widgetActiveStudents">0</strong>
             </div>
             <div class="stats-widget">
@@ -664,6 +664,10 @@
                 <input id="excludeTrialToggle" type="checkbox" checked />
                 <span>Exclude trial</span>
               </label>
+              <label class="inline-toggle compact-toggle">
+                <input id="engagedOnlyToggle" type="checkbox" />
+                <span>Engaged only</span>
+              </label>
               <button id="refreshSessionsBtn" class="ghost-btn" type="button">Refresh Sessions</button>
               <span id="sessionLastRefreshed" style="font-size:0.78rem;color:#888;margin-left:4px;"></span>
               <button id="exportSessionsBtn" class="ghost-btn" type="button">Export Sessions CSV</button>
@@ -673,6 +677,7 @@
                 <thead>
                   <tr>
                     <th>User</th>
+                    <th>Contact</th>
                     <th>Access Type</th>
                     <th>Attempted</th>
                     <th>Correct</th>
@@ -683,7 +688,7 @@
                 </thead>
                 <tbody id="sessionTableBody">
                   <tr>
-                    <td colspan="7">No sessions loaded.</td>
+                    <td colspan="8">No sessions loaded.</td>
                   </tr>
                 </tbody>
               </table>
@@ -1091,8 +1096,67 @@
           </section>
         </div>
 
-        <!-- Sub-View: Quality Review (KPI) — kept empty for DOM compatibility -->
-        <div id="subview-kpi" class="sub-view full-width hidden"></div>
+        <!-- Sub-View: Quality Review (KPI) -->
+        <div id="subview-kpi" class="sub-view full-width hidden">
+          <div class="mentor-section">
+            <h3 class="section-title">Conversion Insights <button id="refreshMonetizationBtn" class="ghost-btn compact-btn" type="button" style="margin-left:8px;font-size:0.78rem;">Refresh</button></h3>
+            <p id="monetizationStatus" class="status" style="margin-bottom:8px;"></p>
+
+            <!-- Funnel widgets -->
+            <div class="mono-funnel">
+              <div class="mono-funnel-step">
+                <div class="mono-funnel-num" id="monoTrialTotal">—</div>
+                <div class="mono-funnel-label">Trial Users</div>
+              </div>
+              <div class="mono-funnel-arrow">→</div>
+              <div class="mono-funnel-step engaged">
+                <div class="mono-funnel-num" id="monoEngaged">—</div>
+                <div class="mono-funnel-label">Engaged (10+ Qs)</div>
+              </div>
+              <div class="mono-funnel-arrow">→</div>
+              <div class="mono-funnel-step hot">
+                <div class="mono-funnel-num" id="monoHotLeads">—</div>
+                <div class="mono-funnel-label">Hot Leads (near limit)</div>
+              </div>
+              <div class="mono-funnel-arrow">→</div>
+              <div class="mono-funnel-step cta">
+                <div class="mono-funnel-num" id="monoCTAClicks">—</div>
+                <div class="mono-funnel-label">CTA Clicks</div>
+              </div>
+            </div>
+            <div class="mono-learner-stat">Paid Learner Sessions: <strong id="monoLearnerTotal">—</strong></div>
+
+            <!-- Hot leads table -->
+            <h4 style="margin:16px 0 6px;font-size:0.88rem;color:#0f766e;">🔥 Hot Leads — Trial users near question limit</h4>
+            <p style="font-size:0.78rem;color:#64748b;margin-bottom:8px;">These users hit close to their trial cap — highest conversion probability. Reach out directly.</p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Name</th><th>Contact</th><th>Questions Used</th><th>Sessions</th></tr></thead>
+                <tbody id="monoHotLeadsBody"><tr><td colspan="4">Load insights to see data.</td></tr></tbody>
+              </table>
+            </div>
+
+            <!-- Returning trial users -->
+            <h4 style="margin:16px 0 6px;font-size:0.88rem;color:#0f766e;">🔁 Returning Trial Users</h4>
+            <p style="font-size:0.78rem;color:#64748b;margin-bottom:8px;">Came back more than once — clearly interested. Prime upgrade candidates.</p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Name</th><th>Contact</th><th>Activity</th></tr></thead>
+                <tbody id="monoReturningBody"><tr><td colspan="3">Load insights to see data.</td></tr></tbody>
+              </table>
+            </div>
+
+            <!-- CTA events -->
+            <h4 style="margin:16px 0 6px;font-size:0.88rem;color:#0f766e;">📣 CTA Events — Upgrade intent signals</h4>
+            <p style="font-size:0.78rem;color:#64748b;margin-bottom:8px;">Every time someone clicked "Request Full Access" or the WhatsApp upgrade button.</p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Event</th><th>Name</th><th>Contact</th><th>Date</th></tr></thead>
+                <tbody id="monoCTABody"><tr><td colspan="4">Load insights to see data.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
 
         <!-- Sub-View: Administration -->
         <div id="subview-tools" class="sub-view full-width hidden">

@@ -232,6 +232,8 @@ function bindEvents() {
   if (dom.sessionRoleFilter) dom.sessionRoleFilter.addEventListener("change", renderSessionConsoleTable);
   if (dom.sessionWindowFilter) dom.sessionWindowFilter.addEventListener("change", renderSessionConsoleTable);
   if (dom.excludeTrialToggle) dom.excludeTrialToggle.addEventListener("change", renderSessionConsoleTable);
+  document.getElementById("engagedOnlyToggle")?.addEventListener("change", renderSessionConsoleTable);
+  document.getElementById("refreshMonetizationBtn")?.addEventListener("click", loadMonetizationInsights);
   if (dom.refreshFlagsBtn) dom.refreshFlagsBtn.addEventListener("click", loadFlagQueue);
   if (dom.flagStatusFilter) dom.flagStatusFilter.addEventListener("change", loadFlagQueue);
   if (dom.flagQueueBody) dom.flagQueueBody.addEventListener("click", (event) => {
@@ -715,6 +717,9 @@ function handleMentorSubTab(subTab) {
     document.getElementById("subview-users").classList.remove("hidden");
     loadSessions();
     startSessionPoll();
+  } else if (subTab === "kpi") {
+    document.getElementById("subview-kpi").classList.remove("hidden");
+    loadMonetizationInsights();
   } else if (subTab === "tools") {
     // Show Administration view
     document.getElementById("subview-tools").classList.remove("hidden");
@@ -731,11 +736,12 @@ function handleMentorSubTab(subTab) {
 }
 
 function updateDashboardWidgets() {
-  // 1. Active Students: Based on filtered sessions (exclude trainer)
+  // 1. Engaged / Total Students: Based on filtered sessions (exclude trainer)
   const sessions = filteredSessionsForConsole();
   const studentCount = sessions.filter((s) => String(s.role || "") !== "trainer").length;
+  const engagedCount = sessions.filter(s => (s.summary?.attempted || s.attempted || 0) > 0 && String(s.role || "") !== "trainer").length;
   const widgetStudents = document.getElementById("widgetActiveStudents");
-  if (widgetStudents) widgetStudents.textContent = studentCount;
+  if (widgetStudents) widgetStudents.textContent = `${engagedCount} / ${studentCount}`;
 
   // 2. Pending Flags: Count rows in flag queue
   const flagRows = document.querySelectorAll("#flagQueueBody tr");
