@@ -51,6 +51,7 @@
         <button class="nav-item" data-tab="exam">Mock Exam</button>
         <button class="nav-item" data-tab="analytics">Analytics</button>
         <button id="navMentorItem" class="nav-item hidden" data-tab="mentor">Mentor HQ</button>
+        <button class="nav-item" data-tab="interview" id="navInterviewItem">Interview Sim</button>
       </div>
     </nav>
 
@@ -1408,6 +1409,106 @@
         </div> <!-- Close subview-tools -->
       </section> <!-- Close trainerZone -->
     </div> <!-- Close view-mentor -->
+
+    <!-- Interview Simulator View -->
+    <div id="view-interview" class="tab-pane">
+      <section id="interviewPanel" class="panel">
+        <!-- Setup Screen -->
+        <div id="ivSetupScreen">
+          <h2 class="iv-heading">Interview Simulator</h2>
+          <p class="iv-subtitle">Simulate a real medical coding interview with scenario-based, linked questions. Answers are revealed only at the end.</p>
+
+          <div class="iv-section-label">Select Your Track</div>
+          <div class="iv-track-grid">
+            <button class="iv-track-card" data-track="fresher" type="button">
+              <span class="iv-track-icon">&#127807;</span>
+              <strong>Fresher</strong>
+              <p>Clinical terminology, anatomy, disease processes &amp; reasoning</p>
+            </button>
+            <button class="iv-track-card" data-track="fresher_certified" type="button">
+              <span class="iv-track-icon">&#128203;</span>
+              <strong>Fresher &ndash; Certified</strong>
+              <p>ICD-10-CM, CPT, PCS guidelines &amp; basic coding accuracy</p>
+            </button>
+            <button class="iv-track-card" data-track="experienced" type="button">
+              <span class="iv-track-icon">&#127919;</span>
+              <strong>Experienced</strong>
+              <p>Specialty-specific scenarios, complex coding &amp; compliance</p>
+            </button>
+          </div>
+
+          <div id="ivSpecialtySection" class="hidden">
+            <div class="iv-section-label">Select Your Specialty</div>
+            <div class="iv-specialty-grid">
+              <button class="iv-specialty-card" data-specialty="surgery" type="button">&#128304; Surgery</button>
+              <button class="iv-specialty-card" data-specialty="ed_coding" type="button">&#128680; ED Coding</button>
+              <button class="iv-specialty-card" data-specialty="inpatient" type="button">&#127973; Inpatient</button>
+            </div>
+          </div>
+
+          <div class="iv-setup-footer">
+            <p id="ivStatusMsg" class="status"></p>
+            <button id="ivStartBtn" class="primary-btn" type="button" disabled>Start Interview &rarr;</button>
+          </div>
+        </div>
+
+        <!-- Active Interview Screen -->
+        <div id="ivActiveScreen" class="hidden">
+          <div class="iv-progress-bar-wrap">
+            <span id="ivChainProgress" class="iv-progress-label">Scenario 1 of 3</span>
+            <span id="ivQuestionProgress" class="iv-progress-label right">Question 1 of 3</span>
+          </div>
+
+          <div class="iv-scenario-box">
+            <div class="iv-scenario-label">&#128203; Scenario</div>
+            <strong id="ivScenarioTitle">Scenario Title</strong>
+            <p id="ivScenarioText">Scenario text goes here...</p>
+          </div>
+
+          <div id="ivRemediationBanner" class="iv-remediation-banner hidden">
+            &#128161; <strong>Follow-up question</strong> &mdash; Let's dig a bit deeper on that.
+          </div>
+
+          <div class="iv-question-card">
+            <div class="iv-question-meta">
+              <span id="ivQuestionType" class="iv-type-badge">Clinical Knowledge</span>
+              <div class="iv-timer-wrap">
+                <div class="iv-timer-bar-track"><div id="ivTimerBar" class="iv-timer-bar-fill"></div></div>
+                <span id="ivTimer" class="iv-timer">90s</span>
+              </div>
+            </div>
+            <p id="ivQuestionText" class="iv-question-text">Question text goes here...</p>
+            <div id="ivMcqOptions" class="iv-mcq-options"></div>
+          </div>
+
+          <div class="iv-action-row">
+            <button id="ivSubmitBtn" class="primary-btn" type="button" disabled>Submit Answer</button>
+          </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="ivResultsScreen" class="hidden">
+          <h2 class="iv-heading">Interview Complete</h2>
+          <div id="ivBandLabel" class="iv-band">HIRE</div>
+          <p id="ivOverallScore" class="iv-overall-score"></p>
+
+          <div class="iv-results-section">
+            <h3>Performance by Question Type</h3>
+            <div id="ivTypeBreakdown"></div>
+          </div>
+
+          <div class="iv-results-section">
+            <h3>Question Review &amp; Rationale</h3>
+            <div id="ivRationaleList"></div>
+          </div>
+
+          <div class="iv-results-actions">
+            <button id="ivDownloadReportBtn" class="primary-btn" type="button">&#128196; Download PDF Report</button>
+            <button id="ivRetryBtn" class="ghost-btn" type="button">Try Another Interview</button>
+          </div>
+        </div>
+      </section>
+    </div> <!-- Close view-interview -->
   </main>
 
   <a id="floatingWhatsappBtn" class="floating-whatsapp" href="#" aria-label="Chat with us on WhatsApp">Questions? Chat
@@ -1453,6 +1554,7 @@
   <script src="app.trainer.js"></script>
   <script src="app.admin.js"></script>
   <script src="app.institute.js"></script>
+  <script src="app.interview.js"></script>
   <script src="app.init.js"></script>
   <script src="app.onboarding.js"></script>
 </body>

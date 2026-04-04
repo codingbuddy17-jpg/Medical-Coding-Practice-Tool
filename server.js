@@ -3804,6 +3804,20 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (url.pathname === "/api/interview/questions" && req.method === "GET") {
+    const track = url.searchParams.get("track") || "";
+    const specialty = url.searchParams.get("specialty") || "";
+    try {
+      const raw = JSON.parse(fs.readFileSync(path.join(__dirname, "data/interview-questions.json"), "utf8"));
+      let chains = Array.isArray(raw.chains) ? raw.chains : [];
+      if (track) chains = chains.filter(c => c.track === track);
+      if (specialty) chains = chains.filter(c => c.specialty === specialty);
+      return json(res, 200, { chains });
+    } catch (err) {
+      return json(res, 500, { error: "Could not load interview questions" });
+    }
+  }
+
   if (url.pathname === "/api/institute/analytics" && req.method === "GET") {
     const key = getInstituteKey(req);
     const tenant = resolveInstituteFromKey(key);
