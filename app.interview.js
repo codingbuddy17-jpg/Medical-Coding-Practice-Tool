@@ -1,5 +1,5 @@
 /* ==========================================================================
-   app.interview.js — Interview Simulator Engine
+   app.interview.js — Interview Module Engine
    ========================================================================== */
 
 (function() {
@@ -474,7 +474,7 @@ function downloadInterviewReport() {
   doc.rect(0, 30, 210, 6, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(15);
-  doc.text("PracticeBuddy Lab \u2014 Interview Simulator", 14, 13);
+  doc.text("PracticeBuddy Lab \u2014 Interview Module", 14, 13);
   doc.setFontSize(10);
   doc.text("CodingBuddy360 | Medical Coding Interview Assessment Report", 14, 20);
   doc.setFontSize(9);
