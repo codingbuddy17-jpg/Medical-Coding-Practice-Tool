@@ -2069,6 +2069,7 @@ async function loadMonetizationInsights() {
 }
 
 window.loadMonetizationInsights = loadMonetizationInsights;
+window.renderAdminSummary = renderAdminSummary;
 
 async function downloadInterviewTemplate() {
   window.open("/assets/interview-questions-template.xlsx", "_blank");

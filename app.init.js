@@ -725,6 +725,10 @@ function handleMentorSubTab(subTab) {
     loadMonetizationInsights();
   } else if (subTab === "tools") {
     document.getElementById("subview-tools").classList.remove("hidden");
+    // Render instant preview from already-loaded config, then refresh with full data
+    if (typeof renderAdminSummary === "function") {
+      renderAdminSummary(state.accessConfig, state.adminPanel?.cohorts || []);
+    }
     loadAdminData();
   } else if (subTab === "bank") {
     document.getElementById("subview-bank").classList.remove("hidden");

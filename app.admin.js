@@ -198,6 +198,12 @@ async function loadAuditLog({ limit = 200, actionFilter = "", since = 0 } = {}) 
 }
 
 async function loadAdminData() {
+  // Auto-use trainer key as admin key — server accepts trainerKey for all /api/admin/* routes
+  if (!state.adminPanel.verified && state.trainerKey) {
+    state.adminKey = state.trainerKey;
+    state.adminPanel.verified = true;
+    if (dom.adminKeyInput) dom.adminKeyInput.value = state.trainerKey;
+  }
   if (!state.adminPanel.verified || !state.adminKey) {
     setStatus(dom.adminStatus, "Verify admin key first.", "error");
     return;
