@@ -27,12 +27,16 @@ function parseCsvLine(line) {
 }
 
 async function readFileAsImportCards(file) {
+  const defaults = {
+    tag: String(dom.importDefaultTag?.value || "").trim(),
+    type: String(dom.importDefaultType?.value || "short").trim() || "short"
+  };
   const name = String(file?.name || "").toLowerCase();
   const isExcel = name.endsWith(".xlsx") || name.endsWith(".xls");
 
   if (isExcel) {
     const buffer = await file.arrayBuffer();
-    return parseExcelArrayBuffer(buffer);
+    return parseExcelArrayBuffer(buffer, defaults);
   }
 
   const buffer = await file.arrayBuffer();
@@ -45,7 +49,14 @@ async function readFileAsImportCards(file) {
   } else {
     text = new TextDecoder("utf-8").decode(bytes);
   }
-  return parseCsv(text);
+  return parseCsv(text, defaults);
+}
+
+function getImportDefaults() {
+  return {
+    tag: String(dom.importDefaultTag?.value || "").trim(),
+    type: String(dom.importDefaultType?.value || "short").trim() || "short"
+  };
 }
 
 
@@ -61,7 +72,7 @@ function renderImportPreview() {
       dom.importPreviewMappings.classList.add("hidden");
       dom.importPreviewMappings.innerHTML = "";
     }
-    dom.importPreviewBody.innerHTML = '<tr><td colspan="6">No preview yet.</td></tr>';
+    dom.importPreviewBody.innerHTML = '<tr><td colspan="8">No preview yet.</td></tr>';
     dom.confirmImportBtn.disabled = true;
     if (dom.importPreviewPageInfo) dom.importPreviewPageInfo.textContent = "Page 1 of 1";
     if (dom.importPreviewPageInput) dom.importPreviewPageInput.value = "";
@@ -70,9 +81,13 @@ function renderImportPreview() {
     return;
   }
 
-  const summary = state.importPreview.summary || { total: 0, pass: 0, warn: 0, skip: 0, fail: 0 };
-  dom.importPreviewSummary.textContent = `Total ${summary.total} rows: ${summary.pass} pass, ${summary.warn} warn, ${summary.skip} skip, ${summary.fail} fail.`;
   const importMeta = typeof getLastImportMeta === "function" ? getLastImportMeta() : null;
+  const summary = state.importPreview.summary || { total: 0, pass: 0, warn: 0, skip: 0, fail: 0 };
+  const defaults = importMeta?.defaults || {};
+  const defaultNotes = [];
+  if (defaults.tag) defaultNotes.push(`tag: ${defaults.tag}`);
+  if (defaults.type) defaultNotes.push(`type: ${defaults.type === "mcq" ? "MCQ" : "Short Answer"}`);
+  dom.importPreviewSummary.textContent = `Total ${summary.total} rows: ${summary.pass} pass, ${summary.warn} warn, ${summary.skip} skip, ${summary.fail} fail.${defaultNotes.length ? ` Defaults applied — ${defaultNotes.join(", ")}.` : ""}`;
   if (dom.importPreviewMappings) {
     if (importMeta?.mappings?.length) {
       const mappingText = importMeta.mappings
@@ -95,7 +110,7 @@ function renderImportPreview() {
   const start = (currentPage - 1) * pageSize;
   const topRows = rows.slice(start, start + pageSize);
   if (!topRows.length) {
-    dom.importPreviewBody.innerHTML = '<tr><td colspan="6">No rows available.</td></tr>';
+    dom.importPreviewBody.innerHTML = '<tr><td colspan="8">No rows available.</td></tr>';
     if (dom.importPreviewPageInfo) dom.importPreviewPageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
     if (dom.importPreviewPageInput) dom.importPreviewPageInput.value = String(currentPage);
     if (dom.importPreviewPrevBtn) dom.importPreviewPrevBtn.disabled = currentPage <= 1;
@@ -112,6 +127,8 @@ function renderImportPreview() {
         <td>${row.rowNumber}</td>
         <td><span class="import-status-pill import-status-${escapeHtml(status)}">${escapeHtml(status)}</span></td>
         <td>${escapeHtml(row.tag || "")}</td>
+        <td>${escapeHtml(row.type === "mcq" ? "MCQ" : "Short")}</td>
+        <td>${escapeHtml(getDifficultyLabel(row.difficulty || "medium"))}</td>
         <td>${escapeHtml(question)}</td>
         <td>${escapeHtml(reason)}</td>
         <td><button class="ghost-btn danger-btn" onclick="discardPreviewRow(${row.rowNumber})">Discard</button></td>
@@ -248,6 +265,8 @@ function buildClientImportPreview(parsed) {
       status,
       reasons,
       tag: row.tag,
+      type: row.type,
+      difficulty: row.difficulty,
       question: row.question,
       sanitized: row
     });
@@ -297,6 +316,8 @@ async function prepareImportPreview(parsed) {
       status,
       reasons: Array.from(new Set(reasons.filter(Boolean))),
       tag: row.tag,
+      type: row.sanitized?.type || "",
+      difficulty: row.sanitized?.difficulty || "",
       question: row.question,
       sanitized: row.sanitized
     };
@@ -576,7 +597,7 @@ async function rollbackImportBatch() {
 async function importCsv() {
   if (state.role !== "trainer") return;
 
-  const parsed = parseCsv(dom.csvInput.value);
+  const parsed = parseCsv(dom.csvInput.value, getImportDefaults());
   if (!parsed.length) {
     setStatus(dom.importStatus, "No valid cards. Use tag,type,question,... format or legacy tag,question,answer.", "error");
     return;
@@ -642,11 +663,12 @@ function exportCsv() {
     return;
   }
 
-  const header = "tag,type,question,answer,rationale,option_a,option_b,option_c,option_d,correct_option";
+  const header = "tag,type,difficulty,question,answer,rationale,option_a,option_b,option_c,option_d,correct_option";
   const rows = state.deck.map((card) =>
     [
       card.tag,
       card.type || "short",
+      card.difficulty || "",
       card.question,
       card.type === "mcq" ? "" : card.answer,
       card.rationale || "",
@@ -765,7 +787,23 @@ async function loadQuestionBank() {
 
   try {
     const data = await apiRequest(`/api/questions?${qs.toString()}`);
-    state.questionBank.all = Array.isArray(data.questions) ? data.questions : [];
+    state.questionBank.all = (Array.isArray(data.questions) ? data.questions : []).map((question) => {
+      const embedded = decodeEmbeddedCard(question.answer || "");
+      const packedShort = decodePackedShortCard(question.answer || "");
+      const options = embedded?.options || [];
+      return {
+        ...question,
+        type: embedded?.type || packedShort?.type || question.type || "short",
+        difficulty: normalizeDifficultyKey(
+          question.difficulty || embedded?.difficulty || packedShort?.difficulty || inferDifficultyFromCard({
+            question: question.question,
+            rationale: embedded?.rationale || packedShort?.rationale || "",
+            options
+          }),
+          "medium"
+        )
+      };
+    });
     state.questionBank.selectedIds = new Set();
     renderQuestionBankTable();
     setStatus(dom.questionBankStatus, `Loaded ${state.questionBank.all.length} questions.`, "success");
@@ -818,11 +856,12 @@ function renderQuestionBankTable() {
   dom.questionBankBody.innerHTML = visible.map(q => {
     const shortQ = String(q.question || "").slice(0, 80);
     const embedded = decodeEmbeddedCard(q.answer || "");
+    const packedShort = decodePackedShortCard(q.answer || "");
     const isMcq = embedded?.type === "mcq" || String(q.type || "").toLowerCase() === "mcq";
-    const typeLabel = isMcq ? "mcq" : (q.type || "short");
+    const typeLabel = isMcq ? "mcq" : (packedShort?.type || q.type || "short");
     const answerLabel = isMcq
       ? `${embedded?.correctOption || ""}`.trim()
-      : String(q.answer || "");
+      : String(packedShort?.answer || q.answer || "");
     return `<tr>
       <td><input type="checkbox" data-bank-select="${escapeHtml(q.id)}" ${selected.has(q.id) ? "checked" : ""}></td>
       <td>${escapeHtml(getTagLabel(q.tag || "General"))}</td>
@@ -895,6 +934,27 @@ async function bulkUpdateQuestionTags() {
   }
 }
 
+async function backfillQuestionDifficulties() {
+  if (state.role !== "trainer") return;
+  const trainerKey = state.trainerKey || dom.trainerKey.value.trim();
+  if (!trainerKey) {
+    setStatus(dom.questionBankStatus, "Trainer key required.", "error");
+    return;
+  }
+  if (!window.confirm("Run a one-time difficulty backfill for existing active questions? This will label questions as Beginner, Core, or Advanced.")) {
+    return;
+  }
+
+  try {
+    const result = await apiRequest("/api/questions/difficulty/backfill", "POST", { trainerKey });
+    setStatus(dom.questionBankStatus, `Difficulty backfill complete. Updated ${Number(result.updated || 0)} question(s).`, "success");
+    await loadDeckFromCloud();
+    await loadQuestionBank();
+  } catch (err) {
+    setStatus(dom.questionBankStatus, `Difficulty backfill failed: ${err.message}`, "error");
+  }
+}
+
 function exportQuestionBankCsv() {
   if (state.role !== "trainer") return;
   const questions = filteredQuestionsForBank();
@@ -903,13 +963,14 @@ function exportQuestionBankCsv() {
     return;
   }
 
-  const header = "id,tag,type,question,answer";
+  const header = "id,tag,type,difficulty,question,answer";
   const rows = questions.map(q => [
     q.id,
     q.tag || "",
-    q.type || "short",
+    decodeEmbeddedCard(q.answer || "")?.type === "mcq" ? "mcq" : (decodePackedShortCard(q.answer || "")?.type || q.type || "short"),
+    q.difficulty || "",
     q.question || "",
-    q.answer || ""
+    decodeEmbeddedCard(q.answer || "")?.correctOption || decodePackedShortCard(q.answer || "")?.answer || q.answer || ""
   ].map(v => `"${String(v).replaceAll('"', '""')}"`).join(","));
 
   const csv = [header, ...rows].join("\n");

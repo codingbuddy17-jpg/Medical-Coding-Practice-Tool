@@ -837,6 +837,16 @@ textarea {
   font-size: 0.8rem;
 }
 
+.panel-grid {
+  display: grid;
+  gap: 0.85rem;
+  margin: 0.8rem 0 1rem;
+}
+
+.panel-grid.two-col {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
 .inline-toggle input {
   width: auto;
 }

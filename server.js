@@ -36,6 +36,8 @@ const ALLOWED_LEARNERS_FILE = path.join(DATA_DIR, "allowed-learners.json");
 const AUDIT_LOG_FILE = path.join(DATA_DIR, "audit-log.json");
 const TENANTS_FILE = path.join(DATA_DIR, "tenants.json");
 const TAGS_FILE = path.join(DATA_DIR, "tags.json");
+const MCQ_PREFIX = "__MCQ__:";
+const CARD_PREFIX = "__CARD__:";
 const SUPER_ADMIN_KEY = process.env.SUPER_ADMIN_KEY || "";
 let attemptsSupportsDurationMs = true;
 const VERIFY_RATE_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
@@ -1972,8 +1974,115 @@ function normalizeKeyPart(value) {
   return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+function normalizeAnswerKeyPart(value) {
+  const raw = String(value || "").trim();
+  if (raw.startsWith(MCQ_PREFIX)) {
+    try {
+      const parsed = JSON.parse(raw.slice(MCQ_PREFIX.length));
+      const options = Array.isArray(parsed.options) ? parsed.options : [parsed.optionA, parsed.optionB, parsed.optionC, parsed.optionD].filter(Boolean);
+      return [
+        "mcq",
+        options.map((item) => String(item || "").trim().toLowerCase()).join("|"),
+        String(parsed.correctOption || "").trim().toLowerCase(),
+        String(parsed.rationale || "").trim().toLowerCase()
+      ].join("|").replace(/\s+/g, " ");
+    } catch {
+      return raw.toLowerCase().replace(/\s+/g, " ");
+    }
+  }
+  if (raw.startsWith(CARD_PREFIX)) {
+    try {
+      const parsed = JSON.parse(raw.slice(CARD_PREFIX.length));
+      return [
+        "short",
+        String(parsed.answer || "").trim().toLowerCase(),
+        String(parsed.rationale || "").trim().toLowerCase()
+      ].join("|").replace(/\s+/g, " ");
+    } catch {
+      return raw.toLowerCase().replace(/\s+/g, " ");
+    }
+  }
+  return ["short", raw.toLowerCase(), ""].join("|").replace(/\s+/g, " ");
+}
+
+function normalizeDifficultyInput(value, fallback = "medium") {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return fallback;
+  if (["low", "beginner", "easy", "foundation", "basic"].includes(raw)) return "low";
+  if (["medium", "core", "moderate", "mid", "standard", "intermediate"].includes(raw)) return "medium";
+  if (["advanced", "hard", "challenge", "expert", "complex"].includes(raw)) return "advanced";
+  return fallback;
+}
+
+function inferQuestionDifficulty({ question = "", rationale = "", options = [] } = {}) {
+  const stem = String(question || "").trim().toLowerCase();
+  const why = String(rationale || "").trim().toLowerCase();
+  const optionText = Array.isArray(options) ? options.map((item) => String(item || "").trim()).join(" ").toLowerCase() : "";
+  const combined = `${stem} ${why}`.trim();
+  const scenarioSignals = /(patient|presents|encounter|emergency|ed\b|admitted|start time|stop time|end time|administered|which code|what should be reported|same drug|sequential|concurrent|hydration|fracture|debridement|foreign body|critical care|documentation supports)/.test(combined);
+  const advancedSignals = /(most appropriate|code selection|initial service|additional hour|best coding|hierarchy|apply the hierarchy|multi-step|coding professional)/.test(combined);
+  if ((scenarioSignals && advancedSignals) || stem.length > 260 || optionText.length > 220) return "advanced";
+  if (scenarioSignals || stem.length > 130 || optionText.length > 120) return "medium";
+  return "low";
+}
+
+function unpackQuestionAnswer(answer) {
+  const raw = String(answer || "").trim();
+  if (raw.startsWith(MCQ_PREFIX)) {
+    try {
+      const parsed = JSON.parse(raw.slice(MCQ_PREFIX.length));
+      const options = Array.isArray(parsed.options) ? parsed.options : [parsed.optionA, parsed.optionB, parsed.optionC, parsed.optionD].filter(Boolean);
+      return {
+        type: "mcq",
+        answer: raw,
+        options: options.map((item) => String(item || "").trim()).filter(Boolean),
+        correctOption: String(parsed.correctOption || "").trim().toUpperCase(),
+        rationale: String(parsed.rationale || "").trim(),
+        difficulty: normalizeDifficultyInput(parsed.difficulty || "", "")
+      };
+    } catch {
+      return { type: "mcq", answer: raw, options: [], correctOption: "", rationale: "", difficulty: "" };
+    }
+  }
+  if (raw.startsWith(CARD_PREFIX)) {
+    try {
+      const parsed = JSON.parse(raw.slice(CARD_PREFIX.length));
+      return {
+        type: "short",
+        answer: String(parsed.answer || "").trim(),
+        options: [],
+        correctOption: "",
+        rationale: String(parsed.rationale || "").trim(),
+        difficulty: normalizeDifficultyInput(parsed.difficulty || "", "")
+      };
+    } catch {
+      return { type: "short", answer: raw, options: [], correctOption: "", rationale: "", difficulty: "" };
+    }
+  }
+  return { type: "short", answer: raw, options: [], correctOption: "", rationale: "", difficulty: "" };
+}
+
+function packQuestionAnswer(meta) {
+  const type = String(meta?.type || "short").toLowerCase() === "mcq" ? "mcq" : "short";
+  const difficulty = normalizeDifficultyInput(meta?.difficulty || "", "medium");
+  if (type === "mcq") {
+    return `${MCQ_PREFIX}${JSON.stringify({
+      options: Array.isArray(meta?.options) ? meta.options.map((item) => String(item || "").trim()).slice(0, 4) : [],
+      correctOption: String(meta?.correctOption || "").trim().toUpperCase(),
+      rationale: String(meta?.rationale || "").trim(),
+      difficulty
+    })}`;
+  }
+  return `${CARD_PREFIX}${JSON.stringify({
+    type: "short",
+    answer: String(meta?.answer || "").trim(),
+    rationale: String(meta?.rationale || "").trim(),
+    difficulty
+  })}`;
+}
+
 function questionCompositeKey(tag, question, answer) {
-  return `${normalizeKeyPart(tag)}|${normalizeKeyPart(question)}|${normalizeKeyPart(answer)}`;
+  return `${normalizeKeyPart(tag)}|${normalizeKeyPart(question)}|${normalizeAnswerKeyPart(answer)}`;
 }
 
 function nearQuestionKey(question) {
@@ -2526,6 +2635,75 @@ async function storageListQuestions(tag) {
     from += batchSize;
   }
   return all;
+}
+
+async function storageBackfillQuestionDifficulties() {
+  if (!USE_SUPABASE) {
+    const questions = readQuestions();
+    let updated = 0;
+    questions.forEach((question) => {
+      if (question.is_active === false) return;
+      const unpacked = unpackQuestionAnswer(question.answer);
+      if (unpacked.difficulty) return;
+      const difficulty = inferQuestionDifficulty({
+        question: question.question,
+        rationale: unpacked.rationale,
+        options: unpacked.options
+      });
+      question.answer = packQuestionAnswer({
+        type: unpacked.type,
+        answer: unpacked.answer,
+        rationale: unpacked.rationale,
+        options: unpacked.options,
+        correctOption: unpacked.correctOption,
+        difficulty
+      });
+      updated += 1;
+    });
+    if (updated) writeQuestions(questions);
+    return { updated };
+  }
+
+  const batchSize = 500;
+  let from = 0;
+  let updated = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("questions")
+      .select("id,question,answer,is_active")
+      .eq("is_active", true)
+      .order("created_at", { ascending: true })
+      .range(from, from + batchSize - 1);
+    if (error) throw error;
+    const rows = data || [];
+    if (!rows.length) break;
+
+    for (const row of rows) {
+      const unpacked = unpackQuestionAnswer(row.answer);
+      if (unpacked.difficulty) continue;
+      const difficulty = inferQuestionDifficulty({
+        question: row.question,
+        rationale: unpacked.rationale,
+        options: unpacked.options
+      });
+      const answer = packQuestionAnswer({
+        type: unpacked.type,
+        answer: unpacked.answer,
+        rationale: unpacked.rationale,
+        options: unpacked.options,
+        correctOption: unpacked.correctOption,
+        difficulty
+      });
+      const { error: updateErr } = await supabase.from("questions").update({ answer }).eq("id", row.id);
+      if (updateErr) throw updateErr;
+      updated += 1;
+    }
+
+    if (rows.length < batchSize) break;
+    from += batchSize;
+  }
+
+  return { updated };
 }
 
 async function storageReplaceQuestion({ questionId, tag, question, answer, originalTag, originalQuestion, originalAnswer }) {
@@ -3255,6 +3433,21 @@ const server = http.createServer(async (req, res) => {
       const { error } = await supabase.from("questions").update({ tag }).in("id", ids);
       if (error) throw error;
       return json(res, 200, { updated: ids.length });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/questions/difficulty/backfill" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const trainerKey = String(body.trainerKey || "").trim();
+      const tenant = resolveTenant(req);
+      if (!isTenantTrainerAuth(tenant, trainerKey)) {
+        return json(res, 403, { error: "Forbidden" });
+      }
+      const result = await storageBackfillQuestionDifficulties();
+      return json(res, 200, result);
     } catch (err) {
       return json(res, 400, { error: err.message });
     }

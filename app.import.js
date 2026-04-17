@@ -1,5 +1,5 @@
 window.PBL_IMPORT = (() => {
-  let lastImportMeta = { detectedHeader: false, mappings: [] };
+  let lastImportMeta = { detectedHeader: false, mappings: [], defaults: {} };
 
   function removeInvalidSurrogates(text) {
     const value = String(text || "");
@@ -27,13 +27,52 @@ window.PBL_IMPORT = (() => {
     return removeInvalidSurrogates(String(text || "").replace(/\u0000/g, "")).trim();
   }
 
-  function sanitizeQuestionCard(card) {
-    const typeRaw = cleanImportText(card.type || "short").toLowerCase();
-    const type = typeRaw === "mcq" ? "mcq" : "short";
+  function normalizeQuestionType(value, fallback = "short") {
+    const raw = cleanImportText(value || fallback).toLowerCase();
+    if (["mcq", "multiple_choice", "multiplechoice", "multiple choice"].includes(raw)) return "mcq";
+    if (["short", "short_answer", "shortanswer", "short answer"].includes(raw)) return "short";
+    return fallback === "mcq" ? "mcq" : "short";
+  }
+
+  function normalizeDifficulty(value) {
+    const raw = cleanImportText(value || "").toLowerCase();
+    if (!raw) return "";
+    if (["low", "beginner", "easy", "foundation", "basic"].includes(raw)) return "low";
+    if (["medium", "mid", "core", "standard", "moderate", "intermediate"].includes(raw)) return "medium";
+    if (["advanced", "hard", "challenge", "expert", "complex"].includes(raw)) return "advanced";
+    return "";
+  }
+
+  function inferDifficulty(card) {
+    const question = cleanImportText(card.question || "").toLowerCase();
+    const rationale = cleanImportText(card.rationale || "").toLowerCase();
+    const options = [
+      card.option_a || card.optionA || "",
+      card.option_b || card.optionB || "",
+      card.option_c || card.optionC || "",
+      card.option_d || card.optionD || ""
+    ].map(cleanImportText).filter(Boolean);
+    const combined = `${question} ${rationale}`.trim();
+    const questionLength = question.length;
+    const optionLength = options.join(" ").length;
+    const scenarioSignals = /(patient|presents|ed\b|emergency|encounter|start time|stop time|end time|administered|infusion|iv push|same drug|sequential|concurrent|hydration|fracture|dislocation|debridement|foreign body)/.test(combined);
+    const advancedSignals = /(most appropriate|which code|what should be reported|code selection|initial service|additional hour|separate access|same substance|hierarchy|best coding|what is reported|how should this be coded)/.test(combined);
+    const recallSignals = /(what is|which of the following defines|true about|refers to|means|is used for|threshold)/.test(combined);
+
+    if ((scenarioSignals && advancedSignals) || questionLength > 260 || optionLength > 220) return "advanced";
+    if (scenarioSignals || questionLength > 130 || options.length >= 4) return "medium";
+    if (recallSignals || questionLength <= 95) return "low";
+    return "medium";
+  }
+
+  function sanitizeQuestionCard(card, defaults = {}) {
+    const type = normalizeQuestionType(card.type || defaults.type || "short", defaults.type || "short");
     const cleanOption = (v) => cleanImportText(v || "");
+    const difficulty = normalizeDifficulty(card.difficulty || defaults.difficulty) || inferDifficulty(card);
     return {
-      tag: cleanImportText(card.tag || "General"),
+      tag: cleanImportText(card.tag || defaults.tag || "General"),
       type,
+      difficulty,
       question: cleanImportText(card.question || ""),
       answer: cleanImportText(card.answer || ""),
       rationale: cleanImportText(card.rationale || ""),
@@ -83,7 +122,7 @@ window.PBL_IMPORT = (() => {
     return cells;
   }
 
-  function parseRowsMatrix(rows) {
+  function parseRowsMatrix(rows, defaults = {}) {
     if (!Array.isArray(rows) || !rows.length) return [];
     const normalizeHeaderName = (value) => cleanImportText(value)
       .toLowerCase()
@@ -95,6 +134,7 @@ window.PBL_IMPORT = (() => {
     const HEADER_ALIASES = {
       tag: ["tag", "tags", "category", "topic", "topics", "subject", "module", "domain"],
       type: ["type", "question_type", "format"],
+      difficulty: ["difficulty", "level", "complexity"],
       question: ["question", "questions", "question_text", "questiontext", "stem", "prompt"],
       answer: ["answer", "answers", "short_answer", "shortanswer", "answer_key", "answerkey"],
       rationale: ["rationale", "explanation", "reason", "notes", "description"],
@@ -144,7 +184,12 @@ window.PBL_IMPORT = (() => {
       detectedHeader: hasNamedHeader,
       mappings: Object.entries(resolvedHeaders)
         .filter(([canonicalName, info]) => info.idx >= 0 && info.alias && info.alias !== canonicalName)
-        .map(([canonicalName, info]) => ({ canonicalName, matchedHeader: info.alias }))
+        .map(([canonicalName, info]) => ({ canonicalName, matchedHeader: info.alias })),
+      defaults: {
+        tag: cleanImportText(defaults.tag || ""),
+        type: normalizeQuestionType(defaults.type || "short", "short"),
+        difficulty: normalizeDifficulty(defaults.difficulty || "")
+      }
     };
 
     const startAt = hasNamedHeader ? 1 : 0;
@@ -160,8 +205,9 @@ window.PBL_IMPORT = (() => {
     };
 
     return rows.slice(startAt).map((row) => {
-      const tag = getByName(row, HEADER_ALIASES.tag, 0) || "General";
-      const type = (getByName(row, HEADER_ALIASES.type, 1) || (hasNamedHeader ? "short" : "")).toLowerCase();
+      const tag = getByName(row, HEADER_ALIASES.tag, 0) || cleanImportText(defaults.tag || "") || "General";
+      const type = normalizeQuestionType(getByName(row, HEADER_ALIASES.type, 1) || defaults.type || (hasNamedHeader ? "short" : ""), defaults.type || "short");
+      const difficulty = normalizeDifficulty(getByName(row, HEADER_ALIASES.difficulty, -1) || defaults.difficulty || "");
       const question = getByName(row, HEADER_ALIASES.question, hasNamedHeader ? -1 : 1);
       const answer = getByName(row, HEADER_ALIASES.answer, hasNamedHeader ? -1 : 2);
       const rationale = getByName(row, HEADER_ALIASES.rationale, -1);
@@ -173,7 +219,8 @@ window.PBL_IMPORT = (() => {
 
       return {
         tag,
-        type: type === "mcq" ? "mcq" : "short",
+        type,
+        difficulty,
         question,
         answer,
         rationale,
@@ -186,7 +233,7 @@ window.PBL_IMPORT = (() => {
     });
   }
 
-  function parseCsv(text) {
+  function parseCsv(text, defaults = {}) {
     const clean = cleanImportText(text);
     const lines = clean
       .split(/\r?\n/)
@@ -197,10 +244,10 @@ window.PBL_IMPORT = (() => {
 
     const delimiter = detectDelimiter(lines[0]);
     const rows = lines.map((line) => parseDelimitedLine(line, delimiter));
-    return parseRowsMatrix(rows);
+    return parseRowsMatrix(rows, defaults);
   }
 
-  function parseExcelArrayBuffer(buffer) {
+  function parseExcelArrayBuffer(buffer, defaults = {}) {
     if (!window.XLSX) throw new Error("Excel parser unavailable");
     const workbook = window.XLSX.read(buffer, { type: "array" });
     const sheetNames = Array.isArray(workbook.SheetNames) ? workbook.SheetNames : [];
@@ -210,19 +257,20 @@ window.PBL_IMPORT = (() => {
       const sheet = workbook.Sheets[name];
       if (!sheet) return;
       const rows = window.XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" });
-      const cards = parseRowsMatrix(rows);
+      const cards = parseRowsMatrix(rows, defaults);
       if (cards.length) allCards.push(...cards);
     });
     return allCards;
   }
 
   function formatCardsForTextarea(cards) {
-    const header = "tag,type,question,answer,rationale,option_a,option_b,option_c,option_d,correct_option";
+    const header = "tag,type,difficulty,question,answer,rationale,option_a,option_b,option_c,option_d,correct_option";
     const rows = cards.map((r) => {
       const type = String(r.type || "short").toLowerCase() === "mcq" ? "mcq" : "short";
       const cols = [
         r.tag || "General",
         type,
+        r.difficulty || "",
         r.question || "",
         type === "mcq" ? "" : r.answer || "",
         r.rationale || "",

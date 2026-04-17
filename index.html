@@ -396,6 +396,15 @@
                 <p class="status">Choose one coding stream and practice only that tag.</p>
                 <div id="categoryButtons" class="category-buttons"></div>
                 <p id="categoryStatus" class="status">Showing all categories.</p>
+                <label>
+                  Difficulty
+                  <select id="practiceDifficultySelect">
+                    <option value="all">All Levels</option>
+                    <option value="low">Beginner</option>
+                    <option value="medium">Core</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+                </label>
                 <label class="inline-toggle">
                   <input id="weakDrillToggle" type="checkbox" />
                   <span>Weak Topic Drill Mode</span>
@@ -868,6 +877,7 @@
                 <option value="PRACTICE-CASES">Practice Cases</option>
               </select>
               <button id="questionBankBulkApplyBtn" class="ghost-btn" type="button">Apply to Selected</button>
+              <button id="backfillDifficultyBtn" class="ghost-btn" type="button">Backfill Difficulty</button>
             </div>
             <div class="table-wrap">
               <table>
@@ -949,8 +959,24 @@
             <h3>Mentor Deck Manager</h3>
             <p class="status">Import and validate question banks with preview, paging, and rollback support.</p>
             <p>CSV/XLSX headers (order can vary):
-              <code>tag/tags,type,question,answer,rationale,option_a,option_b,option_c,option_d,correct_option</code>.
+              <code>question,answer,rationale,option_a,option_b,option_c,option_d,correct_option</code>.
+              You can set workbook defaults for tag and question type below instead of repeating them in every row.
             </p>
+            <div class="panel-grid two-col">
+              <label>
+                Default Tag
+                <select id="importDefaultTag">
+                  <option value="">Use file value or General</option>
+                </select>
+              </label>
+              <label>
+                Default Question Type
+                <select id="importDefaultType">
+                  <option value="short">Short Answer</option>
+                  <option value="mcq">MCQ</option>
+                </select>
+              </label>
+            </div>
             <label>
               Upload CSV File
               <input id="csvFileInput" type="file"
@@ -975,6 +1001,8 @@
                       <th>Row</th>
                       <th>Status</th>
                       <th>Tag</th>
+                      <th>Type</th>
+                      <th>Difficulty</th>
                       <th>Question</th>
                       <th>Reason</th>
                       <th>Action</th>
@@ -982,7 +1010,7 @@
                   </thead>
                   <tbody id="importPreviewBody">
                     <tr>
-                      <td colspan="6">No preview yet.</td>
+                      <td colspan="8">No preview yet.</td>
                     </tr>
                   </tbody>
                 </table>

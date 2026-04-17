@@ -37,14 +37,19 @@ function matchesSelectedTag(card) {
   return normalizeTagKey(card.tag) === normalizeTagKey(state.selectedTag);
 }
 
+function matchesSelectedDifficulty(card) {
+  if (state.selectedDifficulty === "all") return true;
+  return normalizeDifficultyKey(card.difficulty || "", "medium") === state.selectedDifficulty;
+}
+
 function filteredDeck() {
-  return state.deck.filter(matchesSelectedTag);
+  return state.deck.filter((card) => matchesSelectedTag(card) && matchesSelectedDifficulty(card));
 }
 
 function getCardsForTag(tagKey) {
-  if (tagKey === "ALL") return [...state.deck];
+  if (tagKey === "ALL") return state.deck.filter(matchesSelectedDifficulty);
   const target = normalizeTagKey(tagKey);
-  return state.deck.filter((card) => normalizeTagKey(card.tag) === target);
+  return state.deck.filter((card) => normalizeTagKey(card.tag) === target && matchesSelectedDifficulty(card));
 }
 
 function resetStudyOrder(tagKey = null) {
@@ -385,13 +390,15 @@ function setAwaitingNext(value) {
 function renderCard() {
   const cards = filteredDeck();
   const card = currentCard();
+  const difficultyLabel = getDifficultyLabel(state.selectedDifficulty);
+  const difficultyPrefix = difficultyLabel === "All Levels" ? "" : `${difficultyLabel.toLowerCase()} `;
 
   if (!card) {
     dom.cardTag.textContent = state.selectedTag === "ALL" ? "General" : getTagLabel(state.selectedTag);
     dom.cardPrompt.textContent =
       state.selectedTag === "ALL"
-        ? "No cards available. Trainer can import a deck."
-        : `No cards found for ${getTagLabel(state.selectedTag)}. Select another category.`;
+        ? `No ${difficultyPrefix}cards available. Trainer can import a deck.`.replace(/\s+/g, " ").trim()
+        : `No ${difficultyPrefix}cards found for ${getTagLabel(state.selectedTag)}. Select another category.`.replace(/\s+/g, " ").trim();
     dom.userAnswer.value = "";
     state.selectedMcqOption = "";
     dom.mcqOptions.innerHTML = "";
@@ -409,7 +416,9 @@ function renderCard() {
     updateTrialLockUI();
     updateTrialInfoBannerUI();
     updateUpgradeWallUI();
-    dom.categoryStatus.textContent = state.role === "trainer" ? `Showing 0 cards for ${getTagLabel(state.selectedTag)}.` : "";
+    dom.categoryStatus.textContent = state.role === "trainer"
+      ? `Showing 0 ${difficultyPrefix}cards for ${getTagLabel(state.selectedTag)}.`.replace(/\s+/g, " ").trim()
+      : "";
 
     // Hide rationale when no card
     dom.rationalePlaceholder.classList.add("hidden");
@@ -497,7 +506,9 @@ function renderCard() {
   if (state.exam.inProgress) {
     dom.categoryStatus.textContent = `Exam mode: ${state.exam.answered}/${state.exam.queueIds.length} answered.`;
   } else {
-    dom.categoryStatus.textContent = state.role === "trainer" ? `Showing ${cards.length} cards for ${getTagLabel(state.selectedTag)}.` : "";
+    dom.categoryStatus.textContent = state.role === "trainer"
+      ? `Showing ${cards.length} ${difficultyPrefix}cards for ${getTagLabel(state.selectedTag)}.`.replace(/\s+/g, " ").trim()
+      : "";
   }
 
   if (card.type !== "mcq") dom.userAnswer.focus();
@@ -518,6 +529,13 @@ function setSelectedTag(tag) {
   const queue = ensureStudyQueue(tag);
   state.studyOrder.cursors[tag] = 0;
   renderCategoryButtons();
+  renderCard();
+  saveLocal();
+}
+
+function setSelectedDifficulty(level) {
+  state.selectedDifficulty = normalizeDifficultyKey(level || "all", "all");
+  resetStudyOrder();
   renderCard();
   saveLocal();
 }

@@ -230,7 +230,8 @@ function decodeEmbeddedCard(rawAnswer) {
       type: "mcq",
       options: options.slice(0, 4),
       correctOption: correctOption || "",
-      rationale: String(parsed.rationale || "").trim()
+      rationale: String(parsed.rationale || "").trim(),
+      difficulty: normalizeDifficultyKey(parsed.difficulty || "", "")
     };
   } catch {
     return null;
@@ -247,23 +248,37 @@ function decodePackedShortCard(rawAnswer) {
     return {
       type: "short",
       answer: String(parsed.answer || "").trim(),
-      rationale: String(parsed.rationale || "").trim()
+      rationale: String(parsed.rationale || "").trim(),
+      difficulty: normalizeDifficultyKey(parsed.difficulty || "", "")
     };
   } catch {
     return null;
   }
 }
 
+function inferDifficultyFromCard(card) {
+  const question = String(card.question || "").trim().toLowerCase();
+  const rationale = String(card.rationale || "").trim().toLowerCase();
+  const options = Array.isArray(card.options) ? card.options.filter(Boolean).map((item) => String(item).trim()) : [];
+  const combined = `${question} ${rationale}`.trim();
+  const scenarioSignals = /(patient|presents|encounter|emergency|ed\b|admitted|start time|stop time|end time|administered|reports?|what should be reported|which code|best coding|hierarchy|separate access|same drug|concurrent|sequential|hydration|critical care|fracture|debridement|foreign body)/.test(combined);
+  const advancedSignals = /(most appropriate|code selection|initial service|additional hour|multi-step|documentation supports|coding professional|apply the hierarchy)/.test(combined);
+  if ((scenarioSignals && advancedSignals) || question.length > 260 || options.join(" ").length > 220) return "advanced";
+  if (scenarioSignals || question.length > 130 || options.length >= 4) return "medium";
+  return "low";
+}
+
 function encodeCardForCloud(card) {
   const type = String(card.type || "").toLowerCase();
   const rationale = String(card.rationale || "").trim();
+  const difficulty = normalizeDifficultyKey(card.difficulty || "", "");
   if (type !== "mcq") {
     const answer = String(card.answer || "").trim();
-    if (rationale) {
+    if (rationale || difficulty) {
       return {
         tag: String(card.tag || "General").trim(),
         question: String(card.question || "").trim(),
-        answer: `${CARD_PREFIX}${JSON.stringify({ type: "short", answer, rationale })}`
+        answer: `${CARD_PREFIX}${JSON.stringify({ type: "short", answer, rationale, difficulty })}`
       };
     }
     return {
@@ -290,7 +305,8 @@ function encodeCardForCloud(card) {
   const payload = {
     options,
     correctOption,
-    rationale
+    rationale,
+    difficulty
   };
   return {
     tag: String(card.tag || "General").trim(),
@@ -315,12 +331,19 @@ function hydrateCards(cards) {
     const explicitRationale = String(card.rationale || "").trim();
     const rationale = explicitRationale || embedded?.rationale || packedShort?.rationale || DEFAULT_RATIONALE_TEXT;
     const shortAnswer = packedShort?.answer || String(card.answer || "").trim();
+    const explicitDifficulty = normalizeDifficultyKey(card.difficulty || "", "");
+    const detectedDifficulty = explicitDifficulty || embedded?.difficulty || packedShort?.difficulty || inferDifficultyFromCard({
+      question: card.question,
+      rationale,
+      options: isMcq ? options : []
+    });
 
     return {
       id: card.id || `${normalizeTagKey(card.tag)}_${index}_${uid("card")}`,
       tag: (card.tag || "General").trim(),
       question: String(card.question || "").trim(),
       type: isMcq ? "mcq" : "short",
+      difficulty: detectedDifficulty,
       answer: isMcq ? "" : shortAnswer,
       options: isMcq ? options.slice(0, 4) : [],
       correctOption: isMcq ? correctOption : "",
@@ -385,6 +408,7 @@ function saveLocal() {
     deck: state.deck,
     resources: state.resources,
     selectedTag: state.selectedTag,
+    selectedDifficulty: state.selectedDifficulty,
     weakDrillEnabled: state.weakDrillEnabled,
     adaptiveEnabled: state.adaptiveEnabled,
     examConfig: state.examConfig,
@@ -410,6 +434,7 @@ function loadLocal() {
     state.deck = Array.isArray(parsed.deck) && parsed.deck.length > 0 ? hydrateCards(parsed.deck) : hydrateCards(STARTER_DECK);
     state.resources = Array.isArray(parsed.resources) && parsed.resources.length > 0 ? parsed.resources : [...DEFAULT_RESOURCES];
     state.selectedTag = CATEGORY_OPTIONS.some((item) => item.key === parsed.selectedTag) ? parsed.selectedTag : "ALL";
+    state.selectedDifficulty = normalizeDifficultyKey(parsed.selectedDifficulty || "all", "all");
     state.weakDrillEnabled = Boolean(parsed.weakDrillEnabled);
     state.adaptiveEnabled = Boolean(parsed.adaptiveEnabled);
     state.examConfig.questionCount = Number(parsed.examConfig?.questionCount) || 30;

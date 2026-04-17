@@ -350,11 +350,12 @@ function startExam() {
       setStatus(dom.examStatus, "Select a topic for Topic Master mode.", "error");
       return;
     }
-    candidateCards = state.deck.filter(c => normalizeTagKey(c.tag) === normalizeTagKey(topic));
+    candidateCards = state.deck.filter(c => normalizeTagKey(c.tag) === normalizeTagKey(topic) && matchesSelectedDifficulty(c));
     console.log(`[ExamDebug] Filtered cards for topic: ${candidateCards.length}`);
   } else if (mode === "weakness") {
     // Filter for cards with accuracy < 50%
     candidateCards = state.deck.filter(c => {
+      if (!matchesSelectedDifficulty(c)) return false;
       const s = state.session.cardStats[c.id];
       return s && (s.correct / s.attempted) < 0.5;
     });

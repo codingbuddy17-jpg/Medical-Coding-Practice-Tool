@@ -34,6 +34,12 @@ let CATEGORY_OPTIONS = [{ key: "ALL", label: "All Topics" }].concat(
   DEFAULT_TAG_DEFINITIONS.filter((item) => item.isActive !== false).map((item) => ({ key: item.key, label: item.label }))
 );
 const DEFAULT_WEEKLY_TARGET = 150;
+const DIFFICULTY_OPTIONS = [
+  { key: "all", label: "All Levels" },
+  { key: "low", label: "Beginner" },
+  { key: "medium", label: "Core" },
+  { key: "advanced", label: "Advanced" }
+];
 const BADGE_DEFINITIONS = [
   { id: "questions_50", title: "Starter Sprint", icon: "🚀", theme: "volume", rule: "Answer 50 questions", check: (g) => Number(g.totalAnswered || 0) >= 50 },
   { id: "questions_100", title: "Century Club", icon: "💯", theme: "volume", rule: "Answer 100 questions", check: (g) => Number(g.totalAnswered || 0) >= 100 },
@@ -69,6 +75,22 @@ function createEmptyCategoryStats() {
   return stats;
 }
 
+function normalizeDifficultyKey(value, fallback = "medium") {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return fallback;
+  if (raw === "all") return "all";
+  if (["low", "beginner", "easy", "foundation", "basic"].includes(raw)) return "low";
+  if (["medium", "core", "mid", "moderate", "standard", "intermediate"].includes(raw)) return "medium";
+  if (["advanced", "hard", "challenge", "expert", "complex"].includes(raw)) return "advanced";
+  return fallback;
+}
+
+function getDifficultyLabel(value) {
+  const key = normalizeDifficultyKey(value, "medium");
+  const found = DIFFICULTY_OPTIONS.find((item) => item.key === key);
+  return found ? found.label : "Core";
+}
+
 const state = {
   role: "trial",
   userName: "",
@@ -82,6 +104,7 @@ const state = {
   tenantAllowedTags: [],
   tagRegistry: DEFAULT_TAG_DEFINITIONS.map((item) => ({ ...item })),
   selectedTag: "ALL",
+  selectedDifficulty: "all",
   weakDrillEnabled: false,
   adaptiveEnabled: false,
   examConfig: {
@@ -242,6 +265,7 @@ function cacheDOM() {
 
     categoryButtons: document.getElementById("categoryButtons"),
     categoryStatus: document.getElementById("categoryStatus"),
+    practiceDifficultySelect: document.getElementById("practiceDifficultySelect"),
     weakDrillToggle: document.getElementById("weakDrillToggle"),
     adaptiveToggle: document.getElementById("adaptiveToggle"),
     examQuestionCount: document.getElementById("examQuestionCount"),
@@ -323,6 +347,8 @@ function cacheDOM() {
     importStatus: document.getElementById("importStatus"),
     csvFileInput: document.getElementById("csvFileInput"),
     csvInput: document.getElementById("csvInput"), // Textarea for raw CSV
+    importDefaultTag: document.getElementById("importDefaultTag"),
+    importDefaultType: document.getElementById("importDefaultType"),
     importFileBtn: document.getElementById("importFileBtn"),
     importBtn: document.getElementById("importBtn"),
     loadStarterBtn: document.getElementById("loadStarterBtn"),
@@ -350,6 +376,7 @@ function cacheDOM() {
     questionBankSelectAll: document.getElementById("questionBankSelectAll"),
     questionBankBulkTag: document.getElementById("questionBankBulkTag"),
     questionBankBulkApplyBtn: document.getElementById("questionBankBulkApplyBtn"),
+    backfillDifficultyBtn: document.getElementById("backfillDifficultyBtn"),
     questionBankSelectedCount: document.getElementById("questionBankSelectedCount"),
     refreshQuestionBankBtn: document.getElementById("refreshQuestionBankBtn"),
     exportQuestionBankBtn: document.getElementById("exportQuestionBankBtn"),
@@ -893,6 +920,15 @@ function renderDynamicTagControls() {
     dom.questionBankBulkTag.innerHTML = ['<option value="">Change tag to...</option>']
       .concat(CATEGORY_OPTIONS.filter((item) => item.key !== "ALL").map((item) => `<option value="${escapeHtml(item.key)}">${escapeHtml(item.label)}</option>`))
       .join("");
+  }
+  if (dom.importDefaultTag) {
+    const currentValue = dom.importDefaultTag.value;
+    dom.importDefaultTag.innerHTML = ['<option value="">Use file value or General</option>']
+      .concat(CATEGORY_OPTIONS.filter((item) => item.key !== "ALL").map((item) => `<option value="${escapeHtml(item.key)}">${escapeHtml(item.label)}</option>`))
+      .join("");
+    if (currentValue && CATEGORY_OPTIONS.some((item) => item.key === currentValue)) {
+      dom.importDefaultTag.value = currentValue;
+    }
   }
   if (dom.tenantTagCheckboxes) {
     dom.tenantTagCheckboxes.innerHTML = CATEGORY_OPTIONS.filter((item) => item.key !== "ALL")

@@ -28,6 +28,9 @@ function bindEvents() {
     if (!btn) return;
     setSelectedTag(btn.dataset.tag);
   });
+  if (dom.practiceDifficultySelect) dom.practiceDifficultySelect.addEventListener("change", () => {
+    setSelectedDifficulty(dom.practiceDifficultySelect.value);
+  });
 
   if (dom.mcqOptions) dom.mcqOptions.addEventListener("change", (event) => {
     if (event.target.name !== "mcqAnswer") return;
@@ -193,6 +196,9 @@ function bindEvents() {
   }
   if (dom.questionBankBulkApplyBtn) {
     dom.questionBankBulkApplyBtn.addEventListener("click", bulkUpdateQuestionTags);
+  }
+  if (dom.backfillDifficultyBtn) {
+    dom.backfillDifficultyBtn.addEventListener("click", backfillQuestionDifficulties);
   }
   if (dom.questionBankBody) {
     dom.questionBankBody.addEventListener("click", (e) => {
@@ -523,6 +529,8 @@ async function init() {
   dom.memberExpiryInput.value = "";
   dom.weakDrillToggle.checked = state.weakDrillEnabled;
   dom.adaptiveToggle.checked = state.adaptiveEnabled;
+  if (dom.practiceDifficultySelect) dom.practiceDifficultySelect.value = state.selectedDifficulty;
+  if (dom.importDefaultType && !dom.importDefaultType.value) dom.importDefaultType.value = "short";
   dom.examQuestionCount.value = String(state.examConfig.questionCount);
   dom.examDuration.value = String(state.examConfig.durationMinutes);
   dom.examPassThreshold.value = String(state.examConfig.passThreshold || 80);
