@@ -415,7 +415,34 @@ function humanizeTagKey(tagKey) {
     .join(" ");
 }
 
-function mergeDiscoveredTags(tags) {
+async function listQuestionTagKeys() {
+  if (!USE_SUPABASE) {
+    return readQuestions()
+      .filter((q) => q.is_active !== false)
+      .map((q) => normalizeTagKeyInput(q.tag))
+      .filter(Boolean);
+  }
+
+  const batchSize = 1000;
+  let from = 0;
+  const keys = [];
+  while (true) {
+    const { data, error } = await supabase
+      .from("questions")
+      .select("tag")
+      .eq("is_active", true)
+      .order("created_at", { ascending: true })
+      .range(from, from + batchSize - 1);
+    if (error) throw error;
+    const rows = data || [];
+    keys.push(...rows.map((row) => normalizeTagKeyInput(row.tag)).filter(Boolean));
+    if (rows.length < batchSize) break;
+    from += batchSize;
+  }
+  return keys;
+}
+
+async function mergeDiscoveredTags(tags) {
   const map = new Map();
   (Array.isArray(tags) ? tags : []).forEach((tag, idx) => {
     const key = normalizeTagKeyInput(tag.key);
@@ -431,7 +458,7 @@ function mergeDiscoveredTags(tags) {
   });
 
   const discovered = new Set();
-  readQuestions().forEach((q) => discovered.add(normalizeTagKeyInput(q.tag)));
+  (await listQuestionTagKeys()).forEach((key) => discovered.add(key));
   readTenants().forEach((tenant) => {
     (tenant.settings?.allowedTags || []).forEach((tag) => discovered.add(normalizeTagKeyInput(tag)));
   });
@@ -479,7 +506,25 @@ async function readTags() {
       .select("key,label,aliases,is_active,sort_order,created_at,updated_at")
       .order("sort_order", { ascending: true })
       .order("label", { ascending: true });
-    if (!error) return mergeDiscoveredTags((data || []).map(mapTagRow));
+    if (!error) {
+      const rows = (data || []).map(mapTagRow);
+      const existingKeys = new Set(rows.map((row) => normalizeTagKeyInput(row.key)));
+      const missingDefaults = DEFAULT_TAGS.filter((item) => !existingKeys.has(normalizeTagKeyInput(item.key)));
+      if (missingDefaults.length) {
+        const seedPayload = missingDefaults.map((item, idx) => ({
+          key: normalizeTagKeyInput(item.key),
+          label: normalizeTagLabel(item.label || item.key),
+          aliases: normalizeTagAliases(item.aliases),
+          is_active: item.isActive !== false,
+          sort_order: Number(item.sortOrder || ((idx + 1) * 10))
+        }));
+        const { error: seedError } = await supabase.from("tags").upsert(seedPayload, { onConflict: "key" });
+        if (!seedError) {
+          return mergeDiscoveredTags([...DEFAULT_TAGS, ...rows]);
+        }
+      }
+      return mergeDiscoveredTags([...DEFAULT_TAGS, ...rows]);
+    }
     if (!isMissingTagsTable(error)) {
       console.error("Tags read failed from Supabase, using file fallback:", error.message || error);
     }
@@ -489,7 +534,7 @@ async function readTags() {
   try {
     const parsed = JSON.parse(raw);
     const tags = Array.isArray(parsed.tags) ? parsed.tags : [];
-    return mergeDiscoveredTags(tags.length ? tags : DEFAULT_TAGS);
+    return mergeDiscoveredTags(tags.length ? [...DEFAULT_TAGS, ...tags] : DEFAULT_TAGS);
   } catch {
     return mergeDiscoveredTags(DEFAULT_TAGS);
   }
@@ -559,9 +604,20 @@ async function createOrUpdateTag({ key, label, aliases, isActive }) {
   return (await listTags({ includeInactive: true })).find((item) => item.key === cleanKey) || next;
 }
 
-function countTagUsage(tagKey) {
+async function countTagUsage(tagKey) {
   const key = normalizeTagKeyInput(tagKey);
-  const questionUsage = readQuestions().filter((q) => normalizeTagKeyInput(q.tag) === key).length;
+  let questionUsage = 0;
+  if (!USE_SUPABASE) {
+    questionUsage = readQuestions().filter((q) => q.is_active !== false && normalizeTagKeyInput(q.tag) === key).length;
+  } else {
+    const { count, error } = await supabase
+      .from("questions")
+      .select("id", { count: "exact", head: true })
+      .eq("is_active", true)
+      .eq("tag", key);
+    if (error) throw error;
+    questionUsage = Number(count || 0);
+  }
   const tenantUsage = readTenants().filter((t) => Array.isArray(t.settings?.allowedTags) && t.settings.allowedTags.some((tag) => normalizeTagKeyInput(tag) === key)).length;
   const templateUsage = readExamStore().templates.filter((tpl) => Array.isArray(tpl.tags) && tpl.tags.some((tag) => normalizeTagKeyInput(tag) === key)).length;
   return { questionUsage, tenantUsage, templateUsage, total: questionUsage + tenantUsage + templateUsage };
@@ -570,7 +626,7 @@ function countTagUsage(tagKey) {
 async function deleteTag(tagKey) {
   const key = normalizeTagKeyInput(tagKey);
   if (!key) throw new Error("Tag key is required");
-  const usage = countTagUsage(key);
+  const usage = await countTagUsage(key);
   if (usage.total > 0) throw new Error(`Tag is still in use (${usage.total} references)`);
   if (USE_SUPABASE) {
     const { error } = await supabase.from("tags").delete().eq("key", key);
@@ -588,7 +644,7 @@ async function deleteTag(tagKey) {
 
 async function getTagSummary() {
   const tags = await listTags({ includeInactive: true });
-  return tags.map((tag) => ({ ...tag, usage: countTagUsage(tag.key) }));
+  return Promise.all(tags.map(async (tag) => ({ ...tag, usage: await countTagUsage(tag.key) })));
 }
 
 function getDefaultTenant() {
