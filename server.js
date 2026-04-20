@@ -413,12 +413,16 @@ function getCanonicalTagKeysInput(value) {
   return Array.from(new Set(splitTagValuesInput(value).map((item) => normalizeTagKeyInput(item)).filter(Boolean)));
 }
 
-function mergeTagValueString(value, sourceKey, targetKey) {
-  const source = normalizeTagKeyInput(sourceKey);
+function mergeTagValueString(value, sourceKeys, targetKey) {
+  const sourceSet = new Set(
+    (Array.isArray(sourceKeys) ? sourceKeys : [sourceKeys])
+      .map((item) => normalizeTagKeyInput(item))
+      .filter(Boolean)
+  );
   const target = normalizeTagKeyInput(targetKey);
   const next = splitTagValuesInput(value).map((item) => {
     const normalized = normalizeTagKeyInput(item);
-    return normalized === source ? target : normalized;
+    return sourceSet.has(normalized) ? target : normalized;
   }).filter(Boolean);
   return Array.from(new Set(next)).join(", ");
 }
@@ -682,6 +686,7 @@ async function mergeTags({ sourceKey, targetKey }) {
   const targetTag = tags.find((item) => normalizeTagKeyInput(item.key) === target);
   if (!sourceTag) throw new Error("Source tag not found");
   if (!targetTag) throw new Error("Target tag not found");
+  const sourceMatchers = Array.from(new Set([sourceTag.key, sourceTag.label].concat(sourceTag.aliases || []).map((item) => normalizeTagKeyInput(item)).filter(Boolean)));
 
   let updatedQuestions = 0;
   let updatedTenants = 0;
@@ -690,7 +695,7 @@ async function mergeTags({ sourceKey, targetKey }) {
   if (!USE_SUPABASE) {
     const questions = readQuestions();
     questions.forEach((question) => {
-      const nextTag = mergeTagValueString(question.tag, source, target);
+      const nextTag = mergeTagValueString(question.tag, sourceMatchers, target);
       if (nextTag && nextTag !== String(question.tag || "").trim()) {
         question.tag = nextTag;
         updatedQuestions += 1;
@@ -710,7 +715,7 @@ async function mergeTags({ sourceKey, targetKey }) {
       if (error) throw error;
       const rows = data || [];
       for (const row of rows) {
-        const nextTag = mergeTagValueString(row.tag, source, target);
+        const nextTag = mergeTagValueString(row.tag, sourceMatchers, target);
         if (nextTag && nextTag !== String(row.tag || "").trim()) {
           const { error: updateErr } = await supabase.from("questions").update({ tag: nextTag }).eq("id", row.id);
           if (updateErr) throw updateErr;
@@ -727,7 +732,7 @@ async function mergeTags({ sourceKey, targetKey }) {
     if (!Array.isArray(tenant.settings?.allowedTags)) return;
     const nextTags = Array.from(new Set(tenant.settings.allowedTags.map((tag) => {
       const normalized = normalizeTagKeyInput(tag);
-      return normalized === source ? target : normalized;
+      return sourceMatchers.includes(normalized) ? target : normalized;
     }).filter(Boolean)));
     if (JSON.stringify(nextTags) !== JSON.stringify(tenant.settings.allowedTags)) {
       tenant.settings.allowedTags = nextTags;
@@ -741,7 +746,7 @@ async function mergeTags({ sourceKey, targetKey }) {
     if (!Array.isArray(tpl.tags)) return;
     const nextTags = Array.from(new Set(tpl.tags.map((tag) => {
       const normalized = normalizeTagKeyInput(tag);
-      return normalized === source ? target : normalized;
+      return sourceMatchers.includes(normalized) ? target : normalized;
     }).filter(Boolean)));
     if (JSON.stringify(nextTags) !== JSON.stringify(tpl.tags)) {
       tpl.tags = nextTags;
