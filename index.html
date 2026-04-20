@@ -850,288 +850,312 @@
         </div> <!-- End Sub-View Users -->
 
         <div id="subview-bank" class="sub-view full-width hidden">
-          <section class="panel">
-            <h3>Question Bank Management</h3>
-            <p class="status">Search active questions, bulk update tags, and maintain quality at scale.</p>
-            <div class="panel-actions">
-              <input id="questionBankSearchInput" type="text" placeholder="Search questions..." />
-              <select id="questionBankTagFilter">
-                <option value="">All Tags</option>
-              </select>
-              <button id="refreshQuestionBankBtn" class="ghost-btn" type="button">Refresh Bank</button>
-              <button id="exportQuestionBankBtn" class="ghost-btn" type="button">Export Active API CSV</button>
+          <section class="panel bank-overview-panel">
+            <h3>Question Bank Workspace</h3>
+            <p class="status">Use the live bank first, then open import, tag, or audit sections only when you need them.</p>
+            <div class="bank-quick-links">
+              <button type="button" class="ghost-btn" onclick="document.getElementById('bankLiveSection')?.open = true; document.getElementById('bankLiveSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });">Live Bank</button>
+              <button type="button" class="ghost-btn" onclick="document.getElementById('bankImportSection')?.open = true; document.getElementById('bankImportSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });">Import</button>
+              <button type="button" class="ghost-btn" onclick="document.getElementById('bankTagsSection')?.open = true; document.getElementById('bankTagsSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });">Tag Registry</button>
+              <button type="button" class="ghost-btn" onclick="document.getElementById('bankReviewSection')?.open = true; document.getElementById('bankReviewSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });">Import Queue</button>
+              <button type="button" class="ghost-btn" onclick="document.getElementById('bankFlagSection')?.open = true; document.getElementById('bankFlagSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });">Flag Queue</button>
+              <button type="button" class="ghost-btn" onclick="document.getElementById('bankAuditSection')?.open = true; document.getElementById('bankAuditSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });">Batch Audit</button>
             </div>
-            <div class="panel-actions">
-              <span id="questionBankSelectedCount" class="status subtle">0 selected</span>
-              <select id="questionBankBulkTag">
-                <option value="">Change tag to...</option>
-                <option value="ICD-10-CM">ICD 10 CM</option>
-                <option value="ICD-10-PCS">ICD 10 PCS</option>
-                <option value="CPT">CPT</option>
-                <option value="MODIFIERS">Modifiers</option>
-                <option value="GUIDELINES">Guidelines</option>
-                <option value="CCS">CCS</option>
-                <option value="CPC">CPC</option>
-                <option value="CDIP">CDIP</option>
-                <option value="SURGERY-CODING">Surgery Coding</option>
-                <option value="IP-DRG-CODING">IP-DRG Coding</option>
-                <option value="MEDICINE">Medicine</option>
-                <option value="PRACTICE-CASES">Practice Cases</option>
-              </select>
-              <button id="questionBankBulkApplyBtn" class="ghost-btn" type="button">Apply to Selected</button>
-              <button id="backfillDifficultyBtn" class="ghost-btn" type="button">Backfill Difficulty</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th><input id="questionBankSelectAll" type="checkbox" /></th>
-                    <th>Tag</th>
-                    <th>Question</th>
-                    <th>Type</th>
-                    <th>Answer</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody id="questionBankBody">
-                  <tr>
-                    <td colspan="6">No active questions loaded.</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p id="questionBankStatus" class="status"></p>
           </section>
 
-          <section class="panel">
-            <h3>Tag Registry</h3>
-            <p class="status">Create, rename, deactivate, or safely delete tags before importing new question categories.</p>
-            <div class="panel-actions">
-              <button id="refreshTagsBtn" class="ghost-btn" type="button">Refresh Tags</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Label</th>
-                    <th>Key</th>
-                    <th>Aliases</th>
-                    <th>Status</th>
-                    <th>Usage</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody id="tagRegistryBody">
-                  <tr>
-                    <td colspan="6">No tags loaded.</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="auth-grid" style="margin-top:.9rem">
-              <label>
-                <span id="tagFormMode">Create Tag</span>
-                <input id="tagFormKey" type="text" placeholder="e.g. RADIOLOGY" />
-                <span class="helper">Use uppercase key style. Example: `SURGERY-CODING`.</span>
-              </label>
-              <label>
-                Display Label
-                <input id="tagFormLabel" type="text" placeholder="e.g. Radiology" />
-              </label>
-              <label style="grid-column:1/-1">
-                Aliases
-                <input id="tagFormAliases" type="text" placeholder="Comma separated, e.g. radiology, imaging" />
-              </label>
-              <label>
-                Active
-                <select id="tagFormActive">
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
+          <details id="bankLiveSection" class="details-panel mentor-section" open>
+            <summary>Live Question Bank</summary>
+            <section class="panel">
+              <p class="status">Search active questions, bulk update tags, and maintain quality at scale.</p>
+              <div class="panel-actions">
+                <input id="questionBankSearchInput" type="text" placeholder="Search questions..." />
+                <select id="questionBankTagFilter">
+                  <option value="">All Tags</option>
                 </select>
-              </label>
-            </div>
-            <div class="panel-actions">
-              <button id="saveTagBtn" class="primary-btn" type="button">Save Tag</button>
-              <button id="clearTagFormBtn" class="ghost-btn" type="button">Clear</button>
-            </div>
-            <p id="tagRegistryStatus" class="status"></p>
-          </section>
-
-          <section class="panel">
-            <h3>Mentor Deck Manager</h3>
-            <p class="status">Import and validate question banks with preview, paging, and rollback support.</p>
-            <p>CSV/XLSX headers (order can vary):
-              <code>question,answer,rationale,option_a,option_b,option_c,option_d,correct_option</code>.
-              You can set workbook defaults for tag and question type below instead of repeating them in every row.
-            </p>
-            <div class="panel-grid two-col">
-              <label>
-                Default Tag
-                <select id="importDefaultTag">
-                  <option value="">Use file value or General</option>
+                <button id="refreshQuestionBankBtn" class="ghost-btn" type="button">Refresh Bank</button>
+                <button id="exportQuestionBankBtn" class="ghost-btn" type="button">Export Active API CSV</button>
+              </div>
+              <div class="panel-actions">
+                <span id="questionBankSelectedCount" class="status subtle">0 selected</span>
+                <select id="questionBankBulkTag">
+                  <option value="">Change tag to...</option>
+                  <option value="ICD-10-CM">ICD 10 CM</option>
+                  <option value="ICD-10-PCS">ICD 10 PCS</option>
+                  <option value="CPT">CPT</option>
+                  <option value="MODIFIERS">Modifiers</option>
+                  <option value="GUIDELINES">Guidelines</option>
+                  <option value="CCS">CCS</option>
+                  <option value="CPC">CPC</option>
+                  <option value="CDIP">CDIP</option>
+                  <option value="SURGERY-CODING">Surgery Coding</option>
+                  <option value="IP-DRG-CODING">IP-DRG Coding</option>
+                  <option value="MEDICINE">Medicine</option>
+                  <option value="PRACTICE-CASES">Practice Cases</option>
                 </select>
-              </label>
-              <label>
-                Default Question Type
-                <select id="importDefaultType">
-                  <option value="short">Short Answer</option>
-                  <option value="mcq">MCQ</option>
-                </select>
-              </label>
-            </div>
-            <label>
-              Upload CSV File
-              <input id="csvFileInput" type="file"
-                accept=".csv,.tsv,.txt,.xlsx,.xls,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" />
-            </label>
-            <textarea id="csvInput" rows="7"
-              placeholder="tag,question,answer&#10;ICD-10-CM,Type 2 diabetes mellitus without complications,E11.9"></textarea>
-            <div class="panel-actions">
-              <button id="importFileBtn" class="primary-btn" type="button">Upload file</button>
-              <button id="importBtn" class="ghost-btn" type="button">Paste & import</button>
-              <button id="loadStarterBtn" class="ghost-btn" type="button">Load Starter Deck</button>
-              <button id="exportBtn" class="ghost-btn" type="button">Export Deck</button>
-            </div>
-            <div id="importPreviewPanel" class="panel import-preview hidden">
-              <h4>Import Preview</h4>
-              <p id="importPreviewSummary" class="status"></p>
-              <div id="importPreviewMappings" class="import-mapping-box hidden"></div>
+                <button id="questionBankBulkApplyBtn" class="ghost-btn" type="button">Apply to Selected</button>
+                <button id="backfillDifficultyBtn" class="ghost-btn" type="button">Backfill Difficulty</button>
+              </div>
               <div class="table-wrap">
                 <table>
                   <thead>
                     <tr>
-                      <th>Row</th>
+                      <th><input id="questionBankSelectAll" type="checkbox" /></th>
+                      <th>Tag</th>
+                      <th>Question</th>
+                      <th>Type</th>
+                      <th>Answer</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="questionBankBody">
+                    <tr>
+                      <td colspan="6">No active questions loaded.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p id="questionBankStatus" class="status"></p>
+            </section>
+          </details>
+
+          <details id="bankImportSection" class="details-panel mentor-section">
+            <summary>Import & Deck Management</summary>
+            <section class="panel">
+              <p class="status">Import and validate question banks with preview, paging, and rollback support.</p>
+              <p>CSV/XLSX headers (order can vary):
+                <code>question,answer,rationale,option_a,option_b,option_c,option_d,correct_option</code>.
+                You can set workbook defaults for tag and question type below instead of repeating them in every row.
+              </p>
+              <div class="panel-grid two-col">
+                <label>
+                  Default Tag
+                  <select id="importDefaultTag">
+                    <option value="">Use file value or General</option>
+                  </select>
+                </label>
+                <label>
+                  Default Question Type
+                  <select id="importDefaultType">
+                    <option value="short">Short Answer</option>
+                    <option value="mcq">MCQ</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                Upload CSV File
+                <input id="csvFileInput" type="file"
+                  accept=".csv,.tsv,.txt,.xlsx,.xls,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" />
+              </label>
+              <textarea id="csvInput" rows="7"
+                placeholder="question,answer,rationale,option_a,option_b,option_c,option_d,correct_option&#10;Type 2 diabetes mellitus without complications,,Assign code E11.9 when documentation supports uncomplicated type 2 diabetes.,E10.9,E11.9,E13.9,R73.9,B"></textarea>
+              <div class="panel-actions">
+                <button id="importFileBtn" class="primary-btn" type="button">Upload file</button>
+                <button id="importBtn" class="ghost-btn" type="button">Paste & import</button>
+                <button id="loadStarterBtn" class="ghost-btn" type="button">Load Starter Deck</button>
+                <button id="exportBtn" class="ghost-btn" type="button">Export Deck</button>
+              </div>
+              <div id="importPreviewPanel" class="panel import-preview hidden">
+                <h4>Import Preview</h4>
+                <p id="importPreviewSummary" class="status"></p>
+                <div id="importPreviewMappings" class="import-mapping-box hidden"></div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Row</th>
+                        <th>Status</th>
+                        <th>Tag</th>
+                        <th>Type</th>
+                        <th>Difficulty</th>
+                        <th>Question</th>
+                        <th>Reason</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="importPreviewBody">
+                      <tr>
+                        <td colspan="8">No preview yet.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="panel-actions">
+                  <button id="importPreviewPrevBtn" class="ghost-btn" type="button">Prev</button>
+                  <span id="importPreviewPageInfo" class="status subtle">Page 1 of 1</span>
+                  <label class="inline-toggle">
+                    <span>Go to</span>
+                    <input id="importPreviewPageInput" type="number" min="1" step="1" />
+                  </label>
+                  <button id="importPreviewNextBtn" class="ghost-btn" type="button">Next</button>
+                </div>
+                <div class="panel-actions">
+                  <button id="confirmImportBtn" class="primary-btn" type="button">Confirm Import</button>
+                  <button id="cancelImportPreviewBtn" class="ghost-btn" type="button">Cancel Preview</button>
+                </div>
+              </div>
+              <p id="importStatus" class="status" aria-live="polite"></p>
+            </section>
+          </details>
+
+          <details id="bankTagsSection" class="details-panel mentor-section">
+            <summary>Tag Registry</summary>
+            <section class="panel">
+              <p class="status">Create, rename, deactivate, merge, or safely delete tags before importing new categories.</p>
+              <div class="panel-actions">
+                <button id="refreshTagsBtn" class="ghost-btn" type="button">Refresh Tags</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Label</th>
+                      <th>Key</th>
+                      <th>Aliases</th>
+                      <th>Status</th>
+                      <th>Usage</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tagRegistryBody">
+                    <tr>
+                      <td colspan="6">No tags loaded.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="auth-grid" style="margin-top:.9rem">
+                <label>
+                  <span id="tagFormMode">Create Tag</span>
+                  <input id="tagFormKey" type="text" placeholder="e.g. RADIOLOGY" />
+                  <span class="helper">Use uppercase key style. Example: `SURGERY-CODING`.</span>
+                </label>
+                <label>
+                  Display Label
+                  <input id="tagFormLabel" type="text" placeholder="e.g. Radiology" />
+                </label>
+                <label style="grid-column:1/-1">
+                  Aliases
+                  <input id="tagFormAliases" type="text" placeholder="Comma separated, e.g. radiology, imaging" />
+                </label>
+                <label>
+                  Active
+                  <select id="tagFormActive">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </label>
+              </div>
+              <div class="panel-actions">
+                <button id="saveTagBtn" class="primary-btn" type="button">Save Tag</button>
+                <button id="clearTagFormBtn" class="ghost-btn" type="button">Clear</button>
+              </div>
+              <p id="tagRegistryStatus" class="status"></p>
+            </section>
+          </details>
+
+          <details id="bankReviewSection" class="details-panel mentor-section">
+            <summary>Import Quality Queue <span id="importReviewOpenCount" class="panel-badge" aria-live="polite"></span></summary>
+            <section class="panel">
+              <div class="panel-actions">
+                <select id="importReviewStatusFilter">
+                  <option value="open">Open</option>
+                  <option value="">All</option>
+                  <option value="resolved">Resolved</option>
+                </select>
+                <button id="refreshImportReviewBtn" class="ghost-btn" type="button">Refresh Queue</button>
+                <button id="resolveAllImportReviewBtn" class="ghost-btn" type="button">Resolve All Open</button>
+                <button id="exportImportReviewBtn" class="ghost-btn" type="button">Export Queue CSV</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
                       <th>Status</th>
                       <th>Tag</th>
-                      <th>Type</th>
-                      <th>Difficulty</th>
                       <th>Question</th>
                       <th>Reason</th>
                       <th>Action</th>
                     </tr>
                   </thead>
-                  <tbody id="importPreviewBody">
+                  <tbody id="importReviewBody">
                     <tr>
-                      <td colspan="8">No preview yet.</td>
+                      <td colspan="5">No import review items.</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
+              <p id="importReviewStatus" class="status" aria-live="polite"></p>
+            </section>
+          </details>
+
+          <details id="bankAuditSection" class="details-panel mentor-section">
+            <summary>Import Batch Audit</summary>
+            <section class="panel">
               <div class="panel-actions">
-                <button id="importPreviewPrevBtn" class="ghost-btn" type="button">Prev</button>
-                <span id="importPreviewPageInfo" class="status subtle">Page 1 of 1</span>
-                <label class="inline-toggle">
-                  <span>Go to</span>
-                  <input id="importPreviewPageInput" type="number" min="1" step="1" />
-                </label>
-                <button id="importPreviewNextBtn" class="ghost-btn" type="button">Next</button>
+                <button id="refreshImportBatchesBtn" class="ghost-btn" type="button">Refresh Batches</button>
+                <input id="rollbackBatchIdInput" type="text" placeholder="Enter batch ID for rollback" />
+                <button id="rollbackBatchBtn" class="ghost-btn danger-btn" type="button">Rollback Batch</button>
               </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Batch ID</th>
+                      <th>Inserted</th>
+                      <th>Warn</th>
+                      <th>Fail</th>
+                      <th>Skipped</th>
+                      <th>Created</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="importBatchBody">
+                    <tr>
+                      <td colspan="7">No batch history loaded.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p id="importBatchStatus" class="status" aria-live="polite"></p>
+            </section>
+          </details>
+
+          <details id="bankFlagSection" class="details-panel mentor-section">
+            <summary>Question Review Queue <span id="flagQueueOpenCount" class="panel-badge" aria-live="polite"></span></summary>
+            <section class="panel">
+              <p class="status">Resolve flagged questions quickly to keep quality and learner trust high.</p>
               <div class="panel-actions">
-                <button id="confirmImportBtn" class="primary-btn" type="button">Confirm Import</button>
-                <button id="cancelImportPreviewBtn" class="ghost-btn" type="button">Cancel Preview</button>
+                <select id="flagStatusFilter">
+                  <option value="open">Open</option>
+                  <option value="">All</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="replaced">Replaced</option>
+                  <option value="deactivated">Deactivated</option>
+                </select>
+                <button id="refreshFlagsBtn" class="ghost-btn" type="button">Refresh Queue</button>
               </div>
-            </div>
-            <p id="importStatus" class="status" aria-live="polite"></p>
-          </section>
-
-          <section class="panel">
-            <h3>Import Quality Queue <span id="importReviewOpenCount" class="panel-badge" aria-live="polite"></span>
-            </h3>
-            <div class="panel-actions">
-              <select id="importReviewStatusFilter">
-                <option value="open">Open</option>
-                <option value="">All</option>
-                <option value="resolved">Resolved</option>
-              </select>
-              <button id="refreshImportReviewBtn" class="ghost-btn" type="button">Refresh Queue</button>
-              <button id="resolveAllImportReviewBtn" class="ghost-btn" type="button">Resolve All Open</button>
-              <button id="exportImportReviewBtn" class="ghost-btn" type="button">Export Queue CSV</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Status</th>
-                    <th>Tag</th>
-                    <th>Question</th>
-                    <th>Reason</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody id="importReviewBody">
-                  <tr>
-                    <td colspan="5">No import review items.</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p id="importReviewStatus" class="status" aria-live="polite"></p>
-          </section>
-
-          <section class="panel">
-            <h3>Import Batch Audit</h3>
-            <div class="panel-actions">
-              <button id="refreshImportBatchesBtn" class="ghost-btn" type="button">Refresh Batches</button>
-              <input id="rollbackBatchIdInput" type="text" placeholder="Enter batch ID for rollback" />
-              <button id="rollbackBatchBtn" class="ghost-btn danger-btn" type="button">Rollback Batch</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Batch ID</th>
-                    <th>Inserted</th>
-                    <th>Warn</th>
-                    <th>Fail</th>
-                    <th>Skipped</th>
-                    <th>Created</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody id="importBatchBody">
-                  <tr>
-                    <td colspan="7">No import batches loaded.</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p id="importBatchStatus" class="status"></p>
-          </section>
-
-          <section class="panel">
-            <h3>Question Review Queue <span id="flagQueueOpenCount" class="panel-badge" aria-live="polite"></span></h3>
-            <p class="status">Resolve flagged questions quickly to keep quality and learner trust high.</p>
-            <div class="panel-actions">
-              <select id="flagStatusFilter">
-                <option value="open">Open</option>
-                <option value="">All</option>
-                <option value="resolved">Resolved</option>
-                <option value="replaced">Replaced</option>
-                <option value="deactivated">Deactivated</option>
-              </select>
-              <button id="refreshFlagsBtn" class="ghost-btn" type="button">Refresh Queue</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Tag</th>
-                    <th>Question</th>
-                    <th>Raised By</th>
-                    <th>Reason</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody id="flagQueueBody">
-                  <tr>
-                    <td colspan="6">No flagged questions loaded.</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p id="flagQueueStatus" class="status"></p>
-          </section>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Tag</th>
+                      <th>Question</th>
+                      <th>Raised By</th>
+                      <th>Reason</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="flagQueueBody">
+                    <tr>
+                      <td colspan="6">No flagged questions loaded.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p id="flagQueueStatus" class="status"></p>
+            </section>
+          </details>
 
         </div>
 

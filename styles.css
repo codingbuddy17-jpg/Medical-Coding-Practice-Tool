@@ -646,6 +646,39 @@ h4 {
   content: "–";
 }
 
+.bank-overview-panel {
+  background: linear-gradient(135deg, #f7fbff 0%, #eef6ff 100%);
+  border-color: #d6e8ff;
+}
+
+.bank-overview-panel .status {
+  margin-top: 0;
+}
+
+.bank-quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.bank-quick-links .ghost-btn {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: #cfe3fb;
+}
+
+.bank-quick-links .ghost-btn:hover {
+  background: #ffffff;
+}
+
+#subview-bank .details-panel {
+  margin-top: 0.85rem;
+}
+
+#subview-bank .details-panel > .panel {
+  margin-top: 0.7rem;
+}
+
 .compact-toggle {
   display: flex;
   align-items: center;
