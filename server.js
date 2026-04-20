@@ -413,6 +413,16 @@ function getCanonicalTagKeysInput(value) {
   return Array.from(new Set(splitTagValuesInput(value).map((item) => normalizeTagKeyInput(item)).filter(Boolean)));
 }
 
+function mergeTagValueString(value, sourceKey, targetKey) {
+  const source = normalizeTagKeyInput(sourceKey);
+  const target = normalizeTagKeyInput(targetKey);
+  const next = splitTagValuesInput(value).map((item) => {
+    const normalized = normalizeTagKeyInput(item);
+    return normalized === source ? target : normalized;
+  }).filter(Boolean);
+  return Array.from(new Set(next)).join(", ");
+}
+
 function normalizeTagAliases(aliases) {
   const source = Array.isArray(aliases)
     ? aliases
@@ -659,6 +669,116 @@ async function deleteTag(tagKey) {
 async function getTagSummary() {
   const tags = await listTags({ includeInactive: true });
   return Promise.all(tags.map(async (tag) => ({ ...tag, usage: await countTagUsage(tag.key) })));
+}
+
+async function mergeTags({ sourceKey, targetKey }) {
+  const source = normalizeTagKeyInput(sourceKey);
+  const target = normalizeTagKeyInput(targetKey);
+  if (!source || !target) throw new Error("Source and target tags are required");
+  if (source === target) throw new Error("Source and target tags must be different");
+
+  const tags = await readTags();
+  const sourceTag = tags.find((item) => normalizeTagKeyInput(item.key) === source);
+  const targetTag = tags.find((item) => normalizeTagKeyInput(item.key) === target);
+  if (!sourceTag) throw new Error("Source tag not found");
+  if (!targetTag) throw new Error("Target tag not found");
+
+  let updatedQuestions = 0;
+  let updatedTenants = 0;
+  let updatedTemplates = 0;
+
+  if (!USE_SUPABASE) {
+    const questions = readQuestions();
+    questions.forEach((question) => {
+      const nextTag = mergeTagValueString(question.tag, source, target);
+      if (nextTag && nextTag !== String(question.tag || "").trim()) {
+        question.tag = nextTag;
+        updatedQuestions += 1;
+      }
+    });
+    writeQuestions(questions);
+  } else {
+    const batchSize = 1000;
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from("questions")
+        .select("id,tag")
+        .eq("is_active", true)
+        .order("created_at", { ascending: true })
+        .range(from, from + batchSize - 1);
+      if (error) throw error;
+      const rows = data || [];
+      for (const row of rows) {
+        const nextTag = mergeTagValueString(row.tag, source, target);
+        if (nextTag && nextTag !== String(row.tag || "").trim()) {
+          const { error: updateErr } = await supabase.from("questions").update({ tag: nextTag }).eq("id", row.id);
+          if (updateErr) throw updateErr;
+          updatedQuestions += 1;
+        }
+      }
+      if (rows.length < batchSize) break;
+      from += batchSize;
+    }
+  }
+
+  const tenants = readTenants();
+  tenants.forEach((tenant) => {
+    if (!Array.isArray(tenant.settings?.allowedTags)) return;
+    const nextTags = Array.from(new Set(tenant.settings.allowedTags.map((tag) => {
+      const normalized = normalizeTagKeyInput(tag);
+      return normalized === source ? target : normalized;
+    }).filter(Boolean)));
+    if (JSON.stringify(nextTags) !== JSON.stringify(tenant.settings.allowedTags)) {
+      tenant.settings.allowedTags = nextTags;
+      updatedTenants += 1;
+    }
+  });
+  writeTenants(tenants);
+
+  const examStore = readExamStore();
+  examStore.templates.forEach((tpl) => {
+    if (!Array.isArray(tpl.tags)) return;
+    const nextTags = Array.from(new Set(tpl.tags.map((tag) => {
+      const normalized = normalizeTagKeyInput(tag);
+      return normalized === source ? target : normalized;
+    }).filter(Boolean)));
+    if (JSON.stringify(nextTags) !== JSON.stringify(tpl.tags)) {
+      tpl.tags = nextTags;
+      updatedTemplates += 1;
+    }
+  });
+  writeExamStore(examStore);
+
+  const existingAliases = normalizeTagAliases(targetTag.aliases);
+  const sourceAliases = [sourceTag.label, sourceTag.key].concat(sourceTag.aliases || []);
+  const mergedTarget = await createOrUpdateTag({
+    key: targetTag.key,
+    label: targetTag.label,
+    aliases: Array.from(new Set(existingAliases.concat(sourceAliases).filter(Boolean))),
+    isActive: targetTag.isActive !== false
+  });
+
+  if (USE_SUPABASE) {
+    const { error } = await supabase.from("tags").delete().eq("key", source);
+    if (error && !isMissingTagsTable(error)) throw error;
+  } else {
+    writeTags(tags.filter((item) => normalizeTagKeyInput(item.key) !== source));
+  }
+
+  if (!USE_SUPABASE) {
+    const remaining = await readTags();
+    writeTags(remaining.filter((item) => normalizeTagKeyInput(item.key) !== source));
+  }
+
+  return {
+    sourceKey: source,
+    targetKey: target,
+    updatedQuestions,
+    updatedTenants,
+    updatedTemplates,
+    targetTag: mergedTarget
+  };
 }
 
 function getDefaultTenant() {
@@ -3428,6 +3548,29 @@ const server = http.createServer(async (req, res) => {
         actorRole: "trainer",
         ip: getClientIp(req),
         meta: { key: String(body.key || "") }
+      }).catch(() => {});
+      return json(res, 200, { result, tags: await getTagSummary() });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  if (url.pathname === "/api/trainer/tags/merge" && req.method === "POST") {
+    try {
+      const body = await parseBody(req);
+      const trainerKey = String(body.trainerKey || "");
+      const tenant = resolveTenant(req);
+      if (!isTenantTrainerAuth(tenant, trainerKey)) return json(res, 403, { error: "Forbidden" });
+      const result = await mergeTags({
+        sourceKey: body.sourceKey,
+        targetKey: body.targetKey
+      });
+      appendAuditEvent({
+        action: "tag.merge",
+        actor: "trainer",
+        actorRole: "trainer",
+        ip: getClientIp(req),
+        meta: { sourceKey: String(body.sourceKey || ""), targetKey: String(body.targetKey || "") }
       }).catch(() => {});
       return json(res, 200, { result, tags: await getTagSummary() });
     } catch (err) {

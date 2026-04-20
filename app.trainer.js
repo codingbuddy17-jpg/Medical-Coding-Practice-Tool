@@ -994,6 +994,7 @@ function renderTagRegistryTable() {
   dom.tagRegistryBody.innerHTML = items.map((item) => {
     const usage = item.usage || { total: 0, questionUsage: 0, tenantUsage: 0, templateUsage: 0 };
     const actions = `<button type="button" class="ghost-btn" data-tag-action="edit" data-tag-key="${escapeHtml(item.key)}">Edit</button>
+      <button type="button" class="ghost-btn" data-tag-action="merge" data-tag-key="${escapeHtml(item.key)}">Merge</button>
       <button type="button" class="ghost-btn ${item.isActive === false ? '' : 'danger-btn'}" data-tag-action="toggle" data-tag-key="${escapeHtml(item.key)}">${item.isActive === false ? 'Activate' : 'Deactivate'}</button>
       <button type="button" class="ghost-btn danger-btn" data-tag-action="delete" data-tag-key="${escapeHtml(item.key)}">Delete</button>`;
     return `<tr>
@@ -1090,6 +1091,36 @@ async function handleTagRegistryAction(action, tagKey) {
   }
   if (action === 'edit') {
     populateTagForm(tagKey);
+    return;
+  }
+  if (action === 'merge') {
+    const candidates = (state.tagRegistry || []).filter((tag) => tag.key !== item.key);
+    if (!candidates.length) {
+      setStatus(dom.tagRegistryStatus, 'No other tags available to merge into.', 'error');
+      return;
+    }
+    const suggestion = candidates[0]?.key || "";
+    const targetKey = String(window.prompt(`Merge "${item.label}" into which tag key?\n\nAvailable examples: ${candidates.slice(0, 8).map((tag) => tag.key).join(", ")}`, suggestion) || "").trim();
+    if (!targetKey) return;
+    if (!window.confirm(`Merge "${item.label}" into "${targetKey}"?\n\nThis will move question references, tenant allowed tags, and blueprint tags to the target tag.`)) return;
+    try {
+      const data = await apiRequest('/api/trainer/tags/merge', 'POST', {
+        trainerKey,
+        sourceKey: item.key,
+        targetKey
+      });
+      await loadDeckFromCloud();
+      await loadQuestionBank();
+      setTagRegistry(Array.isArray(data.tags) ? data.tags : []);
+      renderTagRegistryTable();
+      renderCategoryButtons();
+      renderQuestionBankTable();
+      clearTagForm();
+      const result = data.result || {};
+      setStatus(dom.tagRegistryStatus, `Merged into ${result.targetKey || targetKey}. Updated ${Number(result.updatedQuestions || 0)} question(s).`, 'success');
+    } catch (err) {
+      setStatus(dom.tagRegistryStatus, `Could not merge tag: ${err.message}`, 'error');
+    }
     return;
   }
   if (action === 'toggle') {
