@@ -34,7 +34,7 @@ function checkAnswer(userInput, expectedAnswer, card = null, renderOverride = nu
 
 function matchesSelectedTag(card) {
   if (state.selectedTag === "ALL") return true;
-  return normalizeTagKey(card.tag) === normalizeTagKey(state.selectedTag);
+  return getCanonicalTags(card.tag).includes(normalizeTagKey(state.selectedTag));
 }
 
 function matchesSelectedDifficulty(card) {
@@ -49,7 +49,7 @@ function filteredDeck() {
 function getCardsForTag(tagKey) {
   if (tagKey === "ALL") return state.deck.filter(matchesSelectedDifficulty);
   const target = normalizeTagKey(tagKey);
-  return state.deck.filter((card) => normalizeTagKey(card.tag) === target && matchesSelectedDifficulty(card));
+  return state.deck.filter((card) => getCanonicalTags(card.tag).includes(target) && matchesSelectedDifficulty(card));
 }
 
 function resetStudyOrder(tagKey = null) {
@@ -71,7 +71,7 @@ function resetStudyOrder(tagKey = null) {
 function buildInterleavedQueue(seed) {
   const tagMap = {};
   state.deck.forEach((card) => {
-    const tag = String(card.tag || "OTHER").toUpperCase();
+    const tag = getCanonicalTags(card.tag)[0] || "OTHER";
     if (!tagMap[tag]) tagMap[tag] = [];
     tagMap[tag].push(card.id);
   });
@@ -456,7 +456,7 @@ function renderCard() {
     return;
   }
 
-  dom.cardTag.textContent = getTagLabel(card.tag);
+  dom.cardTag.textContent = formatTagLabels(card.tag);
   dom.cardPrompt.textContent = card.question;
   dom.userAnswer.value = "";
   state.selectedMcqOption = "";

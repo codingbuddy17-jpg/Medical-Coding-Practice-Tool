@@ -53,7 +53,7 @@ function reshufflePracticeQueue(tagKey, reason = "") {
 }
 
 function getWeaknessScore(card) {
-  const tagKey = normalizeTagKey(card.tag);
+  const tagKey = getCanonicalTags(card.tag)[0] || normalizeTagKey(card.tag);
   const category = state.session.categoryStats[tagKey] || state.session.categoryStats.OTHER;
   const cardStat = state.session.cardStats[card.id] || { attempted: 0, wrong: 0 };
 
@@ -127,7 +127,7 @@ function advanceCardAfterAttempt(current) {
 }
 
 function recordCategoryAndCardStats(card, isCorrect, durationMs = 0) {
-  const tagKey = normalizeTagKey(card.tag);
+  const tagKey = getCanonicalTags(card.tag)[0] || normalizeTagKey(card.tag);
   if (!state.session.categoryStats[tagKey]) {
     state.session.categoryStats[tagKey] = { attempted: 0, correct: 0, wrong: 0, skipped: 0, totalTimeMs: 0, timedCount: 0 };
   }
@@ -151,7 +151,7 @@ function recordCategoryAndCardStats(card, isCorrect, durationMs = 0) {
 }
 
 function recordSkipStats(card, durationMs = 0) {
-  const tagKey = normalizeTagKey(card.tag);
+  const tagKey = getCanonicalTags(card.tag)[0] || normalizeTagKey(card.tag);
   if (!state.session.categoryStats[tagKey]) {
     state.session.categoryStats[tagKey] = { attempted: 0, correct: 0, wrong: 0, skipped: 0, totalTimeMs: 0, timedCount: 0 };
   }
@@ -430,4 +430,3 @@ async function endSession() {
   updatePreSessionLandingUI();
   setStatus(dom.sessionStatus, `Session ended. Score: ${summary.score}%`, "success");
 }
-

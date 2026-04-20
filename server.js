@@ -398,6 +398,21 @@ function normalizeTagKeyInput(key) {
     .slice(0, 64);
 }
 
+function splitTagValuesInput(value) {
+  return Array.from(
+    new Set(
+      String(value || "")
+        .split(/[,\n;|]+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+function getCanonicalTagKeysInput(value) {
+  return Array.from(new Set(splitTagValuesInput(value).map((item) => normalizeTagKeyInput(item)).filter(Boolean)));
+}
+
 function normalizeTagAliases(aliases) {
   const source = Array.isArray(aliases)
     ? aliases
@@ -419,7 +434,7 @@ async function listQuestionTagKeys() {
   if (!USE_SUPABASE) {
     return readQuestions()
       .filter((q) => q.is_active !== false)
-      .map((q) => normalizeTagKeyInput(q.tag))
+      .flatMap((q) => getCanonicalTagKeysInput(q.tag))
       .filter(Boolean);
   }
 
@@ -435,7 +450,7 @@ async function listQuestionTagKeys() {
       .range(from, from + batchSize - 1);
     if (error) throw error;
     const rows = data || [];
-    keys.push(...rows.map((row) => normalizeTagKeyInput(row.tag)).filter(Boolean));
+    keys.push(...rows.flatMap((row) => getCanonicalTagKeysInput(row.tag)).filter(Boolean));
     if (rows.length < batchSize) break;
     from += batchSize;
   }
@@ -608,15 +623,14 @@ async function countTagUsage(tagKey) {
   const key = normalizeTagKeyInput(tagKey);
   let questionUsage = 0;
   if (!USE_SUPABASE) {
-    questionUsage = readQuestions().filter((q) => q.is_active !== false && normalizeTagKeyInput(q.tag) === key).length;
+    questionUsage = readQuestions().filter((q) => q.is_active !== false && getCanonicalTagKeysInput(q.tag).includes(key)).length;
   } else {
-    const { count, error } = await supabase
+    const { data, error } = await supabase
       .from("questions")
-      .select("id", { count: "exact", head: true })
-      .eq("is_active", true)
-      .eq("tag", key);
+      .select("tag")
+      .eq("is_active", true);
     if (error) throw error;
-    questionUsage = Number(count || 0);
+    questionUsage = (data || []).filter((row) => getCanonicalTagKeysInput(row.tag).includes(key)).length;
   }
   const tenantUsage = readTenants().filter((t) => Array.isArray(t.settings?.allowedTags) && t.settings.allowedTags.some((tag) => normalizeTagKeyInput(tag) === key)).length;
   const templateUsage = readExamStore().templates.filter((tpl) => Array.isArray(tpl.tags) && tpl.tags.some((tag) => normalizeTagKeyInput(tag) === key)).length;
@@ -2669,7 +2683,7 @@ async function storageRollbackImportBatch(batchId) {
 async function storageListQuestions(tag) {
   if (!USE_SUPABASE) {
     const questions = readQuestions().filter((q) => q.is_active !== false);
-    return tag ? questions.filter((q) => q.tag === tag) : questions;
+    return tag ? questions.filter((q) => getCanonicalTagKeysInput(q.tag).includes(normalizeTagKeyInput(tag))) : questions;
   }
 
   const batchSize = 1000;
@@ -2682,7 +2696,6 @@ async function storageListQuestions(tag) {
       .eq("is_active", true)
       .order("created_at", { ascending: true })
       .range(from, from + batchSize - 1);
-    if (tag) query = query.eq("tag", tag);
     const { data, error } = await query;
     if (error) throw error;
     const rows = data || [];
@@ -2690,7 +2703,7 @@ async function storageListQuestions(tag) {
     if (rows.length < batchSize) break;
     from += batchSize;
   }
-  return all;
+  return tag ? all.filter((row) => getCanonicalTagKeysInput(row.tag).includes(normalizeTagKeyInput(tag))) : all;
 }
 
 async function storageBackfillQuestionDifficulties() {

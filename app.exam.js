@@ -224,7 +224,7 @@ function shuffledCopy(items, rng = null) {
 }
 
 function canonicalTagForBlueprint(tag) {
-  const key = normalizeTagKey(tag);
+  const key = getCanonicalTags(tag)[0] || normalizeTagKey(tag);
   if (key === "OTHER") return String(tag || "").trim();
   return key;
 }
@@ -246,7 +246,7 @@ function renderBlueprintSelectors() {
   }
 
   // Render Topics
-  const topics = [...new Set(state.deck.map(c => normalizeTagKey(c.tag)))].sort();
+  const topics = [...new Set(state.deck.flatMap((c) => getCanonicalTags(c.tag)).filter(Boolean))].sort();
   dom.examTopicSelect.innerHTML = ['<option value="">Select Topic...</option>']
     .concat(topics.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`))
     .join("");
@@ -350,7 +350,7 @@ function startExam() {
       setStatus(dom.examStatus, "Select a topic for Topic Master mode.", "error");
       return;
     }
-    candidateCards = state.deck.filter(c => normalizeTagKey(c.tag) === normalizeTagKey(topic) && matchesSelectedDifficulty(c));
+    candidateCards = state.deck.filter(c => getCanonicalTags(c.tag).includes(normalizeTagKey(topic)) && matchesSelectedDifficulty(c));
     console.log(`[ExamDebug] Filtered cards for topic: ${candidateCards.length}`);
   } else if (mode === "weakness") {
     // Filter for cards with accuracy < 50%

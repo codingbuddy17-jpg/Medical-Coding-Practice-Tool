@@ -855,7 +855,9 @@
             <p class="status">Search active questions, bulk update tags, and maintain quality at scale.</p>
             <div class="panel-actions">
               <input id="questionBankSearchInput" type="text" placeholder="Search questions..." />
-              <input id="questionBankTagFilter" type="text" placeholder="Filter by Tag" />
+              <select id="questionBankTagFilter">
+                <option value="">All Tags</option>
+              </select>
               <button id="refreshQuestionBankBtn" class="ghost-btn" type="button">Refresh Bank</button>
               <button id="exportQuestionBankBtn" class="ghost-btn" type="button">Export Active API CSV</button>
             </div>

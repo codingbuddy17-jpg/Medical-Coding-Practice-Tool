@@ -227,13 +227,13 @@ function buildClientImportPreview(parsed) {
       reasons.push("Short answer missing");
     }
 
-    const normalizedTag = normalizeTagKey(row.tag);
-    if (normalizedTag === "OTHER") {
+    const tagKeys = getCanonicalTags(row.tag);
+    if (!tagKeys.length) {
       status = mergeImportStatus(status, "warn");
       reasons.push("Tag not in configured category list");
-    } else if (!allowedTags.has(normalizedTag)) {
+    } else if (tagKeys.some((tagKey) => !allowedTags.has(tagKey))) {
       status = mergeImportStatus(status, "warn");
-      reasons.push("Tag is not currently enabled");
+      reasons.push("One or more tags are not currently enabled");
     }
 
     if (String(row.question || "").length < 15) {
@@ -864,7 +864,7 @@ function renderQuestionBankTable() {
       : String(packedShort?.answer || q.answer || "");
     return `<tr>
       <td><input type="checkbox" data-bank-select="${escapeHtml(q.id)}" ${selected.has(q.id) ? "checked" : ""}></td>
-      <td>${escapeHtml(getTagLabel(q.tag || "General"))}</td>
+      <td>${escapeHtml(formatTagLabels(q.tag || "General"))}</td>
       <td title="${escapeHtml(q.question)}">${escapeHtml(shortQ)}</td>
       <td>${escapeHtml(typeLabel)}</td>
       <td>${escapeHtml(answerLabel)}</td>

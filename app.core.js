@@ -897,16 +897,42 @@ function getTagLabel(tagKey) {
   return found ? (found.label || found.key) : String(tagKey || normalized || "OTHER");
 }
 
+function splitTagValues(tagValue) {
+  return Array.from(
+    new Set(
+      String(tagValue || "")
+        .split(/[,\n;|]+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+function getCanonicalTags(tagValue) {
+  const parts = splitTagValues(tagValue);
+  if (!parts.length) {
+    const single = normalizeTagKey(tagValue);
+    return single === "OTHER" ? [] : [single];
+  }
+  return Array.from(new Set(parts.map((part) => normalizeTagKey(part)).filter((key) => key && key !== "OTHER")));
+}
+
+function formatTagLabels(tagValue) {
+  const tags = getCanonicalTags(tagValue);
+  if (!tags.length) return String(tagValue || "General");
+  return tags.map((tag) => getTagLabel(tag)).join(", ");
+}
+
 function normalizeTagKey(tag) {
   const cleaned = sanitizeTagKey(tag).replace(/-/g, "");
   const registry = Array.isArray(state.tagRegistry) ? state.tagRegistry : [];
   for (const item of registry) {
     const keyClean = sanitizeTagKey(item.key).replace(/-/g, "");
-    if (cleaned === keyClean || cleaned.includes(keyClean)) return item.key;
+    if (cleaned === keyClean) return item.key;
     const aliases = Array.isArray(item.aliases) ? item.aliases : [];
     for (const alias of aliases) {
       const aliasClean = sanitizeTagKey(alias).replace(/-/g, "");
-      if (aliasClean && (cleaned === aliasClean || cleaned.includes(aliasClean))) return item.key;
+      if (aliasClean && cleaned === aliasClean) return item.key;
     }
   }
 
@@ -920,6 +946,15 @@ function renderDynamicTagControls() {
     dom.questionBankBulkTag.innerHTML = ['<option value="">Change tag to...</option>']
       .concat(CATEGORY_OPTIONS.filter((item) => item.key !== "ALL").map((item) => `<option value="${escapeHtml(item.key)}">${escapeHtml(item.label)}</option>`))
       .join("");
+  }
+  if (dom.questionBankTagFilter) {
+    const currentValue = dom.questionBankTagFilter.value;
+    dom.questionBankTagFilter.innerHTML = ['<option value="">All Tags</option>']
+      .concat(CATEGORY_OPTIONS.filter((item) => item.key !== "ALL").map((item) => `<option value="${escapeHtml(item.key)}">${escapeHtml(item.label)}</option>`))
+      .join("");
+    if (currentValue && CATEGORY_OPTIONS.some((item) => item.key === currentValue)) {
+      dom.questionBankTagFilter.value = currentValue;
+    }
   }
   if (dom.importDefaultTag) {
     const currentValue = dom.importDefaultTag.value;
