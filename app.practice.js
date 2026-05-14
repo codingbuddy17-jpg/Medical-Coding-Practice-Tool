@@ -220,7 +220,6 @@ function renderCategoryScorecards() {
 function updateRoleUI() {
   const isTrainer = state.role === "trainer";
   const trainerKeyVerified = isTrainer && state.trainerKeyVerified;
-  console.log("updateRoleUI called. Role:", state.role);
   const canUseExam = isTrainer || state.role === "trainee";
   dom.trainerZone.classList.toggle("hidden", !trainerKeyVerified);
   dom.resourceManager.classList.toggle("hidden", !trainerKeyVerified);
