@@ -134,6 +134,12 @@
         <option value="trainer">Mentor Console</option>
       </select>
 
+      <!-- Google session bar: always visible when signed in, regardless of role card state -->
+      <div id="googleSignedInBar" class="google-signed-bar hidden">
+        <span id="googleSignedInEmail" class="google-signed-email"></span>
+        <button id="googleSignOutBtn" class="ghost-btn" type="button" style="font-size:0.8rem;padding:0.2rem 0.65rem;">Sign out</button>
+      </div>
+
       <!-- Step 2: fill in details — revealed once a card is picked -->
       <div class="role-form-area hidden" id="roleFormArea">
         <div id="googleAuthWrap" class="panel-actions">
@@ -149,7 +155,6 @@
             <span id="googleAuthBtnLabel">Continue with Google</span>
           </button>
           <span id="googleAuthStatus" class="status subtle"></span>
-          <button id="googleSignOutBtn" class="ghost-btn hidden" type="button">Sign out</button>
         </div>
 
         <fieldset class="auth-group">

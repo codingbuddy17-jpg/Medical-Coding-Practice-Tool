@@ -252,6 +252,8 @@ function cacheDOM() {
     topbarSessionActions: document.getElementById("topbarSessionActions"),
     topbarSessionRow: document.getElementById("topbarSessionRow"),
     googleSignOutBtn: document.getElementById("googleSignOutBtn"),
+    googleSignedInBar: document.getElementById("googleSignedInBar"),
+    googleSignedInEmail: document.getElementById("googleSignedInEmail"),
     metricScoreCard: document.getElementById("metricScoreCard"),
     correctCount: document.getElementById("correctCount"),
     wrongCount: document.getElementById("wrongCount"),
@@ -589,8 +591,12 @@ function isValidMobile(value) {
 function updateGoogleAuthUI() {
   if (!dom.googleAuthWrap || !dom.googleAuthStatus || !dom.googleAuthBtn || !dom.googleAuthBtnLabel) return;
   const required = REQUIRE_GOOGLE_FOR_TRIAL_TRAINEE && roleNeedsGoogleAuth();
-  if (dom.googleSignOutBtn) {
-    dom.googleSignOutBtn.classList.toggle("hidden", !state.auth.googleUser?.email);
+  if (dom.googleSignedInBar) {
+    const signedIn = !!state.auth.googleUser?.email;
+    dom.googleSignedInBar.classList.toggle("hidden", !signedIn);
+    if (signedIn && dom.googleSignedInEmail) {
+      dom.googleSignedInEmail.textContent = `Signed in as ${state.auth.googleUser.email}`;
+    }
   }
   dom.googleAuthWrap.classList.toggle("hidden", !required);
   if (dom.userEmailWrap) dom.userEmailWrap.classList.add("hidden");
@@ -611,7 +617,7 @@ function updateGoogleAuthUI() {
     dom.userEmail.value = state.auth.googleUser.email;
     dom.userEmail.disabled = true;
   } else {
-    dom.googleAuthStatus.textContent = "Google sign-in required for Trial/Learner.";
+    dom.googleAuthStatus.textContent = "Google sign-in required for Trial/Member.";
     dom.googleAuthBtnLabel.textContent = "Continue with Google";
     dom.googleAuthBtn.disabled = false;
     dom.userEmail.disabled = false;
