@@ -2913,16 +2913,30 @@ code {
 }
 
 .role-card:hover {
-  border-color: var(--accent);
-  background: var(--accent-soft);
   transform: translateY(-1px);
 }
 
 .role-card.selected {
-  border-color: var(--accent);
-  background: var(--accent-soft);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
 }
+
+/* Trial — teal */
+.role-card--trial { border-color: #99e6d3; }
+.role-card--trial:hover { border-color: #0f766e; background: #f0fdf9; }
+.role-card--trial.selected { border-color: #0f766e; background: #f0fdf9; box-shadow: 0 0 0 3px rgba(15,118,110,0.15); }
+.role-card--trial.selected .role-card-title { color: #0f766e; }
+
+/* Member — amber */
+.role-card--member { border-color: #fcd34d; }
+.role-card--member:hover { border-color: #b45309; background: #fffbeb; }
+.role-card--member.selected { border-color: #b45309; background: #fffbeb; box-shadow: 0 0 0 3px rgba(180,83,9,0.15); }
+.role-card--member.selected .role-card-title { color: #92400e; }
+
+/* Educator — indigo */
+.role-card--educator { border-color: #c7d2fe; }
+.role-card--educator:hover { border-color: #4f46e5; background: #eef2ff; }
+.role-card--educator.selected { border-color: #4f46e5; background: #eef2ff; box-shadow: 0 0 0 3px rgba(79,70,229,0.15); }
+.role-card--educator.selected .role-card-title { color: #4338ca; }
 
 .role-card-icon {
   font-size: 1.6rem;
