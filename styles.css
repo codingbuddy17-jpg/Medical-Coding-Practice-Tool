@@ -286,8 +286,30 @@ h1 {
   border: 1px solid #d2e1ee;
   background: #fcfeff;
   border-radius: 10px;
-  padding: 0.55rem;
+  padding: 0.55rem 0.55rem 0.55rem 0.9rem;
+  border-left-width: 4px;
 }
+
+.landing-tile--practice {
+  background: #f0fdf9;
+  border-color: #99e6d3;
+  border-left-color: #0f766e;
+}
+.landing-tile--practice h3 { color: #0f766e; }
+
+.landing-tile--exam {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  border-left-color: #b45309;
+}
+.landing-tile--exam h3 { color: #92400e; }
+
+.landing-tile--interview {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  border-left-color: #4f46e5;
+}
+.landing-tile--interview h3 { color: #4338ca; }
 
 .landing-tile h3 {
   font-size: 0.9rem;
