@@ -1,3 +1,17 @@
+function selectRoleCard(role) {
+  document.querySelectorAll(".role-card").forEach(c => {
+    c.classList.toggle("selected", c.dataset.role === role);
+  });
+  document.getElementById("roleFormArea")?.classList.remove("hidden");
+  const instituteLink = document.getElementById("roleInstituteLink");
+  if (instituteLink) instituteLink.classList.toggle("hidden", role !== "trainer");
+  if (dom.roleSelect && dom.roleSelect.value !== role) {
+    dom.roleSelect.value = role;
+    dom.roleSelect.dispatchEvent(new Event("change"));
+  }
+  try { localStorage.setItem("pb_last_role", role); } catch {}
+}
+
 function bindEvents() {
   if (bindEvents.done) return;
   bindEvents.done = true;
@@ -6,6 +20,19 @@ function bindEvents() {
       handleMentorSubTab(btn.dataset.subtab);
     });
   });
+
+  document.getElementById("roleCards")?.addEventListener("click", (e) => {
+    const card = e.target.closest(".role-card[data-role]");
+    if (!card) return;
+    selectRoleCard(card.dataset.role);
+    dom.userName?.focus();
+  });
+
+  document.getElementById("openInstituteLoginBtn")?.addEventListener("click", () => {
+    document.getElementById("instituteLoginPanel")?.classList.remove("hidden");
+    document.getElementById("instituteKeyInput")?.focus();
+  });
+
   if (dom.roleSelect) dom.roleSelect.addEventListener("change", () => {
     state.role = dom.roleSelect.value;
     if (state.role !== "trainer") state.trainerKeyVerified = false;
@@ -334,12 +361,12 @@ function bindEvents() {
     );
   });
   if (dom.landingStartTrialBtn) dom.landingStartTrialBtn.addEventListener("click", () => {
-    dom.roleSelect.value = "trial";
+    selectRoleCard("trial");
     state.role = "trial";
     updateRoleUI();
     saveLocal();
     trackCtaEvent("landing_start_trial_click");
-    dom.userName.focus();
+    dom.userName?.focus();
   });
   if (dom.landingFullAccessBtn) dom.landingFullAccessBtn.addEventListener("click", () => {
     openWhatsAppCta(
@@ -515,6 +542,13 @@ async function init() {
   dom.userPhone.value = state.userPhone;
   restoreAuthDraft();
   dom.roleSelect.value = state.role;
+
+  // Restore the role card selection for returning users
+  if (!sessionRestored) {
+    const savedRole = (() => { try { return localStorage.getItem("pb_last_role"); } catch { return null; } })();
+    selectRoleCard(savedRole || state.role || "trial");
+  }
+
   dom.traineeCode.value = "";
   dom.trainerKey.value = sessionRestored ? state.trainerKey : "";
   dom.adminKeyInput.value = "";

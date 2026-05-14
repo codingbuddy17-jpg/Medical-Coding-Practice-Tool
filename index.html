@@ -90,167 +90,96 @@
 
     <div class="auth-layout-wrap">
     <section class="auth panel" id="authPanel">
-      <h2>Start Session</h2>
-      <p class="status auth-hint">Enter your details and choose how you want to access the lab.</p>
-      <fieldset class="auth-group">
-        <legend class="auth-group-legend">Your details</legend>
-        <div class="auth-grid">
-          <label>
-            Name
-            <input id="userName" type="text" placeholder="Learner name" />
-          </label>
-          <label id="userEmailWrap" class="hidden">
-            Email
-            <input id="userEmail" type="email" placeholder="name@email.com" />
-          </label>
-          <label id="userPhoneWrap" class="hidden">
-            Mobile Number
-            <input id="userPhone" type="text" placeholder="10-digit mobile number" />
-          </label>
-        </div>
-      </fieldset>
-      <fieldset class="auth-group">
-        <legend class="auth-group-legend">Access</legend>
-        <div class="auth-grid">
-          <label>
-            Role
-            <select id="roleSelect">
-              <option value="trial">Trial Access</option>
-              <option value="trainee">Learner Access</option>
-              <option value="trainer">Mentor Console</option>
-            </select>
-          </label>
-          <label id="traineeCodeWrap" class="hidden">
-            Learner Access Code
-            <input id="traineeCode" type="password" placeholder="Enter access code" />
-          </label>
-          <label id="trainerKeyWrap" class="hidden">
-            Mentor Key
-            <input id="trainerKey" type="password" placeholder="Enter trainer key" />
-          </label>
-        </div>
-      </fieldset>
-      <div id="googleAuthWrap" class="panel-actions">
-        <button id="googleAuthBtn" class="google-auth-btn" type="button">
-          <span class="google-auth-icon" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-              <path fill="#4285F4" d="M17.64 9.2045c0-.6382-.0573-1.2518-.1636-1.8409H9v3.4818h4.8436c-.2086 1.125-.8427 2.0782-1.7968 2.715v2.2577h2.9086c1.7027-1.5677 2.6846-3.8782 2.6846-6.6136z"/>
-              <path fill="#34A853" d="M9 18c2.43 0 4.4673-.8068 5.9564-2.1818l-2.9086-2.2577c-.8068.5409-1.8382.8614-3.0478.8614-2.3441 0-4.3282-1.5827-5.0364-3.7091H.9573v2.3291C2.4382 15.9864 5.4818 18 9 18z"/>
-              <path fill="#FBBC05" d="M3.9636 10.7136C3.7832 10.1727 3.6818 9.5959 3.6818 9s.1014-1.1727.2818-1.7136V4.9573H.9573C.3477 6.1732 0 7.5477 0 9s.3477 2.8268.9573 4.0427l3.0063-2.3291z"/>
-              <path fill="#EA4335" d="M9 3.5773c1.3214 0 2.5077.4541 3.4418 1.3454l2.5814-2.5814C13.4636.8918 11.4264 0 9 0 5.4818 0 2.4382 2.0136.9573 4.9573l3.0063 2.3291C4.6718 5.16 6.6559 3.5773 9 3.5773z"/>
-            </svg>
+      <h2>How would you like to join?</h2>
+      <p class="auth-hint">Choose your access type to get started.</p>
+
+      <!-- Step 1: pick a role -->
+      <div class="role-cards" id="roleCards">
+        <button class="role-card" type="button" data-role="trial">
+          <span class="role-card-icon">&#128640;</span>
+          <span class="role-card-body">
+            <span class="role-card-title">Free Trial</span>
+            <span class="role-card-sub">Limited questions &middot; subscribe for complete practice bank</span>
           </span>
-          <span id="googleAuthBtnLabel">Continue with Google</span>
         </button>
-        <span id="googleAuthStatus" class="status subtle"></span>
+        <button class="role-card" type="button" data-role="trainee">
+          <span class="role-card-icon">&#127891;</span>
+          <span class="role-card-body">
+            <span class="role-card-title">Learner Access</span>
+            <span class="role-card-sub">Full practice bank for enrolled learners</span>
+          </span>
+        </button>
+        <button class="role-card" type="button" data-role="trainer">
+          <span class="role-card-icon">&#128273;</span>
+          <span class="role-card-body">
+            <span class="role-card-title">Educator</span>
+            <span class="role-card-sub">Mentor Console or Institute Dashboard</span>
+          </span>
+        </button>
       </div>
-      <div class="panel-actions auth-start-actions">
-        <button id="startBtn" class="primary-btn" type="button">Start</button>
+
+      <!-- Hidden select kept for JS backward compat -->
+      <select id="roleSelect" style="display:none" aria-hidden="true">
+        <option value="trial">Trial Access</option>
+        <option value="trainee">Learner Access</option>
+        <option value="trainer">Mentor Console</option>
+      </select>
+
+      <!-- Step 2: fill in details — revealed once a card is picked -->
+      <div class="role-form-area hidden" id="roleFormArea">
+        <div id="googleAuthWrap" class="panel-actions">
+          <button id="googleAuthBtn" class="google-auth-btn" type="button">
+            <span class="google-auth-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                <path fill="#4285F4" d="M17.64 9.2045c0-.6382-.0573-1.2518-.1636-1.8409H9v3.4818h4.8436c-.2086 1.125-.8427 2.0782-1.7968 2.715v2.2577h2.9086c1.7027-1.5677 2.6846-3.8782 2.6846-6.6136z"/>
+                <path fill="#34A853" d="M9 18c2.43 0 4.4673-.8068 5.9564-2.1818l-2.9086-2.2577c-.8068.5409-1.8382.8614-3.0478.8614-2.3441 0-4.3282-1.5827-5.0364-3.7091H.9573v2.3291C2.4382 15.9864 5.4818 18 9 18z"/>
+                <path fill="#FBBC05" d="M3.9636 10.7136C3.7832 10.1727 3.6818 9.5959 3.6818 9s.1014-1.1727.2818-1.7136V4.9573H.9573C.3477 6.1732 0 7.5477 0 9s.3477 2.8268.9573 4.0427l3.0063-2.3291z"/>
+                <path fill="#EA4335" d="M9 3.5773c1.3214 0 2.5077.4541 3.4418 1.3454l2.5814-2.5814C13.4636.8918 11.4264 0 9 0 5.4818 0 2.4382 2.0136.9573 4.9573l3.0063 2.3291C4.6718 5.16 6.6559 3.5773 9 3.5773z"/>
+              </svg>
+            </span>
+            <span id="googleAuthBtnLabel">Continue with Google</span>
+          </button>
+          <span id="googleAuthStatus" class="status subtle"></span>
+        </div>
+
+        <fieldset class="auth-group">
+          <legend class="auth-group-legend">Your details</legend>
+          <div class="auth-grid">
+            <label>
+              Name
+              <input id="userName" type="text" placeholder="Your name" />
+            </label>
+            <label id="userEmailWrap" class="hidden">
+              Email
+              <input id="userEmail" type="email" placeholder="name@email.com" />
+            </label>
+            <label id="userPhoneWrap" class="hidden">
+              Mobile Number
+              <input id="userPhone" type="text" placeholder="10-digit mobile number" />
+            </label>
+            <label id="traineeCodeWrap" class="hidden">
+              Learner Access Code
+              <input id="traineeCode" type="password" placeholder="Enter access code" />
+            </label>
+            <label id="trainerKeyWrap" class="hidden">
+              Mentor Key
+              <input id="trainerKey" type="password" placeholder="Enter mentor key" />
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="role-institute-link hidden" id="roleInstituteLink">
+          <button class="ghost-btn" type="button" id="openInstituteLoginBtn" style="font-size:0.82rem;">
+            Institute Dashboard login &#8594;
+          </button>
+        </div>
+
+        <div class="panel-actions auth-start-actions">
+          <button id="startBtn" class="primary-btn" type="button">Start</button>
+        </div>
+        <p id="sessionStatus" class="status" aria-live="polite"></p>
       </div>
-      <p id="sessionStatus" class="status" aria-live="polite"></p>
     </section>
-
-    <!-- Login Guide — sits beside the auth panel, updates on role change -->
-    <aside class="login-guide" id="loginGuide" aria-label="Login help">
-      <div class="login-guide-inner">
-
-        <!-- Trial guide -->
-        <div class="lg-track" id="lgTrial">
-          <div class="lg-header">
-            <span class="lg-icon">🚀</span>
-            <div>
-              <strong>Trial Access</strong>
-              <p>Google sign-in required for trial access</p>
-            </div>
-          </div>
-          <ol class="lg-steps">
-            <li class="lg-step">
-              <span class="lg-num">1</span>
-              <div><strong>Sign in with Google</strong><span class="lg-sub">Your email will be picked up automatically</span></div>
-            </li>
-            <li class="lg-step">
-              <span class="lg-num">2</span>
-              <div><strong>Enter your name</strong><span class="lg-sub">Use the name you want on your session report</span></div>
-            </li>
-            <li class="lg-step">
-              <span class="lg-num">3</span>
-              <div><strong>Enter your mobile number</strong><span class="lg-sub">Required before you start</span></div>
-            </li>
-            <li class="lg-step">
-              <span class="lg-num">4</span>
-              <div><strong>Tap Start</strong><span class="lg-sub">Your trial includes 20 questions</span></div>
-            </li>
-          </ol>
-          <div class="lg-note">
-            <span>💡</span>
-            <span>Complete the trial first, then move to full learner access for the full bank.</span>
-          </div>
-        </div>
-
-        <!-- Learner guide -->
-        <div class="lg-track hidden" id="lgLearner">
-          <div class="lg-header">
-            <span class="lg-icon">🎓</span>
-            <div>
-              <strong>Learner Access</strong>
-              <p>Google sign-in required for full learner access</p>
-            </div>
-          </div>
-          <ol class="lg-steps">
-            <li class="lg-step">
-              <span class="lg-num">1</span>
-              <div><strong>Sign in with Google</strong><span class="lg-sub">Your approved learner email is verified there</span></div>
-            </li>
-            <li class="lg-step">
-              <span class="lg-num">2</span>
-              <div><strong>Select Learner Access</strong><span class="lg-sub">Choose the learner role from the dropdown</span></div>
-            </li>
-            <li class="lg-step">
-              <span class="lg-num">3</span>
-              <div><strong>Enter your name</strong><span class="lg-sub">Use the name your trainer or institute knows you by</span></div>
-            </li>
-            <li class="lg-step">
-              <span class="lg-num">4</span>
-              <div><strong>Enter your mobile number</strong><span class="lg-sub">Required before starting the session</span></div>
-            </li>
-            <li class="lg-step">
-              <span class="lg-num">5</span>
-              <div><strong>Tap Start</strong><span class="lg-sub">You’ll enter the full learner question bank</span></div>
-            </li>
-          </ol>
-          <div class="lg-note">
-            <span>💳</span>
-            <span>Already purchased? Use the email you subscribed with. Want unlimited practice access? <a href="https://wa.me/918309661352?text=Hi%2C+I%27d+like+to+get+full+learner+access+to+PracticeBuddy+Lab" target="_blank" rel="noopener" style="color:#0f766e;font-weight:600;">Contact CodingBuddy360 →</a></span>
-          </div>
-        </div>
-
-        <!-- Trainer guide (minimal) -->
-        <div class="lg-track hidden" id="lgTrainer">
-          <div class="lg-header">
-            <span class="lg-icon">🔑</span>
-            <div>
-              <strong>Mentor Console</strong>
-              <p>For mentors, institutes, and administrators</p>
-            </div>
-          </div>
-          <ol class="lg-steps">
-            <li class="lg-step">
-              <span class="lg-num">1</span>
-              <div><strong>Enter your name</strong><span class="lg-sub">Any label to identify your console session</span></div>
-            </li>
-            <li class="lg-step">
-              <span class="lg-num">2</span>
-              <div><strong>Enter your Mentor Key</strong><span class="lg-sub">If you are an institute or academy, use your assigned code</span></div>
-            </li>
-            <li class="lg-step">
-              <span class="lg-num">3</span>
-              <div><strong>Tap Start</strong><span class="lg-sub">Full console unlocks</span></div>
-            </li>
-          </ol>
-        </div>
-
-      </div>
-    </aside>
     </div><!-- /.auth-layout-wrap -->
     <section class="panel institute-login-panel hidden" id="instituteLoginPanel">
       <h2>Institute Login</h2>
