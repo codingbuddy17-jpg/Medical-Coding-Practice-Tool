@@ -66,28 +66,87 @@ body {
 
 .topbar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding: 0.15rem 0.1rem 0.35rem;
+  flex-direction: column;
+  gap: 0;
+  padding: 0.15rem 0.1rem 0;
   border-bottom: 1px solid #dbe6f2;
   margin-bottom: 0.45rem;
 }
 
+/* Row 1: brand + help button */
+.topbar-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 0.3rem;
+}
+
+/* Row 2: session stats + actions */
+.topbar-session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 2px 8px;
+  border-top: 1px solid #e8f0f8;
+  flex-wrap: wrap;
+}
+.topbar-session-row.hidden { display: none; }
+
+/* Stat chips row */
 .topbar-session-summary {
-  font-size: 0.85rem;
-  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
 }
+.topbar-session-summary.hidden { display: none; }
 
-.topbar-session-summary:not(.hidden) {
-  font-weight: 500;
-  color: var(--ink);
+.tb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+  line-height: 1.4;
 }
+.tb-name  { background: #f1f5f9; color: #334155; }
+.tb-score { background: #dcfce7; color: #166534; }
+.tb-score.mid { background: #fef9c3; color: #92400e; }
+.tb-score.low { background: #fee2e2; color: #991b1b; }
+.tb-avg   { background: #eff6ff; color: #1e40af; }
 
-.topbar-session-actions.hidden {
-  display: none;
+/* Session action buttons */
+.topbar-session-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
+.topbar-session-actions.hidden { display: none; }
+
+.tb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 8px;
+  border: 1.5px solid;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+  background: transparent;
+}
+.tb-btn-export { border-color: var(--accent); color: var(--accent); }
+.tb-btn-export:hover { background: var(--accent-soft); }
+.tb-btn-end   { border-color: #dc2626; color: #dc2626; }
+.tb-btn-end:hover { background: #fee2e2; }
 
 .eyebrow {
   font-size: 0.8rem;
@@ -107,7 +166,8 @@ h1 {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  min-height: 96px;
+  min-height: 0;
+  flex: 0 0 auto;
 }
 
 .brand-logo {
@@ -2031,22 +2091,27 @@ code {
   }
 
   .topbar {
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 0.55rem;
+    align-items: center;
+    gap: 8px;
   }
 
   .brand-block {
-    width: 100%;
-    align-items: flex-start;
-    gap: 0.45rem;
+    align-items: center;
+    gap: 0.4rem;
     min-height: 0;
   }
 
   .brand-logo {
-    width: 146px;
-    height: 58px;
-    margin-top: 0.1rem;
+    width: 80px;
+    height: 32px;
+    margin-top: 0;
+  }
+
+  .eyebrow { display: none; }
+
+  h1 {
+    font-size: 0.92rem;
+    white-space: nowrap;
   }
 
   .brand-block>div .status {
@@ -2055,9 +2120,18 @@ code {
     margin: 0.1rem 0 0;
   }
 
-  .topbar .panel-actions {
-    width: 100%;
-    margin-top: 0.2rem;
+  .topbar-right {
+    gap: 5px;
+  }
+
+  .tb-chip {
+    font-size: 0.68rem;
+    padding: 2px 7px;
+  }
+
+  .tb-btn {
+    font-size: 0.7rem;
+    padding: 4px 8px;
   }
 
   /* Fix for landing page keys/buttons on mobile */

@@ -250,6 +250,7 @@ function cacheDOM() {
 
     topbarSessionSummary: document.getElementById("topbarSessionSummary"),
     topbarSessionActions: document.getElementById("topbarSessionActions"),
+    topbarSessionRow: document.getElementById("topbarSessionRow"),
     googleSignOutBtn: document.getElementById("googleSignOutBtn"),
     metricScoreCard: document.getElementById("metricScoreCard"),
     correctCount: document.getElementById("correctCount"),

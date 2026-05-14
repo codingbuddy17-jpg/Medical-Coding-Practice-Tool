@@ -269,6 +269,13 @@ function updateRoleUI() {
   updateGoogleAuthUI();
 }
 
+function renderTopbarChips(name, score, avgLabel) {
+  const scoreClass = score >= 75 ? "" : score >= 50 ? " mid" : " low";
+  return `<span class="tb-chip tb-name">${escapeHtml(name)}</span>` +
+    `<span class="tb-chip tb-score${scoreClass}">${score}%</span>` +
+    `<span class="tb-chip tb-avg">&#9201; ${avgLabel}/Q</span>`;
+}
+
 function updateSessionIdentityLock() {
   const locked = Boolean(state.session.isActive);
   dom.userName.disabled = locked;
@@ -286,11 +293,8 @@ function updateSessionIdentityLock() {
       const score = attempted ? Math.round((state.session.correct / attempted) * 100) : 0;
       const avgSeconds = attempted ? state.session.totalAnswerTimeMs / attempted / 1000 : 0;
       const avgLabel = attempted ? formatSeconds(avgSeconds) : "--";
-      dom.topbarSessionSummary.textContent = `${name} · ${score}% · Avg/Q ${avgLabel}`;
-      dom.topbarSessionSummary.classList.remove("hidden");
-      dom.topbarSessionActions.classList.remove("hidden");
-      if (dom.exportReportBtn) dom.exportReportBtn.classList.remove("hidden");
-      if (dom.endSessionBtn) dom.endSessionBtn.classList.remove("hidden");
+      dom.topbarSessionSummary.innerHTML = renderTopbarChips(name, score, avgLabel);
+      if (dom.topbarSessionRow) dom.topbarSessionRow.classList.remove("hidden");
       if (dom.googleSignOutBtn) dom.googleSignOutBtn.classList.toggle("hidden", !state.auth.googleUser?.email);
 
       // Show Practice View
@@ -300,15 +304,10 @@ function updateSessionIdentityLock() {
         practiceTab.classList.add("active");
       }
     } else {
-      dom.topbarSessionSummary.textContent = "";
-      dom.topbarSessionSummary.classList.add("hidden");
-      if (state.auth.googleUser?.email) {
-        dom.topbarSessionActions.classList.remove("hidden");
-        if (dom.exportReportBtn) dom.exportReportBtn.classList.add("hidden");
-        if (dom.endSessionBtn) dom.endSessionBtn.classList.add("hidden");
-        if (dom.googleSignOutBtn) dom.googleSignOutBtn.classList.remove("hidden");
-      } else {
-        dom.topbarSessionActions.classList.add("hidden");
+      dom.topbarSessionSummary.innerHTML = "";
+      if (dom.topbarSessionRow) dom.topbarSessionRow.classList.add("hidden");
+      if (state.auth.googleUser?.email && dom.googleSignOutBtn) {
+        dom.googleSignOutBtn.classList.remove("hidden");
       }
 
       // Hide Practice View
@@ -344,7 +343,7 @@ function updateMetrics() {
     const name = state.userName || "Session";
     const avgSeconds = attempted ? state.session.totalAnswerTimeMs / attempted / 1000 : 0;
     const avgLabel = attempted ? formatSeconds(avgSeconds) : "--";
-    dom.topbarSessionSummary.textContent = `${name} · ${score}% · Avg/Q ${avgLabel}`;
+    dom.topbarSessionSummary.innerHTML = renderTopbarChips(name, score, avgLabel);
   }
 
   if (dom.examRemainingNotice && state.role !== "trainer") {

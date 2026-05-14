@@ -27,21 +27,30 @@
 
   <main class="app">
     <header class="topbar">
-      <div class="brand-block">
-        <img class="brand-logo" src="CCB.png" alt="CodingBuddy360 logo" />
-        <div>
-          <p class="eyebrow">CodingBuddy360</p>
-          <h1>PracticeBuddy Lab</h1>
-          <span id="tenantNameDisplay" class="tenant-name-badge" style="display:none"></span>
-
+      <!-- Row 1: brand + help trigger -->
+      <div class="topbar-brand-row">
+        <div class="brand-block">
+          <img class="brand-logo" src="CCB.png" alt="CodingBuddy360 logo" />
+          <div>
+            <p class="eyebrow">CodingBuddy360</p>
+            <h1>PracticeBuddy Lab</h1>
+            <span id="tenantNameDisplay" class="tenant-name-badge" style="display:none"></span>
+          </div>
+        </div>
+        <button id="onboardingReplayBtn" class="onboarding-help-btn" type="button" aria-label="Show app tour">?</button>
+      </div>
+      <!-- Row 2: session stats + actions (hidden until session starts) -->
+      <div class="topbar-session-row hidden" id="topbarSessionRow">
+        <div id="topbarSessionSummary" class="topbar-session-summary" aria-live="polite"></div>
+        <div id="topbarSessionActions" class="topbar-session-actions">
+          <button id="exportReportBtn" class="tb-btn tb-btn-export" type="button">
+            <span aria-hidden="true">&#11015;</span> Export PDF
+          </button>
+          <button id="endSessionBtn" class="tb-btn tb-btn-end" type="button">
+            <span aria-hidden="true">&#10005;</span> End Session
+          </button>
         </div>
       </div>
-      <span id="topbarSessionSummary" class="topbar-session-summary hidden" aria-live="polite"></span>
-      <div id="topbarSessionActions" class="panel-actions topbar-session-actions hidden">
-        <button id="exportReportBtn" class="ghost-btn" type="button">Export PDF Report</button>
-        <button id="endSessionBtn" class="ghost-btn" type="button">End Session</button>
-      </div>
-      <button id="onboardingReplayBtn" class="onboarding-help-btn" type="button" aria-label="Show app tour">?</button>
     </header>
 
     <nav id="mainNav" class="panel main-nav hidden">

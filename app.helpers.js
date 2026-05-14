@@ -174,8 +174,7 @@ function updatePreSessionLandingUI() {
     if (navDom.viewPractice) navDom.viewPractice.classList.remove("active");
     if (navDom.viewMentor) navDom.viewMentor.classList.remove("active");
     if (navDom.viewInterview) navDom.viewInterview.classList.remove("active");
-    if (dom.topbarSessionActions) dom.topbarSessionActions.classList.add("hidden");
-    if (dom.topbarSessionSummary) dom.topbarSessionSummary.classList.add("hidden");
+    if (dom.topbarSessionRow) dom.topbarSessionRow.classList.add("hidden");
   } else {
     // Hide Landing & Auth
     dom.preSessionLanding.classList.add("landing-hidden");
