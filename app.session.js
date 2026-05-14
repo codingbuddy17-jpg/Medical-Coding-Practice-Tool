@@ -262,7 +262,7 @@ async function startSession() {
   }
 
   if ((role === "trial" || role === "trainee") && (!userEmail || !userPhone)) {
-    setStatus(dom.sessionStatus, "Email and phone are required to start trial/learner mode.", "error");
+    setStatus(dom.sessionStatus, "Email and phone are required to start trial/member mode.", "error");
     return;
   }
 
@@ -274,7 +274,7 @@ async function startSession() {
     if (REQUIRE_GOOGLE_FOR_TRIAL_TRAINEE) {
       const googleEmail = String(state.auth.googleUser?.email || "").trim().toLowerCase();
       if (!googleEmail || !state.auth.accessToken) {
-        setStatus(dom.sessionStatus, "Google sign-in is required for Trial/Learner access.", "error");
+        setStatus(dom.sessionStatus, "Google sign-in is required for Trial/Member access.", "error");
         return;
       }
       if (String(userEmail || "").trim().toLowerCase() !== googleEmail) {
@@ -289,11 +289,11 @@ async function startSession() {
     try {
       const verification = await apiRequest("/api/access/verify", "POST", { email: userEmail });
       if (!verification.valid) {
-        let msg = "Learner access is not enabled for this email.";
-        if (verification.reason === "email_required_for_learner_access") msg = "Google email is required for learner access.";
+        let msg = "Member access is not enabled for this email.";
+        if (verification.reason === "email_required_for_learner_access") msg = "Google email is required for member access.";
         if (verification.reason === "email_not_allowlisted") msg = "This email is not allowlisted. Contact mentor/admin.";
-        else if (verification.reason === "learner_inactive") msg = "Learner access is inactive. Contact mentor/admin.";
-        else if (verification.reason === "learner_access_expired") msg = "Learner access has expired. Contact mentor/admin.";
+        else if (verification.reason === "learner_inactive") msg = "Member access is inactive. Contact mentor/admin.";
+        else if (verification.reason === "learner_access_expired") msg = "Member access has expired. Contact mentor/admin.";
         setStatus(dom.sessionStatus, msg, "error");
         return;
       }
@@ -304,7 +304,7 @@ async function startSession() {
         cohortName: verification.cohortName || ""
       };
     } catch {
-      setStatus(dom.sessionStatus, "Could not verify learner access code. Try again.", "error");
+      setStatus(dom.sessionStatus, "Could not verify member access code. Try again.", "error");
       return;
     }
   }

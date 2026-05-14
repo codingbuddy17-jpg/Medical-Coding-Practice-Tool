@@ -114,8 +114,8 @@
         <button class="role-card" type="button" data-role="trainee">
           <span class="role-card-icon">&#127891;</span>
           <span class="role-card-body">
-            <span class="role-card-title">Learner Access</span>
-            <span class="role-card-sub">Full practice bank for enrolled learners</span>
+            <span class="role-card-title">Member Access</span>
+            <span class="role-card-sub">Full practice bank for enrolled members</span>
           </span>
         </button>
         <button class="role-card" type="button" data-role="trainer">
@@ -130,7 +130,7 @@
       <!-- Hidden select kept for JS backward compat -->
       <select id="roleSelect" style="display:none" aria-hidden="true">
         <option value="trial">Trial Access</option>
-        <option value="trainee">Learner Access</option>
+        <option value="trainee">Member Access</option>
         <option value="trainer">Mentor Console</option>
       </select>
 
@@ -167,7 +167,7 @@
               <input id="userPhone" type="text" placeholder="10-digit mobile number" />
             </label>
             <label id="traineeCodeWrap" class="hidden">
-              Learner Access Code
+              Member Access Code
               <input id="traineeCode" type="password" placeholder="Enter access code" />
             </label>
             <label id="trainerKeyWrap" class="hidden">
@@ -427,7 +427,7 @@
                   <p id="examStatus" class="status">Exam mode inactive.</p>
                   <p id="examRemainingNotice" class="status subtle">Remaining session questions: --</p>
                   <div id="examTrialContactWrap" class="hidden">
-                    <button id="examTrialContactBtn" class="ghost-btn cta-secondary" type="button">Contact For Learner Access</button>
+                    <button id="examTrialContactBtn" class="ghost-btn cta-secondary" type="button">Contact For Member Access</button>
                   </div>
                   <p id="examTimer" class="status">Time left: --:--</p>
                 </div>
@@ -599,13 +599,13 @@
           <section class="panel">
             <h3>Mentor Session Console <span id="sessionConsoleSummary" class="panel-badge panel-badge-sessions"
                 aria-live="polite"></span></h3>
-            <p class="status">Track learner sessions, filter quickly, and export clean session logs.</p>
+            <p class="status">Track member sessions, filter quickly, and export clean session logs.</p>
             <div class="panel-actions">
-              <input id="sessionSearchInput" type="text" placeholder="Search learner" />
+              <input id="sessionSearchInput" type="text" placeholder="Search member" />
               <select id="sessionRoleFilter">
                 <option value="">All Access Types</option>
                 <option value="trial">Trial Access</option>
-                <option value="trainee">Learner Access</option>
+                <option value="trainee">Member Access</option>
                 <option value="trainer">Mentor Console</option>
               </select>
               <select id="sessionWindowFilter">
@@ -653,11 +653,11 @@
           <!-- Moved Weak Topic Analytics Here -->
           <section class="panel">
             <h3>Weak-Topic Analytics</h3>
-            <p class="status">Load learner or cohort analytics to identify weak topics and trigger focused drills.</p>
+            <p class="status">Load member or cohort analytics to identify weak topics and trigger focused drills.</p>
             <div class="auth-grid">
               <label>
                 User Email
-                <input id="analyticsUserEmail" type="email" placeholder="learner@email.com" />
+                <input id="analyticsUserEmail" type="email" placeholder="member@email.com" />
               </label>
               <label>
                 Cohort
@@ -1060,7 +1060,7 @@
           <details id="bankFlagSection" class="details-panel mentor-section">
             <summary>Question Review Queue <span id="flagQueueOpenCount" class="panel-badge" aria-live="polite"></span></summary>
             <section class="panel">
-              <p class="status">Resolve flagged questions quickly to keep quality and learner trust high.</p>
+              <p class="status">Resolve flagged questions quickly to keep quality and member trust high.</p>
               <div class="panel-actions">
                 <select id="flagStatusFilter">
                   <option value="open">Open</option>
@@ -1156,7 +1156,7 @@
                 <div class="mono-funnel-label">CTA Clicks</div>
               </div>
             </div>
-            <div class="mono-learner-stat">Paid Learner Sessions: <strong id="monoLearnerTotal">—</strong></div>
+            <div class="mono-learner-stat">Paid Member Sessions: <strong id="monoLearnerTotal">—</strong></div>
 
             <!-- Hot leads table -->
             <h4 style="margin:16px 0 6px;font-size:0.88rem;color:#0f766e;">🔥 Hot Leads — Trial users near question limit</h4>
@@ -1214,7 +1214,7 @@
             <p id="adminStatus" class="status" aria-live="polite"></p>
             <div id="adminTools" class="hidden">
               <div class="admin-quick-actions">
-                <a class="ghost-btn" href="#adminLearnersSection">Learners</a>
+                <a class="ghost-btn" href="#adminLearnersSection">Members</a>
                 <a class="ghost-btn" href="#adminCohortsSection">Cohorts</a>
                 <a class="ghost-btn" href="#adminAdvancedSection">Advanced</a>
                 <a class="ghost-btn" href="#adminAuditSection">Audit Log</a>
@@ -1224,7 +1224,7 @@
                 <div class="admin-summary-title">Access Status Summary</div>
                 <div class="admin-summary-grid">
                   <div class="admin-summary-item">
-                    <span class="admin-summary-label">Learner Access</span>
+                    <span class="admin-summary-label">Member Access</span>
                     <strong id="adminSummaryLearner">--</strong>
                   </div>
                   <div class="admin-summary-item">
@@ -1250,11 +1250,11 @@
                 </div>
               </div>
               <details id="adminLearnersSection" class="details-panel admin-section" open>
-                <summary>Learner Access</summary>
+                <summary>Member Access</summary>
                 <div class="auth-grid">
                   <label>
-                    Learner Email
-                    <input id="learnerEmailInput" type="email" placeholder="learner@email.com" />
+                    Member Email
+                    <input id="learnerEmailInput" type="email" placeholder="member@email.com" />
                   </label>
                   <label>
                     Access Active
@@ -1270,8 +1270,8 @@
                   </label>
                 </div>
                 <div class="panel-actions">
-                  <button id="saveLearnerBtn" class="primary-btn" type="button">Add/Update Learner</button>
-                  <button id="refreshLearnersBtn" class="ghost-btn" type="button">Refresh Learners</button>
+                  <button id="saveLearnerBtn" class="primary-btn" type="button">Add/Update Member</button>
+                  <button id="refreshLearnersBtn" class="ghost-btn" type="button">Refresh Members</button>
                 </div>
                 <p id="learnerAccessStatus" class="status"></p>
                 <div class="table-wrap">
@@ -1287,7 +1287,7 @@
                     </thead>
                     <tbody id="learnerAccessBody">
                       <tr>
-                        <td colspan="5">No learner emails loaded.</td>
+                        <td colspan="5">No member emails loaded.</td>
                       </tr>
                     </tbody>
                   </table>
@@ -1344,7 +1344,7 @@
                     </label>
                     <label>
                       Member Email
-                      <input id="memberEmailInput" type="email" placeholder="learner@email.com" />
+                      <input id="memberEmailInput" type="email" placeholder="member@email.com" />
                       <span class="helper">Required if cohort uses email validation.</span>
                     </label>
                     <label>
@@ -1426,8 +1426,8 @@
                 <summary>Advanced Settings</summary>
                 <div class="auth-grid">
                   <label>
-                    Global Learner Code
-                    <input id="adminTraineeCode" type="text" placeholder="Set learner access code" />
+                    Global Member Code
+                    <input id="adminTraineeCode" type="text" placeholder="Set member access code" />
                     <span class="helper">Legacy fallback only. Email allowlist is primary.</span>
                   </label>
                   <label>
@@ -1443,19 +1443,19 @@
                   <label>
                     Max Cards per Session
                     <input id="adminMaxSessionLimit" type="number" min="1" step="1" placeholder="250" />
-                    <span class="helper">Applies to learners only. Trainers are unlimited.</span>
+                    <span class="helper">Applies to members only. Trainers are unlimited.</span>
                   </label>
                   <label>
-                    Learner Access Active
+                    Member Access Active
                     <select id="adminTraineeActive">
                       <option value="true">Yes</option>
                       <option value="false">No</option>
                     </select>
                   </label>
                   <label>
-                    Learner Access Expiry
+                    Member Access Expiry
                     <input id="adminTraineeExpiry" type="date" />
-                    <span class="helper">After this date, legacy learner code stops.</span>
+                    <span class="helper">After this date, legacy member code stops.</span>
                   </label>
                 </div>
                 <div class="panel-actions">

@@ -1161,7 +1161,7 @@ async function handleTagRegistryAction(action, tagKey) {
 
 function toAccessTypeLabel(role) {
   if (role === "trial") return "Trial Access";
-  if (role === "trainee") return "Learner Access";
+  if (role === "trainee") return "Member Access";
   if (role === "trainer") return "Mentor Console";
   return role || "-";
 }
