@@ -105,7 +105,7 @@ function bindEvents() {
 
   if (dom.toggleExamPanelBtn) dom.toggleExamPanelBtn.addEventListener("click", () => {
     if (isTrialUser()) {
-      setStatus(dom.examStatus, "Mock Exam Practice Mode is available for trainees only. Please contact us to upgrade your access.", "error");
+      setStatus(dom.examStatus, "Mock Exam Practice Mode is available for learners only. Please contact us to upgrade your access.", "error");
       dom.examTrialContactWrap.classList.remove("hidden");
       dom.examPanel.classList.add("hidden");
       return;
@@ -376,7 +376,7 @@ function bindEvents() {
   });
   if (dom.examTrialContactBtn) dom.examTrialContactBtn.addEventListener("click", () => {
     openWhatsAppCta(
-      "Hello, I am on trial mode and would like trainee access to enable Mock Exam Practice Mode.",
+      "Hello, I am on trial mode and would like learner access to enable Mock Exam Practice Mode.",
       "cta_timed_exam_trial_click"
     );
   });

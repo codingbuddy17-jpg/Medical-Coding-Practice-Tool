@@ -262,7 +262,7 @@ async function startSession() {
   }
 
   if ((role === "trial" || role === "trainee") && (!userEmail || !userPhone)) {
-    setStatus(dom.sessionStatus, "Email and phone are required to start trial/trainee mode.", "error");
+    setStatus(dom.sessionStatus, "Email and phone are required to start trial/learner mode.", "error");
     return;
   }
 
@@ -304,7 +304,7 @@ async function startSession() {
         cohortName: verification.cohortName || ""
       };
     } catch {
-      setStatus(dom.sessionStatus, "Could not verify trainee access code. Try again.", "error");
+      setStatus(dom.sessionStatus, "Could not verify learner access code. Try again.", "error");
       return;
     }
   }
