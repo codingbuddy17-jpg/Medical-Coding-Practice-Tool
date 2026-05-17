@@ -4584,20 +4584,33 @@ const server = http.createServer(async (req, res) => {
         chain.questions.sort((a, b) => a.position - b.position);
       }
 
-      // Merge with existing chains
-      const iqPath = path.join(__dirname, "data/interview-questions.json");
-      let existing = { chains: [] };
-      try {
-        existing = JSON.parse(fs.readFileSync(iqPath, "utf8"));
-        if (!Array.isArray(existing.chains)) existing.chains = [];
-      } catch {}
+      const imported = Object.values(chainMap);
 
-      const newChainsById = chainMap;
-      const merged = existing.chains.filter(c => !newChainsById[c.id]);
-      const imported = Object.values(newChainsById);
-      merged.push(...imported);
-
-      fs.writeFileSync(iqPath, JSON.stringify({ chains: merged }, null, 2), "utf8");
+      if (USE_SUPABASE) {
+        const upsertPayload = imported.map(c => ({
+          id: c.id,
+          track: c.track,
+          specialty: c.specialty || null,
+          title: c.title,
+          scenario: c.scenario,
+          questions: c.questions,
+          updated_at: new Date().toISOString()
+        }));
+        const { error } = await supabase
+          .from("interview_chains")
+          .upsert(upsertPayload, { onConflict: "id" });
+        if (error) throw new Error(error.message);
+      } else {
+        const iqPath = path.join(__dirname, "data/interview-questions.json");
+        let existing = { chains: [] };
+        try {
+          existing = JSON.parse(fs.readFileSync(iqPath, "utf8"));
+          if (!Array.isArray(existing.chains)) existing.chains = [];
+        } catch {}
+        const merged = existing.chains.filter(c => !chainMap[c.id]);
+        merged.push(...imported);
+        fs.writeFileSync(iqPath, JSON.stringify({ chains: merged }, null, 2), "utf8");
+      }
 
       const importedQuestions = imported.reduce((acc, c) => acc + c.questions.length, 0);
       return json(res, 200, {
@@ -4615,11 +4628,20 @@ const server = http.createServer(async (req, res) => {
     const track = url.searchParams.get("track") || "";
     const specialty = url.searchParams.get("specialty") || "";
     try {
-      const raw = JSON.parse(fs.readFileSync(path.join(__dirname, "data/interview-questions.json"), "utf8"));
-      let chains = Array.isArray(raw.chains) ? raw.chains : [];
-      if (track) chains = chains.filter(c => c.track === track);
-      if (specialty) chains = chains.filter(c => c.specialty === specialty);
-      return json(res, 200, { chains });
+      if (USE_SUPABASE) {
+        let query = supabase.from("interview_chains").select("*");
+        if (track) query = query.eq("track", track);
+        if (specialty) query = query.eq("specialty", specialty);
+        const { data, error } = await query;
+        if (error) throw new Error(error.message);
+        return json(res, 200, { chains: data || [] });
+      } else {
+        const raw = JSON.parse(fs.readFileSync(path.join(__dirname, "data/interview-questions.json"), "utf8"));
+        let chains = Array.isArray(raw.chains) ? raw.chains : [];
+        if (track) chains = chains.filter(c => c.track === track);
+        if (specialty) chains = chains.filter(c => c.specialty === specialty);
+        return json(res, 200, { chains });
+      }
     } catch (err) {
       return json(res, 500, { error: "Could not load interview questions" });
     }
