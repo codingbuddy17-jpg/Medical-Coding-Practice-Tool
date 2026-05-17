@@ -254,6 +254,8 @@ function cacheDOM() {
     googleSignOutBtn: document.getElementById("googleSignOutBtn"),
     googleSignedInBar: document.getElementById("googleSignedInBar"),
     googleSignedInEmail: document.getElementById("googleSignedInEmail"),
+    authDetailsGroup: document.getElementById("authDetailsGroup"),
+    authStartActions: document.getElementById("authStartActions"),
     metricScoreCard: document.getElementById("metricScoreCard"),
     correctCount: document.getElementById("correctCount"),
     wrongCount: document.getElementById("wrongCount"),
@@ -600,24 +602,34 @@ function updateGoogleAuthUI() {
   }
   dom.googleAuthWrap.classList.toggle("hidden", !required);
   if (dom.userEmailWrap) dom.userEmailWrap.classList.add("hidden");
-  if (dom.userPhoneWrap) dom.userPhoneWrap.classList.toggle("hidden", !(required && state.auth.googleUser?.email));
+
   if (!required) {
+    // Educator — no Google needed, show form immediately
     dom.googleAuthStatus.textContent = "";
     dom.googleAuthBtnLabel.textContent = "Continue with Google";
     dom.googleAuthBtn.disabled = false;
     dom.userEmail.disabled = false;
     if (dom.userPhoneWrap) dom.userPhoneWrap.classList.add("hidden");
+    if (dom.authDetailsGroup) dom.authDetailsGroup.classList.remove("hidden");
+    if (dom.authStartActions) dom.authStartActions.classList.remove("hidden");
     return;
   }
 
-  if (state.auth.googleUser?.email) {
-    dom.googleAuthStatus.textContent = `Signed in as ${state.auth.googleUser.email}. Enter mobile number to continue.`;
+  const signedIn = !!state.auth.googleUser?.email;
+
+  // Progressive disclosure: hide details + start until Google is connected
+  if (dom.authDetailsGroup) dom.authDetailsGroup.classList.toggle("hidden", !signedIn);
+  if (dom.authStartActions) dom.authStartActions.classList.toggle("hidden", !signedIn);
+  if (dom.userPhoneWrap) dom.userPhoneWrap.classList.toggle("hidden", !signedIn);
+
+  if (signedIn) {
+    dom.googleAuthStatus.textContent = "✓ Signed in — fill your details below and start.";
     dom.googleAuthBtnLabel.textContent = "Google Connected";
     dom.googleAuthBtn.disabled = true;
     dom.userEmail.value = state.auth.googleUser.email;
     dom.userEmail.disabled = true;
   } else {
-    dom.googleAuthStatus.textContent = "Google sign-in required for Trial/Member.";
+    dom.googleAuthStatus.textContent = "Sign in with Google to continue.";
     dom.googleAuthBtnLabel.textContent = "Continue with Google";
     dom.googleAuthBtn.disabled = false;
     dom.userEmail.disabled = false;
