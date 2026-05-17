@@ -584,6 +584,18 @@ h4 {
   padding: 0.55rem 0.65rem;
 }
 
+.metric-correct {
+  background: #f0fdf9;
+  border-color: #99e6d3;
+}
+.metric-correct strong { color: #0f766e; }
+
+.metric-wrong {
+  background: #fff5f5;
+  border-color: #fecaca;
+}
+.metric-wrong strong { color: #dc2626; }
+
 .metric strong {
   display: block;
   margin-top: 0.25rem;
@@ -1653,6 +1665,26 @@ button {
   transform: translateY(-1px);
 }
 
+.ghost-btn--danger {
+  color: #dc2626;
+  border-color: #fecaca;
+}
+.ghost-btn--danger:hover {
+  background: #fff5f5;
+  border-color: #dc2626;
+  color: #b91c1c;
+}
+
+.ghost-btn--warn {
+  color: #b45309;
+  border-color: #fcd34d;
+}
+.ghost-btn--warn:hover {
+  background: #fffbeb;
+  border-color: #b45309;
+  color: #92400e;
+}
+
 .google-auth-btn {
   display: inline-flex;
   align-items: center;
@@ -2597,19 +2629,20 @@ code {
 
 /* Help "?" replay button in topbar */
 .onboarding-help-btn {
-  width: 30px;
   height: 30px;
+  padding: 0 12px;
   border-radius: 999px;
   border: 1.5px solid var(--line);
   background: var(--surface);
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 

@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PracticeBuddy Lab | CodingBuddy360</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230f766e'/><text x='16' y='23' font-family='sans-serif' font-weight='bold' font-size='20' fill='white' text-anchor='middle'>P</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -37,7 +38,7 @@
             <span id="tenantNameDisplay" class="tenant-name-badge" style="display:none"></span>
           </div>
         </div>
-        <button id="onboardingReplayBtn" class="onboarding-help-btn" type="button" aria-label="Show app tour">?</button>
+        <button id="onboardingReplayBtn" class="onboarding-help-btn" type="button" aria-label="Show app tour">? Tour</button>
       </div>
       <!-- Row 2: session stats + actions (hidden until session starts) -->
       <div class="topbar-session-row hidden" id="topbarSessionRow">
@@ -55,19 +56,13 @@
 
     <nav id="mainNav" class="panel main-nav hidden">
       <div class="nav-links">
-        <button class="nav-item active" data-tab="practice">Practice</button>
-        <button class="nav-item" data-tab="exam">Mock Exam</button>
-        <button class="nav-item" data-tab="analytics">Analytics</button>
-        <button id="navMentorItem" class="nav-item hidden" data-tab="mentor">Mentor HQ</button>
-        <button class="nav-item" data-tab="interview" id="navInterviewItem">Interview Mode</button>
+        <button class="nav-item active" data-tab="practice">📋 Practice</button>
+        <button class="nav-item" data-tab="exam">⏱ Mock Exam</button>
+        <button class="nav-item" data-tab="analytics">📊 Analytics</button>
+        <button id="navMentorItem" class="nav-item hidden" data-tab="mentor">🎓 Mentor HQ</button>
+        <button class="nav-item" data-tab="interview" id="navInterviewItem">🎤 Interview Mode</button>
       </div>
     </nav>
-
-    <section class="panel brand-intro" id="brandIntro">
-      <h2>A CodingBuddy360 Product</h2>
-      <p class="status">Enterprise-style coding practice environment built for classroom performance, certification
-        outcomes, and placement readiness.</p>
-    </section>
 
     <section id="preSessionLanding" class="panel landing-panel">
       <h2>Practice Smarter. Perform Better.</h2>
@@ -93,7 +88,7 @@
       </div>
       <div class="panel-actions">
         <button id="landingStartTrialBtn" class="primary-btn" type="button">Start Trial</button>
-        <button id="landingFullAccessBtn" class="ghost-btn cta-secondary" type="button">Request Full Access</button>
+        <button id="landingFullAccessBtn" class="ghost-btn cta-secondary" type="button">Get Full Access &rarr;</button>
       </div>
     </section>
 
@@ -108,21 +103,21 @@
           <span class="role-card-icon">&#128640;</span>
           <span class="role-card-body">
             <span class="role-card-title">Free Trial</span>
-            <span class="role-card-sub">Limited questions &middot; subscribe for complete practice bank</span>
+            <span class="role-card-sub">No signup needed &middot; start in seconds</span>
           </span>
         </button>
         <button class="role-card role-card--member" type="button" data-role="trainee">
           <span class="role-card-icon">&#127891;</span>
           <span class="role-card-body">
             <span class="role-card-title">Member Access</span>
-            <span class="role-card-sub">Full practice bank for enrolled members</span>
+            <span class="role-card-sub">Full question bank &middot; timed exams &middot; analytics</span>
           </span>
         </button>
         <button class="role-card role-card--educator" type="button" data-role="trainer">
           <span class="role-card-icon">&#128273;</span>
           <span class="role-card-body">
             <span class="role-card-title">Educator</span>
-            <span class="role-card-sub">Mentor Console or Institute Dashboard</span>
+            <span class="role-card-sub">Cohort tools &middot; per-member reports &middot; exam scheduling</span>
           </span>
         </button>
       </div>
@@ -190,7 +185,7 @@
         </div>
 
         <div class="panel-actions auth-start-actions">
-          <button id="startBtn" class="primary-btn" type="button">Start</button>
+          <button id="startBtn" class="primary-btn" type="button">Start Practicing</button>
         </div>
         <p id="sessionStatus" class="status" aria-live="polite"></p>
       </div>
@@ -298,11 +293,11 @@
           <span class="metric-label">Session Score</span>
           <strong id="sessionScore">0%</strong>
         </div>
-        <div class="metric">
+        <div class="metric metric-correct">
           <span class="metric-label">Correct Answers</span>
           <strong id="correctCount">0</strong>
         </div>
-        <div class="metric">
+        <div class="metric metric-wrong">
           <span class="metric-label">Wrong Answers</span>
           <strong id="wrongCount">0</strong>
         </div>
@@ -426,16 +421,16 @@
                     </label>
                     <div class="panel-actions">
                       <button id="startExamBtn" class="primary-btn" type="button">Start Exam</button>
-                      <button id="pauseExamBtn" class="ghost-btn hidden" type="button">Pause</button>
-                      <button id="stopExamBtn" class="ghost-btn" type="button">Stop Exam</button>
+                      <button id="pauseExamBtn" class="ghost-btn ghost-btn--warn hidden" type="button">Pause</button>
+                      <button id="stopExamBtn" class="ghost-btn ghost-btn--danger" type="button">Stop Exam</button>
                     </div>
                   </div>
-                  <p id="examStatus" class="status">Exam mode inactive.</p>
-                  <p id="examRemainingNotice" class="status subtle">Remaining session questions: --</p>
+                  <p id="examStatus" class="status"></p>
+                  <p id="examRemainingNotice" class="status subtle"></p>
                   <div id="examTrialContactWrap" class="hidden">
                     <button id="examTrialContactBtn" class="ghost-btn cta-secondary" type="button">Contact For Member Access</button>
                   </div>
-                  <p id="examTimer" class="status">Time left: --:--</p>
+                  <p id="examTimer" class="status"></p>
                 </div>
               </section>
 
