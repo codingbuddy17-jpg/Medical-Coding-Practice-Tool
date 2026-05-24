@@ -527,6 +527,9 @@ async function init() {
   if (typeof initInterviewListeners === "function") {
     initInterviewListeners();
   }
+  if (typeof initAIGenListeners === "function") {
+    initAIGenListeners();
+  }
 
   state.session.isActive = false;
   state.trainerKeyVerified = false;

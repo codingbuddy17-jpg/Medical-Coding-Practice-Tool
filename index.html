@@ -1104,6 +1104,58 @@
             <p class="status">Manage interview scenarios and question chains used in Interview Mode. Tracks: Fresher, Fresher Certified, Experienced (Surgery / ED / Inpatient).</p>
           </section>
 
+          <details class="mentor-section" id="interviewAISection">
+            <summary class="section-title">Generate Questions with AI <span class="summary-badge" style="background:#ede9fe;color:#5b21b6;">✨ AI</span></summary>
+            <div class="mentor-section-body">
+              <p style="font-size:0.85rem;color:#475569;margin-bottom:14px;">
+                Describe a topic and let AI generate a full question chain — scenario + MCQ questions with rationale. Review before saving.
+              </p>
+              <div class="auth-grid">
+                <label>
+                  Track
+                  <select id="aiGenTrack">
+                    <option value="fresher">Fresher</option>
+                    <option value="fresher_certified">Fresher Certified</option>
+                    <option value="experienced">Experienced</option>
+                  </select>
+                </label>
+                <label id="aiGenSpecialtyWrap" class="hidden">
+                  Specialty
+                  <select id="aiGenSpecialty">
+                    <option value="">General</option>
+                    <option value="ed_coding">ED Coding</option>
+                    <option value="surgery">Surgery</option>
+                    <option value="inpatient">Inpatient</option>
+                  </select>
+                </label>
+                <label>
+                  Topic / Focus Area
+                  <input id="aiGenTopic" type="text" placeholder="e.g. ICD-10 fracture coding, E&M leveling, CPT modifiers" />
+                </label>
+                <label>
+                  Number of Chains
+                  <select id="aiGenCount">
+                    <option value="1">1 chain (~3–5 questions)</option>
+                    <option value="2">2 chains</option>
+                    <option value="3">3 chains</option>
+                    <option value="5">5 chains</option>
+                  </select>
+                </label>
+              </div>
+              <div class="panel-actions" style="margin-top:12px;">
+                <button id="aiGenBtn" class="primary-btn" type="button">✨ Generate Questions</button>
+              </div>
+              <p id="aiGenStatus" class="status" style="margin-top:8px;"></p>
+              <div id="aiGenPreview" class="hidden" style="margin-top:16px;">
+                <div id="aiGenPreviewContent" style="margin-bottom:12px;"></div>
+                <div class="panel-actions">
+                  <button id="aiGenSaveBtn" class="primary-btn" type="button">💾 Save to Question Bank</button>
+                  <button id="aiGenDiscardBtn" class="ghost-btn" type="button">Discard</button>
+                </div>
+              </div>
+            </div>
+          </details>
+
           <details class="mentor-section" id="interviewImportSection" open>
             <summary class="section-title">Upload Interview Questions <span class="summary-badge">Excel Import</span></summary>
             <div class="mentor-section-body">

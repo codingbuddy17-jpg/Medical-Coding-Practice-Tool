@@ -4647,6 +4647,152 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (url.pathname === "/api/interview/generate" && req.method === "POST") {
+    const trainerKey = getTrainerKey(req);
+    const access = readAccessConfig();
+    if (!access.trainerKey || trainerKey !== access.trainerKey) {
+      return json(res, 403, { error: "Forbidden" });
+    }
+    const apiKey = process.env.ANTHROPIC_API_KEY || "";
+    if (!apiKey) return json(res, 503, { error: "AI generation is not configured. Add ANTHROPIC_API_KEY to environment variables." });
+
+    try {
+      const body = await parseBody(req);
+      const track = String(body.track || "fresher");
+      const specialty = String(body.specialty || "");
+      const topic = String(body.topic || "general medical coding").slice(0, 200);
+      const count = Math.min(5, Math.max(1, Number(body.count) || 1));
+
+      const VALID_TRACKS = ["fresher", "fresher_certified", "experienced"];
+      if (!VALID_TRACKS.includes(track)) return json(res, 400, { error: "Invalid track" });
+
+      const systemPrompt = `You are a medical coding interview question generator for AAPC CPC and AHIMA CCS certification. Generate interview question chains in strict JSON format. Return ONLY valid JSON with no explanation, markdown, or extra text.
+
+Output format:
+{
+  "chains": [
+    {
+      "id": "unique_snake_case_id",
+      "track": "${track}",
+      "specialty": ${specialty ? `"${specialty}"` : "null"},
+      "title": "Short descriptive title (max 60 chars)",
+      "scenario": "A realistic 2-3 sentence clinical scenario with patient details and procedure context",
+      "questions": [
+        {
+          "id": "q_{chain_id}_{position}",
+          "position": 1,
+          "questionType": "clinical_knowledge",
+          "question": "Question text ending with ?",
+          "isMcq": true,
+          "options": ["A. Option text", "B. Option text", "C. Option text", "D. Option text"],
+          "correctOption": "A",
+          "answer": "Brief answer (1 sentence)",
+          "rationale": "Detailed explanation referencing ICD-10-CM/CPT guidelines and coding rules (2-3 sentences)",
+          "timeLimit": 60
+        }
+      ]
+    }
+  ]
+}
+
+Rules:
+- Generate exactly ${count} chain(s)
+- Each chain must have 3 to 5 questions
+- questionType must be one of: clinical_knowledge, coding_accuracy, reasoning
+- correctOption must be exactly one of: A, B, C, D
+- Options must start with "A. ", "B. ", "C. ", "D. "
+- Use accurate ICD-10-CM, ICD-10-PCS, CPT, and HCPCS codes
+- chain id must be unique snake_case (e.g. icd10_fracture_01)
+- question id format: q_{chain_id}_{position}
+- specialty is "${specialty || "null"}" — set it correctly in every chain
+- Make rationale specific and educational, referencing actual coding guidelines`;
+
+      const userPrompt = `Generate ${count} interview question chain(s).
+Track: ${track}${specialty ? `\nSpecialty: ${specialty}` : ""}
+Topic/Focus: ${topic}
+
+Return only valid JSON.`;
+
+      const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model: "claude-3-5-haiku-20241022",
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }]
+        })
+      });
+
+      if (!aiRes.ok) {
+        const errText = await aiRes.text();
+        return json(res, 502, { error: `AI service error: ${aiRes.status}` });
+      }
+
+      const aiData = await aiRes.json();
+      const rawText = aiData?.content?.[0]?.text || "";
+
+      // Extract JSON — strip any accidental markdown fences
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) return json(res, 502, { error: "AI returned invalid format. Try again." });
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (!Array.isArray(parsed.chains) || parsed.chains.length === 0) {
+        return json(res, 502, { error: "AI returned no chains. Try again." });
+      }
+
+      return json(res, 200, { chains: parsed.chains });
+    } catch (err) {
+      return json(res, 500, { error: `Generation failed: ${err.message}` });
+    }
+  }
+
+  if (url.pathname === "/api/interview/save-chains" && req.method === "POST") {
+    const trainerKey = getTrainerKey(req);
+    const access = readAccessConfig();
+    if (!access.trainerKey || trainerKey !== access.trainerKey) {
+      return json(res, 403, { error: "Forbidden" });
+    }
+    try {
+      const body = await parseBody(req);
+      const chains = Array.isArray(body.chains) ? body.chains : [];
+      if (chains.length === 0) return json(res, 400, { error: "No chains to save" });
+
+      if (USE_SUPABASE) {
+        const payload = chains.map(c => ({
+          id: c.id,
+          track: c.track,
+          specialty: c.specialty || null,
+          title: c.title,
+          scenario: c.scenario,
+          questions: c.questions,
+          updated_at: new Date().toISOString()
+        }));
+        const { error } = await supabase.from("interview_chains").upsert(payload, { onConflict: "id" });
+        if (error) throw new Error(error.message);
+      } else {
+        const iqPath = path.join(__dirname, "data/interview-questions.json");
+        let existing = { chains: [] };
+        try {
+          existing = JSON.parse(fs.readFileSync(iqPath, "utf8"));
+          if (!Array.isArray(existing.chains)) existing.chains = [];
+        } catch {}
+        const chainIds = new Set(chains.map(c => c.id));
+        const merged = existing.chains.filter(c => !chainIds.has(c.id));
+        merged.push(...chains);
+        fs.writeFileSync(iqPath, JSON.stringify({ chains: merged }, null, 2), "utf8");
+      }
+
+      return json(res, 200, { saved: chains.length });
+    } catch (err) {
+      return json(res, 500, { error: `Save failed: ${err.message}` });
+    }
+  }
+
   if (url.pathname === "/api/institute/analytics" && req.method === "GET") {
     const key = getInstituteKey(req);
     const tenant = resolveInstituteFromKey(key);

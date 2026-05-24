@@ -721,8 +721,133 @@ function exitInterviewModule() {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+/* ── AI Question Generation ── */
+
+let aiGenChains = null; // holds generated chains pending save
+
+function initAIGenListeners() {
+  const trackSel = document.getElementById("aiGenTrack");
+  const specWrap = document.getElementById("aiGenSpecialtyWrap");
+  if (trackSel) {
+    trackSel.addEventListener("change", () => {
+      specWrap?.classList.toggle("hidden", trackSel.value !== "experienced");
+    });
+  }
+
+  document.getElementById("aiGenBtn")?.addEventListener("click", handleAIGenerate);
+  document.getElementById("aiGenSaveBtn")?.addEventListener("click", handleAIGenSave);
+  document.getElementById("aiGenDiscardBtn")?.addEventListener("click", handleAIGenDiscard);
+}
+
+async function handleAIGenerate() {
+  const track = document.getElementById("aiGenTrack")?.value || "fresher";
+  const specialty = track === "experienced" ? (document.getElementById("aiGenSpecialty")?.value || "") : "";
+  const topic = (document.getElementById("aiGenTopic")?.value || "").trim();
+  const count = Number(document.getElementById("aiGenCount")?.value || 1);
+  const statusEl = document.getElementById("aiGenStatus");
+  const previewEl = document.getElementById("aiGenPreview");
+  const genBtn = document.getElementById("aiGenBtn");
+
+  if (!topic) {
+    if (statusEl) { statusEl.textContent = "Please enter a topic or focus area."; statusEl.className = "status error"; }
+    return;
+  }
+
+  genBtn.disabled = true;
+  genBtn.textContent = "Generating…";
+  if (statusEl) { statusEl.textContent = "Calling AI — this takes 10–20 seconds…"; statusEl.className = "status"; }
+  previewEl?.classList.add("hidden");
+  aiGenChains = null;
+
+  try {
+    const trainerKey = (typeof dom !== "undefined" && dom.trainerKey?.value) ||
+      document.getElementById("trainerKey")?.value || "";
+    const res = await fetch("/api/interview/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-trainer-key": trainerKey },
+      body: JSON.stringify({ track, specialty, topic, count })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Generation failed");
+
+    aiGenChains = data.chains;
+    if (statusEl) { statusEl.textContent = `✓ Generated ${data.chains.length} chain(s). Review below before saving.`; statusEl.className = "status success"; }
+    renderAIGenPreview(data.chains);
+    previewEl?.classList.remove("hidden");
+  } catch (err) {
+    if (statusEl) { statusEl.textContent = `Error: ${err.message}`; statusEl.className = "status error"; }
+  } finally {
+    genBtn.disabled = false;
+    genBtn.textContent = "✨ Generate Questions";
+  }
+}
+
+function renderAIGenPreview(chains) {
+  const container = document.getElementById("aiGenPreviewContent");
+  if (!container) return;
+  container.innerHTML = chains.map((chain, ci) => {
+    const qRows = chain.questions.map((q, qi) => `
+      <div style="margin:8px 0;padding:8px 10px;background:#f8fafc;border-radius:6px;border-left:3px solid #94a3b8;">
+        <div style="font-size:0.78rem;color:#64748b;margin-bottom:4px;">Q${qi + 1} · <em>${q.questionType}</em></div>
+        <div style="font-size:0.85rem;font-weight:600;margin-bottom:6px;">${escapeHtml(q.question)}</div>
+        ${q.options.map((opt, oi) => {
+          const letter = ["A","B","C","D"][oi];
+          const isCorrect = q.correctOption === letter;
+          return `<div style="font-size:0.82rem;padding:2px 6px;border-radius:4px;${isCorrect ? "background:#d9f3ee;font-weight:600;color:#0f766e;" : "color:#475569;"}">${escapeHtml(opt)}</div>`;
+        }).join("")}
+        <div style="font-size:0.78rem;color:#475569;margin-top:6px;font-style:italic;">${escapeHtml(q.rationale)}</div>
+      </div>`).join("");
+
+    return `<div style="margin-bottom:16px;padding:12px;border:1px solid #c7d2fe;border-radius:10px;background:#f8f7ff;">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+        <strong style="font-size:0.9rem;">${escapeHtml(chain.title)}</strong>
+        <span style="font-size:0.72rem;background:#ede9fe;color:#5b21b6;padding:2px 8px;border-radius:99px;">${chain.track}${chain.specialty ? " · " + chain.specialty : ""}</span>
+      </div>
+      <p style="font-size:0.82rem;color:#475569;margin-bottom:8px;">${escapeHtml(chain.scenario)}</p>
+      ${qRows}
+    </div>`;
+  }).join("");
+}
+
+async function handleAIGenSave() {
+  if (!aiGenChains || aiGenChains.length === 0) return;
+  const statusEl = document.getElementById("aiGenStatus");
+  const saveBtn = document.getElementById("aiGenSaveBtn");
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Saving…";
+
+  try {
+    const trainerKey = (typeof dom !== "undefined" && dom.trainerKey?.value) ||
+      document.getElementById("trainerKey")?.value || "";
+    const res = await fetch("/api/interview/save-chains", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-trainer-key": trainerKey },
+      body: JSON.stringify({ chains: aiGenChains })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Save failed");
+
+    if (statusEl) { statusEl.textContent = `✓ Saved ${data.saved} chain(s) to the question bank.`; statusEl.className = "status success"; }
+    document.getElementById("aiGenPreview")?.classList.add("hidden");
+    aiGenChains = null;
+  } catch (err) {
+    if (statusEl) { statusEl.textContent = `Save error: ${err.message}`; statusEl.className = "status error"; }
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "💾 Save to Question Bank";
+  }
+}
+
+function handleAIGenDiscard() {
+  aiGenChains = null;
+  document.getElementById("aiGenPreview")?.classList.add("hidden");
+  const statusEl = document.getElementById("aiGenStatus");
+  if (statusEl) { statusEl.textContent = "Discarded."; statusEl.className = "status"; }
+}
+
 // Expose for app.init.js
 window.initInterviewListeners = initInterviewListeners;
+window.initAIGenListeners = initAIGenListeners;
 window.resetInterview = resetInterview;
 window.exitInterviewModule = exitInterviewModule;
 
