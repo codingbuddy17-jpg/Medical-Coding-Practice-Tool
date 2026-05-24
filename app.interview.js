@@ -744,6 +744,7 @@ async function handleAIGenerate() {
   const specialty = track === "experienced" ? (document.getElementById("aiGenSpecialty")?.value || "") : "";
   const topic = (document.getElementById("aiGenTopic")?.value || "").trim();
   const count = Number(document.getElementById("aiGenCount")?.value || 1);
+  const customInstructions = (document.getElementById("aiGenCustom")?.value || "").trim();
   const statusEl = document.getElementById("aiGenStatus");
   const previewEl = document.getElementById("aiGenPreview");
   const genBtn = document.getElementById("aiGenBtn");
@@ -765,7 +766,7 @@ async function handleAIGenerate() {
     const res = await fetch("/api/interview/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-trainer-key": trainerKey },
-      body: JSON.stringify({ track, specialty, topic, count })
+      body: JSON.stringify({ track, specialty, topic, count, customInstructions })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Generation failed");

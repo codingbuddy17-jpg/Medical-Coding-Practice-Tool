@@ -4662,6 +4662,7 @@ const server = http.createServer(async (req, res) => {
       const specialty = String(body.specialty || "");
       const topic = String(body.topic || "general medical coding").slice(0, 200);
       const count = Math.min(5, Math.max(1, Number(body.count) || 1));
+      const customInstructions = String(body.customInstructions || "").slice(0, 2000).trim();
 
       const VALID_TRACKS = ["fresher", "fresher_certified", "experienced"];
       if (!VALID_TRACKS.includes(track)) return json(res, 400, { error: "Invalid track" });
@@ -4709,7 +4710,7 @@ Rules:
 
       const userPrompt = `Generate ${count} interview question chain(s).
 Track: ${track}${specialty ? `\nSpecialty: ${specialty}` : ""}
-Topic/Focus: ${topic}
+Topic/Focus: ${topic}${customInstructions ? `\n\nCustom Instructions from the trainer:\n${customInstructions}` : ""}
 
 Return only valid JSON.`;
 
