@@ -724,6 +724,7 @@ function exitInterviewModule() {
 /* ── AI Question Generation ── */
 
 let aiGenChains = null; // holds generated chains pending save
+let aiGenSessionTitles = []; // all titles generated this session (incl. unsaved), sent to server to avoid repeats
 
 function initAIGenListeners() {
   const trackSel = document.getElementById("aiGenTrack");
@@ -766,12 +767,15 @@ async function handleAIGenerate() {
     const res = await fetch("/api/interview/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-trainer-key": trainerKey },
-      body: JSON.stringify({ track, specialty, topic, count, customInstructions })
+      body: JSON.stringify({ track, specialty, topic, count, customInstructions, recentTitles: aiGenSessionTitles })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Generation failed");
 
     aiGenChains = data.chains;
+    // Remember these titles for the rest of the session so the next generation avoids them
+    const newTitles = data.chains.map(c => c.title).filter(Boolean);
+    aiGenSessionTitles = [...new Set([...aiGenSessionTitles, ...newTitles])];
     if (statusEl) { statusEl.textContent = `✓ Generated ${data.chains.length} chain(s). Review below before saving.`; statusEl.className = "status success"; }
     renderAIGenPreview(data.chains);
     previewEl?.classList.remove("hidden");

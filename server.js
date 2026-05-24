@@ -4663,9 +4663,36 @@ const server = http.createServer(async (req, res) => {
       const topic = String(body.topic || "general medical coding").slice(0, 200);
       const count = Math.min(5, Math.max(1, Number(body.count) || 1));
       const customInstructions = String(body.customInstructions || "").slice(0, 2000).trim();
+      // Titles the client already generated this session (unsaved) — avoid repeating them too
+      const recentTitles = Array.isArray(body.recentTitles)
+        ? body.recentTitles.map(t => String(t)).slice(0, 50)
+        : [];
 
       const VALID_TRACKS = ["fresher", "fresher_certified", "experienced"];
       if (!VALID_TRACKS.includes(track)) return json(res, 400, { error: "Invalid track" });
+
+      // Fetch already-saved chain titles for this track+specialty so Claude avoids repeating them
+      let existingTitles = [];
+      if (USE_SUPABASE) {
+        try {
+          let q = supabase.from("interview_chains").select("title").eq("track", track);
+          if (specialty) q = q.eq("specialty", specialty);
+          const { data: rows } = await q.limit(200);
+          if (Array.isArray(rows)) existingTitles = rows.map(r => r.title).filter(Boolean);
+        } catch { /* non-fatal */ }
+      } else {
+        try {
+          const stored = readInterviewQuestions();
+          existingTitles = stored
+            .filter(c => c.track === track && (!specialty || c.specialty === specialty))
+            .map(c => c.title)
+            .filter(Boolean)
+            .slice(0, 200);
+        } catch { /* non-fatal */ }
+      }
+
+      // Merge saved + unsaved session titles, deduplicate
+      const allExistingTitles = [...new Set([...existingTitles, ...recentTitles])];
 
       const systemPrompt = `You are a medical coding interview question generator for AAPC CPC and AHIMA CCS certification. Generate interview question chains in strict JSON format. Return ONLY valid JSON with no explanation, markdown, or extra text.
 
@@ -4708,9 +4735,13 @@ Rules:
 - specialty is "${specialty || "null"}" — set it correctly in every chain
 - Make rationale specific and educational, referencing actual coding guidelines`;
 
+      const avoidBlock = allExistingTitles.length
+        ? `\n\nALREADY EXISTS — do NOT repeat or closely resemble any of these chain titles:\n${allExistingTitles.map((t, i) => `${i + 1}. ${t}`).join("\n")}`
+        : "";
+
       const userPrompt = `Generate ${count} interview question chain(s).
 Track: ${track}${specialty ? `\nSpecialty: ${specialty}` : ""}
-Topic/Focus: ${topic}${customInstructions ? `\n\nCustom Instructions from the trainer:\n${customInstructions}` : ""}
+Topic/Focus: ${topic}${customInstructions ? `\n\nCustom Instructions from the trainer:\n${customInstructions}` : ""}${avoidBlock}
 
 Return only valid JSON.`;
 
