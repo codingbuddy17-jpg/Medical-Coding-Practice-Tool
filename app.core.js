@@ -217,6 +217,7 @@ const state = {
     page: 1,
     pageSize: 120
   },
+  activeMentorSubTab: null,
   auth: {
     googleUser: null,
     accessToken: "",

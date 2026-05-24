@@ -4721,7 +4721,7 @@ Return only valid JSON.`;
           "anthropic-version": "2023-06-01"
         },
         body: JSON.stringify({
-          model: "claude-3-5-haiku-20241022",
+          model: "claude-3-5-haiku-latest",
           max_tokens: 4096,
           system: systemPrompt,
           messages: [{ role: "user", content: userPrompt }]
@@ -4729,8 +4729,9 @@ Return only valid JSON.`;
       });
 
       if (!aiRes.ok) {
-        const errText = await aiRes.text();
-        return json(res, 502, { error: `AI service error: ${aiRes.status}` });
+        let errDetail = "";
+        try { const e = await aiRes.json(); errDetail = e?.error?.message || JSON.stringify(e); } catch { errDetail = await aiRes.text().catch(() => ""); }
+        return json(res, 502, { error: `AI service error: ${aiRes.status}${errDetail ? " — " + errDetail : ""}` });
       }
 
       const aiData = await aiRes.json();

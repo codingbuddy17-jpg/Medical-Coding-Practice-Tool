@@ -653,6 +653,11 @@ if (navDom.navItems) {
 function handleTabSwitch(tabName) {
   if (!tabName) return;
 
+  // Capture which view was already visible BEFORE we clear them in step 2.
+  // This lets us detect a redundant "mentor" re-render from async init callbacks
+  // and avoid scroll-jumping or resetting the sub-tab the user already navigated to.
+  const mentorWasActive = !!navDom.viewMentor?.classList.contains("active");
+
   // 1. Update Buttons
   navDom.navItems.forEach(btn => {
     if (btn.dataset.tab === tabName) btn.classList.add("active");
@@ -685,13 +690,17 @@ function handleTabSwitch(tabName) {
   }
   else if (tabName === "mentor") {
     if (navDom.viewMentor) navDom.viewMentor.classList.add("active");
-    // Scroll to top of panel row or trainer zone
-    const trainerZone = document.getElementById("trainerZone");
-    if (trainerZone) trainerZone.scrollIntoView({ behavior: "smooth", block: "start" });
-    else window.scrollTo(0, 0);
+    // Only scroll when the user is genuinely switching TO Mentor HQ.
+    // If the view was already active (async init re-render), skip scroll so we
+    // don't yank the user back to the top while they're browsing.
+    if (!mentorWasActive) {
+      const trainerZone = document.getElementById("trainerZone");
+      if (trainerZone) trainerZone.scrollIntoView({ behavior: "smooth", block: "start" });
+      else window.scrollTo(0, 0);
+    }
 
-    // Initialize Dashboard Default View
-    handleMentorSubTab("users");
+    // Restore last sub-tab; only default to "users" on first visit
+    handleMentorSubTab(state.activeMentorSubTab || "users");
     // Update Stats
     updateDashboardWidgets();
   }
@@ -744,6 +753,9 @@ function showNavigation() {
 
 // Mentor Dashboard Logic
 function handleMentorSubTab(subTab) {
+  // Track active sub-tab so re-renders don't clobber the user's choice
+  state.activeMentorSubTab = subTab;
+
   // Update Buttons
   document.querySelectorAll(".sub-nav-item").forEach(btn => {
     if (btn.dataset.subtab === subTab) btn.classList.add("active");
