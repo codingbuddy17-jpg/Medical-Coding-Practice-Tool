@@ -5068,18 +5068,14 @@ Response style:
     if (!USE_SUPABASE) return json(res, 503, { error: "Supabase required" });
     if (!process.env.VOYAGE_API_KEY) return json(res, 503, { error: "VOYAGE_API_KEY not configured" });
 
-    const DISK_FILES = [
-      "ED coding master.xlsx",
-      "ED handbook.pdf",
-      "Infusion notes.pdf",
-      "Infusions AHIMA.pdf",
-      "Inj and Infusions.pdf",
-      "QUESTION_BANK_MEMORY.md"
-    ];
+    const KB_DIR = path.join(__dirname, "knowledge-base");
+    const DISK_FILES = fs.existsSync(KB_DIR)
+      ? fs.readdirSync(KB_DIR).filter(f => /\.(pdf|xlsx|xls|txt|md|csv)$/i.test(f))
+      : [];
 
     const results = [];
     for (const filename of DISK_FILES) {
-      const filePath = path.join(__dirname, filename);
+      const filePath = path.join(KB_DIR, filename);
       if (!fs.existsSync(filePath)) { results.push({ name: filename, status: "not found" }); continue; }
       // Skip if already indexed
       const { data: existing } = await supabase.from("knowledge_documents").select("id").eq("original_name", filename).limit(1);
