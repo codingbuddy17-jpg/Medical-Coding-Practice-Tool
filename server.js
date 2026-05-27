@@ -5387,7 +5387,12 @@ Response style:
             const { data: docs } = await supabase.from("knowledge_documents").select("id, original_name").in("id", docIds);
             const docMap = {};
             (docs || []).forEach(d => { docMap[d.id] = d.original_name; });
-            sources = chunks.map(c => ({ source: docMap[c.document_id] || "Knowledge Base", similarity: Math.round(c.similarity * 100) }));
+            sources = chunks.map(c => ({
+              source: docMap[c.document_id] || "Knowledge Base",
+              similarity: Math.round(c.similarity * 100),
+              // First 420 chars of the chunk — shown in the "View Context" debug panel
+              preview: c.content.slice(0, 420).trim()
+            }));
             contextBlock = "RELEVANT KNOWLEDGE BASE CONTEXT:\n" +
               chunks.map((c, i) => `[${i + 1}] Source: ${docMap[c.document_id] || "Knowledge Base"}\n${c.content}`).join("\n\n---\n\n");
           }
@@ -5421,10 +5426,8 @@ Response style:
       // Set SSE headers
       res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" });
 
-      // Send sources immediately before streaming starts
-      if (sources.length > 0) {
-        res.write(`data: ${JSON.stringify({ sources, model: selectedModel })}\n\n`);
-      }
+      // Always send sources event (empty array = no KB match = Claude used training knowledge)
+      res.write(`data: ${JSON.stringify({ sources, model: selectedModel, ragUsed: sources.length > 0 })}\n\n`);
 
       // Stream Claude tokens
       const reader = aiRes.body.getReader();

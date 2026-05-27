@@ -83,14 +83,9 @@
       wrap.appendChild(avatar);
     }
 
-    if (sources && sources.length > 0) {
-      const sourceRow = document.createElement("div");
-      sourceRow.className = "cd-sources";
-      sourceRow.innerHTML = "📚 Sources: " + sources
-        .filter((s, i, a) => a.findIndex(x => x.source === s.source) === i)
-        .map(s => `<span class="cd-source-chip">${escapeHtml(s.source)}</span>`)
-        .join("");
-      wrap.appendChild(sourceRow);
+    // Context panel (non-streaming fallback — pass ragMeta if available)
+    if (role === "assistant" && sources !== undefined) {
+      appendContextPanel(wrap, sources || [], { ragUsed: !!(sources && sources.length), model: "" });
     }
 
     feed.appendChild(wrap);
@@ -121,14 +116,60 @@
     return bubble;
   }
 
-  function appendSourcesToStreamingMsg(sources) {
-    const wrap = cdDom("cdStreamingMsg");
-    if (!wrap || !sources || !sources.length) return;
-    const unique = sources.filter((s, i, a) => a.findIndex(x => x.source === s.source) === i);
-    const sourceRow = document.createElement("div");
-    sourceRow.className = "cd-sources";
-    sourceRow.innerHTML = "📚 Sources: " + unique.map(s => `<span class="cd-source-chip">${escapeHtml(s.source)}</span>`).join("");
-    wrap.appendChild(sourceRow);
+  // Kept for legacy callers — no-op now (panel added after streaming finishes)
+  function appendSourcesToStreamingMsg() {}
+
+  function appendContextPanel(wrap, sources, ragMeta) {
+    if (!wrap) return;
+    const { ragUsed, model } = ragMeta || {};
+    const panel = document.createElement("div");
+    panel.className = "cd-ctx-panel";
+
+    // Similarity bar colour
+    function barColor(pct) {
+      if (pct >= 70) return "#10b981"; // green
+      if (pct >= 50) return "#f59e0b"; // amber
+      return "#ef4444";               // red
+    }
+
+    // Unique sources (deduplicate by name but keep best similarity)
+    const seen = new Map();
+    (sources || []).forEach(s => {
+      if (!seen.has(s.source) || s.similarity > seen.get(s.source).similarity) seen.set(s.source, s);
+    });
+    const unique = [...seen.values()].sort((a, b) => b.similarity - a.similarity);
+
+    // Toggle header
+    const bestPct = unique.length ? unique[0].similarity : 0;
+    const dotClass = ragUsed ? "cd-ctx-rag-dot--hit" : "cd-ctx-rag-dot--miss";
+    const toggleLabel = ragUsed
+      ? `${unique.length} source${unique.length !== 1 ? "s" : ""} from your knowledge base · best match ${bestPct}%`
+      : "No KB match — answer from AI training knowledge";
+    const modelLabel = model ? `<span class="cd-ctx-model">${escapeHtml(model.replace("claude-", "").replace(/-\d{8}$/, ""))}</span>` : "";
+
+    panel.innerHTML = `
+      <button class="cd-ctx-toggle" onclick="this.closest('.cd-ctx-panel').classList.toggle('open')">
+        <span class="cd-ctx-rag-dot ${dotClass}"></span>
+        <span class="cd-ctx-label">${escapeHtml(toggleLabel)}</span>
+        ${modelLabel}
+        <span class="cd-ctx-arrow">▼</span>
+      </button>
+      <div class="cd-ctx-body">
+        ${ragUsed && unique.length > 0
+          ? unique.map(s => `
+            <div class="cd-ctx-chunk">
+              <div class="cd-ctx-meta">
+                <span class="cd-ctx-source" title="${escapeHtml(s.source)}">${escapeHtml(s.source)}</span>
+                <div class="cd-ctx-bar"><div class="cd-ctx-fill" style="width:${s.similarity}%;background:${barColor(s.similarity)}"></div></div>
+                <span class="cd-ctx-pct">${s.similarity}%</span>
+              </div>
+              <div class="cd-ctx-text">${escapeHtml(s.preview || "(no preview)")}${(s.preview || "").length >= 420 ? "…" : ""}</div>
+            </div>`).join("")
+          : `<div class="cd-ctx-no-hit">Claude answered from its training data. Add more relevant documents to the knowledge base to get source-grounded answers.</div>`
+        }
+      </div>`;
+
+    wrap.appendChild(panel);
   }
 
   // Very lightweight markdown → HTML (bold, code, headings, bullets)
@@ -192,6 +233,7 @@
     const streamBubble = appendStreamingBubble();
     let fullText = "";
     let streamSources = [];
+    let streamRagMeta = { ragUsed: false, model: "" };
 
     try {
       const res = await fetch("/api/ai/chat", {
@@ -221,9 +263,10 @@
           if (!line.startsWith("data: ")) continue;
           try {
             const evt = JSON.parse(line.slice(6));
-            if (evt.sources) {
-              streamSources = evt.sources;
-              appendSourcesToStreamingMsg(streamSources);
+            if (evt.hasOwnProperty("sources")) {
+              streamSources = evt.sources || [];
+              streamRagMeta = { ragUsed: evt.ragUsed || false, model: evt.model || "" };
+              // Don't render yet — we append the context panel after streaming finishes
             } else if (evt.text) {
               fullText += evt.text;
               if (streamBubble) {
@@ -240,7 +283,11 @@
       // Finalize
       if (streamBubble) streamBubble.innerHTML = mdToHtml(fullText);
       const streamWrap = cdDom("cdStreamingMsg");
-      if (streamWrap) streamWrap.id = "";
+      if (streamWrap) {
+        streamWrap.id = "";
+        // Append the RAG context panel (always — shows KB hit or miss)
+        appendContextPanel(streamWrap, streamSources, streamRagMeta);
+      }
 
       cdHistory.push({ role: "assistant", content: fullText });
       // Keep history trimmed to last 12 turns
