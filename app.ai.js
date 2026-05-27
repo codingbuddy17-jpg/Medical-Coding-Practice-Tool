@@ -558,37 +558,6 @@
     }
   }
 
-  // ── Welcome card ───────────────────────────────────────────────────────────
-  function appendWelcomeCard() {
-    const feed = cdDom("cdFeed");
-    if (!feed) return;
-    const card = document.createElement("div");
-    card.className = "cd-welcome-card";
-    card.innerHTML = `
-      <div class="cd-wc-top">
-        <span class="cd-wc-icon">🖥️</span>
-        <div>
-          <div class="cd-wc-title">The Coding Desk</div>
-          <div class="cd-wc-sub">Powered by your curated knowledge base</div>
-        </div>
-      </div>
-      <p class="cd-wc-body">
-        Unlike ChatGPT or Claude, every answer here is grounded in the
-        <strong>exact documents your trainer chose</strong> — guidelines, handbooks, and policies
-        specific to your programme. You'll see which source each answer came from
-        and how confident the match is.
-      </p>
-      <div class="cd-wc-chips">
-        <span>ICD-10 sequencing</span>
-        <span>CPT / HCPCS codes</span>
-        <span>MS-DRG logic</span>
-        <span>Infusion hierarchies</span>
-        <span>NCCI edits</span>
-        <span>Modifier usage</span>
-      </div>`;
-    feed.appendChild(card);
-  }
-
   // ── Init ───────────────────────────────────────────────────────────────────
   function initCodingDesk() {
     // Chat send button & enter key
@@ -638,7 +607,7 @@
       fetchUsage();
     }
 
-    appendWelcomeCard();
+    // Feed starts empty — user goes straight to asking
   }
 
   // Expose for app.init.js to call after session starts

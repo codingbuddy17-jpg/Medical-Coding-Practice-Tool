@@ -3339,56 +3339,6 @@ code {
   white-space: pre;
 }
 
-/* ── Welcome card ────────────────────────────────────────────────────────── */
-.cd-welcome-card {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 18px 20px;
-  margin: 4px 0 12px;
-  max-width: 520px;
-}
-.cd-wc-top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-.cd-wc-icon {
-  font-size: 1.6rem;
-  line-height: 1;
-}
-.cd-wc-title {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #1e293b;
-}
-.cd-wc-sub {
-  font-size: 0.72rem;
-  color: #4f46e5;
-  font-weight: 500;
-  margin-top: 1px;
-}
-.cd-wc-body {
-  font-size: 0.82rem;
-  color: #475569;
-  line-height: 1.6;
-  margin: 0 0 12px;
-}
-.cd-wc-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-.cd-wc-chips span {
-  background: #ede9fe;
-  color: #5b21b6;
-  font-size: 0.68rem;
-  font-weight: 500;
-  padding: 3px 9px;
-  border-radius: 99px;
-}
-
 /* ── RAG Context Debug Panel ──────────────────────────────────────────────── */
 .cd-ctx-panel {
   margin-top: 8px;
