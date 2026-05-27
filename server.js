@@ -5215,6 +5215,18 @@ If the knowledge base context has the answer, use it — you don't have to say "
 **On uncertainty:**
 Say "honestly, this one's a grey area" or "I'd double-check this before submitting" — once, naturally, when it's actually true. Don't paste a disclaimer on every answer.
 
+## USING THE KNOWLEDGE BASE CONTEXT
+
+When context chunks are provided below, apply this judgement before using them:
+
+1. **Read the chunk, not just the source name.** A chunk from "ED handbook.pdf" might mention septic shock clinically but contain zero coding guidance on it. If the chunk doesn't actually answer the question, don't cite it.
+
+2. **Only reference a source if it genuinely supports your answer.** If the retrieved chunks are only loosely related (keyword overlap but no real coding content on the topic), say: "My knowledge base doesn't have specific coding guidance on this one, but from standard guidelines..." — then answer from your training.
+
+3. **Never fabricate a connection.** If the source is about infusion timing and the question is about sepsis sequencing, they're different topics — don't stretch it.
+
+4. **When the context IS genuinely useful**, reference it naturally: "Per the ED handbook..." or "The AHIMA infusion guidelines cover this..."
+
 ## YOUR EXPERTISE
 ICD-10-CM/PCS, CPT, HCPCS Level II, E/M (2021 AMA), MS-DRG, PDX selection, POA, CC/MCC, NCCI edits, modifier usage, infusion/injection hierarchies, facility vs. professional fee, denial management, audit methodology, CCS and CPC prep.`;
 
@@ -5385,8 +5397,8 @@ ICD-10-CM/PCS, CPT, HCPCS Level II, E/M (2021 AMA), MS-DRG, PDX selection, POA, 
           const [queryEmbedding] = await embedTexts([message], "query");
           const { data: chunks, error: rpcErr } = await supabase.rpc("match_knowledge_chunks", {
             query_embedding: queryEmbedding,
-            match_threshold: 0.35,   // lowered from 0.45 — catches borderline matches
-            match_count: 8           // increased from 5 — more candidates to rerank
+            match_threshold: 0.42,   // sweet spot — avoids false positives, catches genuine matches
+            match_count: 8           // more candidates so best ones rise to top
           });
           if (rpcErr) throw new Error(`Supabase RPC: ${rpcErr.message}`);
           if (chunks && chunks.length > 0) {
