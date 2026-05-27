@@ -5019,9 +5019,12 @@ Response style:
     if (!USE_SUPABASE) return json(res, 503, { error: "Supabase required for knowledge base" });
     if (!process.env.VOYAGE_API_KEY) return json(res, 503, { error: "VOYAGE_API_KEY not configured" });
     try {
-      const { fileName, buffer } = await parseMultipartFile(req);
-      const originalName = fileName;
-      const fileType = path.extname(fileName).toLowerCase().replace(".", "");
+      const body = await parseBody(req);
+      const originalName = String(body.fileName || "").trim();
+      if (!originalName) return json(res, 400, { error: "fileName required" });
+      if (!body.fileData) return json(res, 400, { error: "fileData required" });
+      const buffer = Buffer.from(body.fileData, "base64");
+      const fileType = path.extname(originalName).toLowerCase().replace(".", "");
       const rawText = await extractTextFromBuffer(buffer, fileName);
       if (!rawText.trim()) return json(res, 400, { error: "Could not extract text from file" });
 

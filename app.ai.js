@@ -373,16 +373,25 @@
     const status = cdDom("kbStatus");
     const uploadBtn = cdDom("kbUploadBtn");
     if (!file) return;
-    if (status) { status.textContent = `Uploading and indexing "${file.name}"…`; status.className = "status"; }
+    if (status) { status.textContent = `Reading "${file.name}"…`; status.className = "status"; }
     if (uploadBtn) uploadBtn.disabled = true;
-    const formData = new FormData();
-    formData.append("file", file, file.name);
+
     try {
+      // Read as base64 — avoids multipart parsing issues entirely
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      if (status) { status.textContent = `Indexing "${file.name}" — this may take a minute…`; status.className = "status"; }
+
       const trainerKey = getCdTrainerKey();
       const res = await fetch("/api/knowledge/upload", {
         method: "POST",
-        headers: { "x-trainer-key": trainerKey },
-        body: formData
+        headers: { "Content-Type": "application/json", "x-trainer-key": trainerKey },
+        body: JSON.stringify({ fileName: file.name, fileData: base64, fileSize: file.size })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
