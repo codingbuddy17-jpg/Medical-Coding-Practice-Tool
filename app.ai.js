@@ -266,11 +266,11 @@
         continue;
       }
 
-      // ── Blank line → paragraph break
-      if (!line.trim()) { out.push("<br>"); i++; continue; }
+      // ── Blank line → paragraph spacer (rendered via CSS margin)
+      if (!line.trim()) { out.push('<p class="cd-gap"></p>'); i++; continue; }
 
       // ── Regular paragraph line
-      out.push(`<span>${renderMdInline(line)}</span><br>`);
+      out.push(`<p>${renderMdInline(line)}</p>`);
       i++;
     }
 
