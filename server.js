@@ -5025,7 +5025,7 @@ Response style:
       if (!body.fileData) return json(res, 400, { error: "fileData required" });
       const buffer = Buffer.from(body.fileData, "base64");
       const fileType = path.extname(originalName).toLowerCase().replace(".", "");
-      const rawText = await extractTextFromBuffer(buffer, fileName);
+      const rawText = await extractTextFromBuffer(buffer, originalName);
       if (!rawText.trim()) return json(res, 400, { error: "Could not extract text from file" });
 
       const chunks = chunkText(rawText, originalName);
