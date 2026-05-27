@@ -172,17 +172,109 @@
     wrap.appendChild(panel);
   }
 
-  // Very lightweight markdown → HTML (bold, code, headings, bullets)
-  function mdToHtml(text) {
+  // ── Markdown → HTML renderer (handles tables, headings, lists, inline) ───────
+  function renderMdTable(lines) {
+    // Split rows before and after the separator row |---|---|
+    const headerCells = [];
+    const bodyCells = [];
+    let separatorSeen = false;
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (/^\|[\s:\-|]+\|$/.test(trimmed)) { separatorSeen = true; continue; }
+      const cells = trimmed.replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => c.trim());
+      if (!separatorSeen) headerCells.push(cells);
+      else bodyCells.push(cells);
+    }
+    // If no separator found, treat only the first row as header
+    if (!separatorSeen && headerCells.length > 1) {
+      bodyCells.push(...headerCells.splice(1));
+    }
+    const renderCell = c => renderMdInline(c);
+    let html = '<table class="cd-md-table">';
+    if (headerCells.length) {
+      html += "<thead>" + headerCells.map(row =>
+        "<tr>" + row.map(c => `<th>${renderCell(c)}</th>`).join("") + "</tr>"
+      ).join("") + "</thead>";
+    }
+    html += "<tbody>" + bodyCells.map(row =>
+      "<tr>" + row.map(c => `<td>${renderCell(c)}</td>`).join("") + "</tr>"
+    ).join("") + "</tbody></table>";
+    return html;
+  }
+
+  function renderMdInline(text) {
     return escapeHtml(text)
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/`([^`]+)`/g, "<code>$1</code>")
-      .replace(/^### (.+)$/gm, "<h4>$1</h4>")
-      .replace(/^## (.+)$/gm, "<h3>$1</h3>")
-      .replace(/^# (.+)$/gm, "<h3>$1</h3>")
-      .replace(/^[-*] (.+)$/gm, "<li>$1</li>")
-      .replace(/(<li>.*<\/li>\n?)+/g, "<ul>$&</ul>")
-      .replace(/\n/g, "<br>");
+      .replace(/\*(.+?)\*/g, "<em>$1</em>")
+      .replace(/`([^`]+)`/g, "<code>$1</code>");
+  }
+
+  function mdToHtml(text) {
+    const lines = text.split("\n");
+    const out = [];
+    let i = 0;
+
+    while (i < lines.length) {
+      const line = lines[i];
+
+      // ── Fenced code block ````
+      if (/^```/.test(line)) {
+        const codeLines = [];
+        i++;
+        while (i < lines.length && !/^```/.test(lines[i])) { codeLines.push(lines[i]); i++; }
+        i++; // skip closing ```
+        out.push(`<pre class="cd-pre"><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+        continue;
+      }
+
+      // ── Table block: consecutive lines starting with |
+      if (/^\s*\|/.test(line)) {
+        const tableLines = [];
+        while (i < lines.length && /^\s*\|/.test(lines[i])) { tableLines.push(lines[i]); i++; }
+        out.push(renderMdTable(tableLines));
+        continue;
+      }
+
+      // ── Headings
+      const h4 = line.match(/^####\s+(.*)/);  if (h4) { out.push(`<h5>${renderMdInline(h4[1])}</h5>`); i++; continue; }
+      const h3 = line.match(/^###\s+(.*)/);   if (h3) { out.push(`<h4>${renderMdInline(h3[1])}</h4>`); i++; continue; }
+      const h2 = line.match(/^##\s+(.*)/);    if (h2) { out.push(`<h3>${renderMdInline(h2[1])}</h3>`); i++; continue; }
+      const h1 = line.match(/^#\s+(.*)/);     if (h1) { out.push(`<h3>${renderMdInline(h1[1])}</h3>`); i++; continue; }
+
+      // ── Horizontal rule
+      if (/^---+$/.test(line.trim())) { out.push("<hr>"); i++; continue; }
+
+      // ── Unordered list items (collect consecutive)
+      if (/^[-*]\s/.test(line)) {
+        const items = [];
+        while (i < lines.length && /^[-*]\s/.test(lines[i])) {
+          items.push(`<li>${renderMdInline(lines[i].replace(/^[-*]\s/, ""))}</li>`);
+          i++;
+        }
+        out.push(`<ul>${items.join("")}</ul>`);
+        continue;
+      }
+
+      // ── Numbered list items
+      if (/^\d+\.\s/.test(line)) {
+        const items = [];
+        while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+          items.push(`<li>${renderMdInline(lines[i].replace(/^\d+\.\s/, ""))}</li>`);
+          i++;
+        }
+        out.push(`<ol>${items.join("")}</ol>`);
+        continue;
+      }
+
+      // ── Blank line → paragraph break
+      if (!line.trim()) { out.push("<br>"); i++; continue; }
+
+      // ── Regular paragraph line
+      out.push(`<span>${renderMdInline(line)}</span><br>`);
+      i++;
+    }
+
+    return out.join("\n");
   }
 
   function escapeHtml(str) {
@@ -466,6 +558,37 @@
     }
   }
 
+  // ── Welcome card ───────────────────────────────────────────────────────────
+  function appendWelcomeCard() {
+    const feed = cdDom("cdFeed");
+    if (!feed) return;
+    const card = document.createElement("div");
+    card.className = "cd-welcome-card";
+    card.innerHTML = `
+      <div class="cd-wc-top">
+        <span class="cd-wc-icon">🖥️</span>
+        <div>
+          <div class="cd-wc-title">The Coding Desk</div>
+          <div class="cd-wc-sub">Powered by your curated knowledge base</div>
+        </div>
+      </div>
+      <p class="cd-wc-body">
+        Unlike ChatGPT or Claude, every answer here is grounded in the
+        <strong>exact documents your trainer chose</strong> — guidelines, handbooks, and policies
+        specific to your programme. You'll see which source each answer came from
+        and how confident the match is.
+      </p>
+      <div class="cd-wc-chips">
+        <span>ICD-10 sequencing</span>
+        <span>CPT / HCPCS codes</span>
+        <span>MS-DRG logic</span>
+        <span>Infusion hierarchies</span>
+        <span>NCCI edits</span>
+        <span>Modifier usage</span>
+      </div>`;
+    feed.appendChild(card);
+  }
+
   // ── Init ───────────────────────────────────────────────────────────────────
   function initCodingDesk() {
     // Chat send button & enter key
@@ -515,7 +638,7 @@
       fetchUsage();
     }
 
-    appendSystemNote("Welcome to The Coding Desk — your medical coding expert. Ask anything, from basic ICD-10 lookups to complex inpatient sequencing.");
+    appendWelcomeCard();
   }
 
   // Expose for app.init.js to call after session starts
