@@ -5379,16 +5379,17 @@ ICD-10-CM/PCS, CPT, HCPCS Level II, E/M (2021 AMA), MS-DRG, PDX selection, POA, 
       // RAG: embed query + search knowledge base
       let contextBlock = "";
       let sources = [];
+      let ragError = null;
       if (voyageKey && USE_SUPABASE) {
         try {
           const [queryEmbedding] = await embedTexts([message], "query");
-          const { data: chunks } = await supabase.rpc("match_knowledge_chunks", {
+          const { data: chunks, error: rpcErr } = await supabase.rpc("match_knowledge_chunks", {
             query_embedding: queryEmbedding,
-            match_threshold: 0.45,
-            match_count: 5
+            match_threshold: 0.35,   // lowered from 0.45 — catches borderline matches
+            match_count: 8           // increased from 5 — more candidates to rerank
           });
+          if (rpcErr) throw new Error(`Supabase RPC: ${rpcErr.message}`);
           if (chunks && chunks.length > 0) {
-            // Fetch document names for the matched chunks
             const docIds = [...new Set(chunks.map(c => c.document_id))];
             const { data: docs } = await supabase.from("knowledge_documents").select("id, original_name").in("id", docIds);
             const docMap = {};
@@ -5396,13 +5397,21 @@ ICD-10-CM/PCS, CPT, HCPCS Level II, E/M (2021 AMA), MS-DRG, PDX selection, POA, 
             sources = chunks.map(c => ({
               source: docMap[c.document_id] || "Knowledge Base",
               similarity: Math.round(c.similarity * 100),
-              // First 420 chars of the chunk — shown in the "View Context" debug panel
               preview: c.content.slice(0, 420).trim()
             }));
             contextBlock = "RELEVANT KNOWLEDGE BASE CONTEXT:\n" +
               chunks.map((c, i) => `[${i + 1}] Source: ${docMap[c.document_id] || "Knowledge Base"}\n${c.content}`).join("\n\n---\n\n");
           }
-        } catch { /* RAG failure is non-fatal — Claude still answers from training */ }
+        } catch (ragErr) {
+          // Non-fatal — Claude still answers from training knowledge
+          // Surface the error so the user knows it's a lookup failure, not a genuine miss
+          console.error("[RAG] lookup failed:", ragErr.message);
+          ragError = ragErr.message.slice(0, 120);
+        }
+      } else if (!voyageKey) {
+        ragError = "VOYAGE_API_KEY not configured on server";
+      } else if (!USE_SUPABASE) {
+        ragError = "Supabase not configured";
       }
 
       // Build Claude messages
@@ -5432,8 +5441,8 @@ ICD-10-CM/PCS, CPT, HCPCS Level II, E/M (2021 AMA), MS-DRG, PDX selection, POA, 
       // Set SSE headers
       res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" });
 
-      // Always send sources event (empty array = no KB match = Claude used training knowledge)
-      res.write(`data: ${JSON.stringify({ sources, model: selectedModel, ragUsed: sources.length > 0 })}\n\n`);
+      // Always send sources event — client uses ragError to distinguish lookup failure from genuine miss
+      res.write(`data: ${JSON.stringify({ sources, model: selectedModel, ragUsed: sources.length > 0, ragError })}\n\n`);
 
       // Stream Claude tokens
       const reader = aiRes.body.getReader();

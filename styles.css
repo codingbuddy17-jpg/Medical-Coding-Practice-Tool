@@ -3385,6 +3385,7 @@ code {
 }
 .cd-ctx-rag-dot--hit  { background: #10b981; }
 .cd-ctx-rag-dot--miss { background: #94a3b8; }
+.cd-ctx-rag-dot--err  { background: #ef4444; }
 .cd-ctx-label { flex: 1; }
 .cd-ctx-arrow { font-size: 0.65rem; transition: transform 0.2s; }
 .cd-ctx-panel.open .cd-ctx-arrow { transform: rotate(180deg); }

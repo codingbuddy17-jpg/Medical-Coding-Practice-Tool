@@ -121,7 +121,7 @@
 
   function appendContextPanel(wrap, sources, ragMeta) {
     if (!wrap) return;
-    const { ragUsed, model } = ragMeta || {};
+    const { ragUsed, model, ragError } = ragMeta || {};
     const panel = document.createElement("div");
     panel.className = "cd-ctx-panel";
 
@@ -141,10 +141,12 @@
 
     // Toggle header
     const bestPct = unique.length ? unique[0].similarity : 0;
-    const dotClass = ragUsed ? "cd-ctx-rag-dot--hit" : "cd-ctx-rag-dot--miss";
-    const toggleLabel = ragUsed
-      ? `${unique.length} source${unique.length !== 1 ? "s" : ""} from your knowledge base · best match ${bestPct}%`
-      : "No KB match — answer from AI training knowledge";
+    const dotClass = ragError ? "cd-ctx-rag-dot--err" : ragUsed ? "cd-ctx-rag-dot--hit" : "cd-ctx-rag-dot--miss";
+    const toggleLabel = ragError
+      ? `KB lookup error — ${ragError}`
+      : ragUsed
+        ? `${unique.length} source${unique.length !== 1 ? "s" : ""} from your knowledge base · best match ${bestPct}%`
+        : "No KB match — answered from AI training knowledge";
     const modelLabel = model ? `<span class="cd-ctx-model">${escapeHtml(model.replace("claude-", "").replace(/-\d{8}$/, ""))}</span>` : "";
 
     panel.innerHTML = `
@@ -155,7 +157,9 @@
         <span class="cd-ctx-arrow">▼</span>
       </button>
       <div class="cd-ctx-body">
-        ${ragUsed && unique.length > 0
+        ${ragError
+          ? `<div class="cd-ctx-no-hit" style="color:#ef4444;">⚠️ ${escapeHtml(ragError)}</div>`
+          : ragUsed && unique.length > 0
           ? unique.map(s => `
             <div class="cd-ctx-chunk">
               <div class="cd-ctx-meta">
@@ -165,7 +169,7 @@
               </div>
               <div class="cd-ctx-text">${escapeHtml(s.preview || "(no preview)")}${(s.preview || "").length >= 420 ? "…" : ""}</div>
             </div>`).join("")
-          : `<div class="cd-ctx-no-hit">Claude answered from its training data. Add more relevant documents to the knowledge base to get source-grounded answers.</div>`
+          : `<div class="cd-ctx-no-hit">No matching chunks found in your knowledge base — Claude answered from its training. Re-index your documents or rephrase the question with more specific terms.</div>`
         }
       </div>`;
 
@@ -357,7 +361,7 @@
             const evt = JSON.parse(line.slice(6));
             if (evt.hasOwnProperty("sources")) {
               streamSources = evt.sources || [];
-              streamRagMeta = { ragUsed: evt.ragUsed || false, model: evt.model || "" };
+              streamRagMeta = { ragUsed: evt.ragUsed || false, model: evt.model || "", ragError: evt.ragError || null };
               // Don't render yet — we append the context panel after streaming finishes
             } else if (evt.text) {
               fullText += evt.text;
