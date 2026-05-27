@@ -3,9 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { URL } = require("url");
 const { createClient } = require("@supabase/supabase-js");
-// pdf-parse v2 uses ES module default export — unwrap it for CommonJS
-const _pdfParseRaw = require("pdf-parse");
-const pdfParse = typeof _pdfParseRaw === "function" ? _pdfParseRaw : (_pdfParseRaw.default || _pdfParseRaw);
+const pdfParse = require("pdf-parse"); // v1.1.1 — exports function directly
 
 const PORT = process.env.PORT || 4173;
 const HOST = process.env.HOST || "0.0.0.0";
