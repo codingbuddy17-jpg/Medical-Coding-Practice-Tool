@@ -343,8 +343,8 @@
   async function kbIndexDiskFiles() {
     const btn = cdDom("kbIndexDiskBtn");
     const status = cdDom("kbStatus");
-    if (btn) { btn.disabled = true; btn.textContent = "Indexing… (this may take 1–2 min)"; }
-    if (status) { status.textContent = "Indexing built-in files…"; status.className = "status"; }
+    if (btn) { btn.disabled = true; btn.textContent = "Indexing… (PDFs use AI extraction — allow 2–5 min)"; }
+    if (status) { status.textContent = "Indexing built-in files — Claude AI is extracting tables, images and text from each PDF…"; status.className = "status"; }
     try {
       const trainerKey = getCdTrainerKey();
       const res = await fetch("/api/knowledge/index-disk", {
@@ -376,6 +376,19 @@
     if (status) { status.textContent = `Reading "${file.name}"…`; status.className = "status"; }
     if (uploadBtn) uploadBtn.disabled = true;
 
+    // Describe what extraction path to expect
+    const ext = file.name.split(".").pop().toLowerCase();
+    const isPdf = ext === "pdf";
+    const isImage = ["jpg","jpeg","png","webp"].includes(ext);
+    const isDocx = ["docx","doc"].includes(ext);
+    const extractNote = isPdf
+      ? "Extracting text, tables & images via Claude AI — may take 30–60 s for large PDFs…"
+      : isImage
+        ? "Extracting text & diagrams via Claude Vision…"
+        : isDocx
+          ? "Extracting Word document structure…"
+          : "Processing…";
+
     try {
       // Read as base64 — avoids multipart parsing issues entirely
       const base64 = await new Promise((resolve, reject) => {
@@ -385,7 +398,7 @@
         reader.readAsDataURL(file);
       });
 
-      if (status) { status.textContent = `Indexing "${file.name}" — this may take a minute…`; status.className = "status"; }
+      if (status) { status.textContent = `"${file.name}" — ${extractNote}`; status.className = "status"; }
 
       const trainerKey = getCdTrainerKey();
       const res = await fetch("/api/knowledge/upload", {

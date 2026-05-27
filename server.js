@@ -22,7 +22,7 @@ const supabase = USE_SUPABASE
   : null;
 
 const ROOT = __dirname;
-const MAX_BODY_SIZE = Number(process.env.MAX_BODY_SIZE || 10 * 1024 * 1024); // 10MB default
+const MAX_BODY_SIZE = Number(process.env.MAX_BODY_SIZE || 50 * 1024 * 1024); // 50MB — supports large PDF/DOCX uploads
 const DATA_DIR = path.join(ROOT, "data");
 const SESSION_FILE = path.join(DATA_DIR, "sessions.json");
 const QUESTIONS_FILE = path.join(DATA_DIR, "questions.json");
@@ -4881,67 +4881,268 @@ Return only valid JSON.`;
     return data.data.map(d => d.embedding);
   }
 
+  // ── PDF extraction via Claude (tables, images, scanned OCR) ─────────────────
+  async function extractPdfWithClaude(buffer) {
+    const anthropicKey = process.env.ANTHROPIC_API_KEY || "";
+    if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY not set");
+    const base64 = buffer.toString("base64");
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "pdfs-2024-09-25"
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5",
+        max_tokens: 8192,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
+            { type: "text", text: `Extract ALL content from this medical coding reference document for a RAG knowledge base.
+
+Rules:
+1. Preserve all text — headers, paragraphs, footnotes, appendices, sidebars
+2. Convert ALL tables to markdown format:
+   | Column 1 | Column 2 |
+   |----------|----------|
+   | value    | value    |
+3. Section headers → use ## for main sections, ### for subsections
+4. Code lists — preserve every code number and its full description exactly
+5. Numbered and bulleted lists → preserve structure
+6. Figures, diagrams, flowcharts → [FIGURE: detailed description of all content shown]
+7. Scanned or image-based pages → transcribe all visible text faithfully
+8. Do NOT summarize or omit — full extraction required
+
+Output only the extracted content with no preamble or closing remarks.` }
+          ]
+        }]
+      })
+    });
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(`Claude PDF extraction HTTP ${resp.status}: ${errText.slice(0, 300)}`);
+    }
+    const data = await resp.json();
+    return data.content?.[0]?.text || "";
+  }
+
+  // ── Image extraction via Claude Vision ───────────────────────────────────────
+  async function extractImageWithClaude(buffer, mimeType) {
+    const anthropicKey = process.env.ANTHROPIC_API_KEY || "";
+    if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY not set");
+    const base64 = buffer.toString("base64");
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5",
+        max_tokens: 4096,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: mimeType, data: base64 } },
+            { type: "text", text: `Extract ALL content from this medical coding image for a RAG knowledge base.
+
+1. Transcribe all visible text exactly as it appears
+2. Convert tables to markdown: | col | col |\\n|---|---|\\n| val | val |
+3. Describe diagrams, flowcharts, or figures as [FIGURE: detailed description]
+4. Preserve all code numbers, descriptions, and reference lists
+
+Output only the extracted content with no preamble.` }
+          ]
+        }]
+      })
+    });
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(`Claude Vision extraction HTTP ${resp.status}: ${errText.slice(0, 300)}`);
+    }
+    const data = await resp.json();
+    return data.content?.[0]?.text || "";
+  }
+
+  // ── DOCX extraction via mammoth → markdown tables + headers ──────────────────
+  async function extractDocxText(buffer) {
+    const mammoth = require("mammoth");
+    const { value: html } = await mammoth.convertToHtml({ buffer });
+    let text = html
+      // Tables → markdown
+      .replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_, inner) => {
+        const rowMatches = inner.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
+        const rows = rowMatches.map(rowHtml => {
+          const cells = (rowHtml.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi) || [])
+            .map(c => c.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim().replace(/\|/g, "\\|") || " ");
+          return "| " + cells.join(" | ") + " |";
+        });
+        if (rows.length > 1) {
+          const sepCount = (rows[0].match(/\|/g) || []).length - 1;
+          const sep = "|" + " --- |".repeat(sepCount);
+          rows.splice(1, 0, sep);
+        }
+        return "\n" + rows.join("\n") + "\n";
+      })
+      // Headings → markdown
+      .replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi, (_, n, t) =>
+        "\n" + "#".repeat(Number(n)) + " " + t.replace(/<[^>]+>/g, "").trim() + "\n")
+      // List items
+      .replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_, t) =>
+        "- " + t.replace(/<[^>]+>/g, "").trim() + "\n")
+      // Paragraphs and divs → newlines
+      .replace(/<\/p>/gi, "\n").replace(/<\/div>/gi, "\n")
+      // Strip remaining tags
+      .replace(/<[^>]+>/g, " ")
+      // Decode common HTML entities
+      .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&nbsp;/g, " ").replace(/&#\d+;/g, " ").replace(/&[a-z]+;/gi, " ")
+      // Normalise whitespace
+      .replace(/ {2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+    return text;
+  }
+
+  // ── Excel/CSV extraction as proper markdown tables ────────────────────────────
+  function extractXlsxToMarkdown(buffer) {
+    const XLSX = require("xlsx");
+    const wb = XLSX.read(buffer, { type: "buffer" });
+    let output = "";
+    for (const sheetName of wb.SheetNames) {
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+      const nonEmpty = rows.filter(r => r.some(c => String(c).trim()));
+      if (!nonEmpty.length) continue;
+      output += `\n## Sheet: ${sheetName}\n\n`;
+      const headers = nonEmpty[0].map(h => String(h ?? "").trim().replace(/\|/g, "\\|") || " ");
+      output += "| " + headers.join(" | ") + " |\n";
+      output += "| " + headers.map(() => "---").join(" | ") + " |\n";
+      for (let i = 1; i < nonEmpty.length; i++) {
+        const row = nonEmpty[i].map(c => String(c ?? "").trim().replace(/\|/g, "\\|") || " ");
+        while (row.length < headers.length) row.push(" ");
+        output += "| " + row.slice(0, headers.length).join(" | ") + " |\n";
+      }
+      output += "\n";
+    }
+    return output;
+  }
+
+  // ── Table-aware chunker — never splits a markdown table mid-row ───────────────
   function chunkText(text, source = "") {
     const CHUNK_WORDS = 450;
     const OVERLAP_WORDS = 60;
-    // Normalize whitespace
     const clean = text.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
-    // Split into paragraphs first, then sentences as fallback
-    const paragraphs = clean.split(/\n\n+/);
+    const lines = clean.split("\n");
     const chunks = [];
-    let current = [];
-    let wordCount = 0;
 
-    function flush(overlap) {
-      if (current.length === 0) return;
-      const chunkText = current.join(" ").trim();
-      if (chunkText.length > 50) {
-        chunks.push({ content: chunkText, metadata: { source } });
+    let curLines = [];
+    let curWords = 0;
+    let tableLines = [];
+    let inTable = false;
+
+    function pushChunk(linesArr) {
+      const content = linesArr.join("\n").trim();
+      if (content.length > 50) chunks.push({ content, metadata: { source } });
+    }
+
+    function flushTable() {
+      if (!tableLines.length) { inTable = false; return; }
+      const tWords = tableLines.join(" ").split(/\s+/).filter(Boolean).length;
+      // If adding the table would massively overflow, flush current first
+      if (curWords + tWords > CHUNK_WORDS * 1.8 && curLines.length) {
+        pushChunk(curLines);
+        curLines = []; curWords = 0;
       }
-      if (overlap > 0) {
-        const words = current.join(" ").split(" ");
-        current = [words.slice(-overlap).join(" ")];
-        wordCount = overlap;
+      curLines.push(...tableLines);
+      curWords += tWords;
+      tableLines = []; inTable = false;
+      // If chunk is now full, emit it
+      if (curWords >= CHUNK_WORDS) {
+        pushChunk(curLines);
+        curLines = []; curWords = 0;
+      }
+    }
+
+    function flushCurrent(withOverlap) {
+      pushChunk(curLines);
+      if (withOverlap && curLines.length) {
+        const overlapLines = curLines.slice(-4);
+        curLines = overlapLines;
+        curWords = overlapLines.join(" ").split(/\s+/).filter(Boolean).length;
       } else {
-        current = [];
-        wordCount = 0;
+        curLines = []; curWords = 0;
       }
     }
 
-    for (const para of paragraphs) {
-      const words = para.split(/\s+/).filter(Boolean);
-      if (wordCount + words.length > CHUNK_WORDS) {
-        flush(OVERLAP_WORDS);
+    for (const line of lines) {
+      const isTableRow = /^\s*\|/.test(line);
+
+      if (isTableRow) {
+        if (!inTable) inTable = true;
+        tableLines.push(line);
+        continue;
       }
-      current.push(para);
-      wordCount += words.length;
+
+      // Non-table line: flush any accumulated table rows first
+      if (inTable) flushTable();
+
+      const lWords = line.split(/\s+/).filter(Boolean).length;
+      const isHeader = /^#{1,4}\s/.test(line);
+
+      // Section headers are ideal chunk break points
+      if (isHeader && curWords >= OVERLAP_WORDS && curLines.length) {
+        flushCurrent(false);
+      } else if (curWords + lWords > CHUNK_WORDS && curLines.length) {
+        flushCurrent(true);
+      }
+
+      curLines.push(line);
+      curWords += lWords;
     }
-    flush(0);
-    return chunks;
+
+    if (inTable) flushTable();
+    if (curLines.length) flushCurrent(false);
+
+    return chunks.filter(c => c.content.length > 50);
   }
 
+  // ── Unified extractor — routes by file type ───────────────────────────────────
   async function extractTextFromBuffer(buffer, filename) {
     const ext = path.extname(filename).toLowerCase();
+
     if (ext === ".pdf") {
-      const data = await pdfParse(buffer);
-      return data.text || "";
-    }
-    if (ext === ".xlsx" || ext === ".xls") {
-      const XLSX = require("xlsx");
-      const wb = XLSX.read(buffer, { type: "buffer" });
-      let text = "";
-      for (const sheetName of wb.SheetNames) {
-        const ws = wb.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-        text += `\n=== Sheet: ${sheetName} ===\n`;
-        text += rows.map(r => r.filter(c => String(c).trim()).join(" | ")).filter(Boolean).join("\n");
-        text += "\n";
+      // Claude extraction (tables + images + scanned OCR) for PDFs up to 28 MB
+      const anthropicKey = process.env.ANTHROPIC_API_KEY || "";
+      const MAX_CLAUDE_PDF = 28 * 1024 * 1024;
+      if (anthropicKey && buffer.length <= MAX_CLAUDE_PDF) {
+        try {
+          console.log(`[extract] Claude PDF: ${filename} (${(buffer.length / 1024 / 1024).toFixed(1)} MB)`);
+          const extracted = await extractPdfWithClaude(buffer);
+          if (extracted && extracted.trim().length > 100) return extracted;
+        } catch (e) {
+          console.warn(`[extract] Claude PDF failed for "${filename}", using pdfParse fallback: ${e.message}`);
+        }
       }
-      return text;
+      // Fallback: pdf-parse text layer
+      console.log(`[extract] pdfParse fallback: ${filename}`);
+      const { text } = await pdfParse(buffer);
+      return text || "";
     }
-    if ([".txt", ".md", ".csv"].includes(ext)) {
-      return buffer.toString("utf8");
+
+    if (ext === ".xlsx" || ext === ".xls") return extractXlsxToMarkdown(buffer);
+
+    if (ext === ".docx" || ext === ".doc") return await extractDocxText(buffer);
+
+    if ([".jpg", ".jpeg", ".png", ".webp"].includes(ext)) {
+      const mimeMap = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp" };
+      return await extractImageWithClaude(buffer, mimeMap[ext]);
     }
+
+    if ([".txt", ".md", ".csv"].includes(ext)) return buffer.toString("utf8");
+
     throw new Error(`Unsupported file type: ${ext}`);
   }
 
@@ -5070,7 +5271,7 @@ Response style:
 
     const KB_DIR = path.join(__dirname, "knowledge-base");
     const DISK_FILES = fs.existsSync(KB_DIR)
-      ? fs.readdirSync(KB_DIR).filter(f => /\.(pdf|xlsx|xls|txt|md|csv)$/i.test(f))
+      ? fs.readdirSync(KB_DIR).filter(f => /\.(pdf|xlsx|xls|txt|md|csv|docx|doc|jpg|jpeg|png|webp)$/i.test(f))
       : [];
 
     const results = [];
