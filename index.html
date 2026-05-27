@@ -61,6 +61,7 @@
         <button class="nav-item" data-tab="analytics">📊 Analytics</button>
         <button id="navMentorItem" class="nav-item hidden" data-tab="mentor">🎓 Mentor HQ</button>
         <button class="nav-item" data-tab="interview" id="navInterviewItem">🎤 Interview Mode</button>
+        <button class="nav-item cd-nav-item" data-tab="coding-desk" id="navCodingDeskItem">🖥️ Coding Desk</button>
       </div>
     </nav>
 
@@ -592,6 +593,7 @@
             <button class="sub-nav-item" data-subtab="bank">Question Bank</button>
             <button class="sub-nav-item" data-subtab="interview">Interview Mode</button>
             <button class="sub-nav-item" data-subtab="tools">Administration</button>
+            <button class="sub-nav-item" data-subtab="knowledge">📚 Knowledge Base</button>
           </nav>
         </div>
 
@@ -1657,6 +1659,37 @@
           </section>
 
         </div> <!-- Close subview-tools -->
+
+        <!-- Knowledge Base Sub-view -->
+        <div id="subview-knowledge" class="sub-view full-width hidden">
+          <div class="kb-header">
+            <div>
+              <h2 style="margin:0 0 4px;font-size:1.2rem;font-weight:700;color:#1e293b">📚 Knowledge Base</h2>
+              <p style="margin:0;font-size:0.85rem;color:#64748b">Index your coding materials — PDFs, Excel sheets, guides. The Coding Desk AI answers from these files.</p>
+            </div>
+          </div>
+
+          <div class="kb-actions-row">
+            <button id="kbIndexDiskBtn" class="primary-btn" type="button">⚡ Index Built-in Files</button>
+            <button id="kbUploadBtn" class="ghost-btn" type="button">📤 Upload New File</button>
+            <input id="kbFileInput" type="file" accept=".pdf,.xlsx,.xls,.txt,.md,.csv" class="hidden" />
+            <span style="font-size:0.8rem;color:#94a3b8;align-self:center;">Supported: PDF, Excel, TXT, MD, CSV</span>
+          </div>
+          <p id="kbStatus" class="status" style="margin:8px 0;"></p>
+
+          <div class="kb-docs-section">
+            <h3 style="font-size:0.95rem;font-weight:600;color:#475569;margin:0 0 10px;">Indexed Documents</h3>
+            <table class="data-table">
+              <thead>
+                <tr><th>File Name</th><th>Type</th><th>Chunks</th><th>Indexed On</th><th>Action</th></tr>
+              </thead>
+              <tbody id="kbDocTableBody">
+                <tr><td colspan="5" style="text-align:center;color:#94a3b8">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div><!-- Close subview-knowledge -->
+
       </section> <!-- Close trainerZone -->
     </div> <!-- Close view-mentor -->
 
@@ -1803,6 +1836,48 @@
         </div>
       </section>
     </div> <!-- Close view-interview -->
+
+    <!-- ── The Coding Desk View ── -->
+    <div id="view-coding-desk" class="tab-pane">
+      <div class="cd-shell">
+        <!-- Header -->
+        <div class="cd-header">
+          <div class="cd-header-left">
+            <span class="cd-logo">🖥️</span>
+            <div>
+              <h1 class="cd-title">The Coding Desk</h1>
+              <p class="cd-subtitle">Your expert medical coding AI — powered by your own knowledge base</p>
+            </div>
+          </div>
+          <div class="cd-header-right">
+            <button id="cdClearBtn" class="ghost-btn" type="button" style="font-size:0.8rem;padding:4px 12px;">🗑 New Chat</button>
+          </div>
+        </div>
+
+        <!-- Trial limit bar (hidden for non-trial) -->
+        <div id="cdLimitBar" class="cd-limit-bar hidden">
+          <div class="cd-limit-track">
+            <div id="cdLimitFill" class="cd-limit-fill" style="width:0%"></div>
+          </div>
+          <span id="cdLimitText" class="cd-limit-text">5 free questions remaining</span>
+        </div>
+
+        <!-- Chat feed -->
+        <div id="cdFeed" class="cd-feed"></div>
+
+        <!-- Input row -->
+        <div class="cd-input-row">
+          <textarea id="cdInput" class="cd-input" rows="1"
+            placeholder="Ask anything — ICD-10 codes, CPT rules, E&M leveling, inpatient sequencing…"
+            aria-label="Ask The Coding Desk"></textarea>
+          <button id="cdSendBtn" class="cd-send-btn" type="button" aria-label="Send">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+        <p class="cd-footer-note">Answers are AI-generated from your indexed knowledge base. Always verify with current official guidelines before production coding.</p>
+      </div>
+    </div><!-- Close view-coding-desk -->
+
   </main>
 
   <a id="floatingWhatsappBtn" class="floating-whatsapp" href="#" aria-label="Chat with us on WhatsApp">Questions? Chat
@@ -1849,6 +1924,7 @@
   <script src="app.admin.js"></script>
   <script src="app.institute.js"></script>
   <script src="app.interview.js"></script>
+  <script src="app.ai.js"></script>
   <script src="app.init.js"></script>
   <script src="app.onboarding.js"></script>
 </body>

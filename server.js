@@ -4860,6 +4860,409 @@ Return only valid JSON.`;
     }
   }
 
+  // ─── THE CODING DESK — KNOWLEDGE BASE & AI CHAT ──────────────────────────────
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+
+  async function embedTexts(texts, inputType = "document") {
+    const voyageKey = process.env.VOYAGE_API_KEY || "";
+    if (!voyageKey) throw new Error("VOYAGE_API_KEY not configured");
+    const res = await fetch("https://api.voyageai.com/v1/embeddings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${voyageKey}` },
+      body: JSON.stringify({ model: "voyage-3", input: texts, input_type: inputType })
+    });
+    if (!res.ok) {
+      const e = await res.text();
+      throw new Error(`Voyage AI error ${res.status}: ${e}`);
+    }
+    const data = await res.json();
+    return data.data.map(d => d.embedding);
+  }
+
+  function chunkText(text, source = "") {
+    const CHUNK_WORDS = 450;
+    const OVERLAP_WORDS = 60;
+    // Normalize whitespace
+    const clean = text.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+    // Split into paragraphs first, then sentences as fallback
+    const paragraphs = clean.split(/\n\n+/);
+    const chunks = [];
+    let current = [];
+    let wordCount = 0;
+
+    function flush(overlap) {
+      if (current.length === 0) return;
+      const chunkText = current.join(" ").trim();
+      if (chunkText.length > 50) {
+        chunks.push({ content: chunkText, metadata: { source } });
+      }
+      if (overlap > 0) {
+        const words = current.join(" ").split(" ");
+        current = [words.slice(-overlap).join(" ")];
+        wordCount = overlap;
+      } else {
+        current = [];
+        wordCount = 0;
+      }
+    }
+
+    for (const para of paragraphs) {
+      const words = para.split(/\s+/).filter(Boolean);
+      if (wordCount + words.length > CHUNK_WORDS) {
+        flush(OVERLAP_WORDS);
+      }
+      current.push(para);
+      wordCount += words.length;
+    }
+    flush(0);
+    return chunks;
+  }
+
+  async function extractTextFromBuffer(buffer, filename) {
+    const ext = path.extname(filename).toLowerCase();
+    if (ext === ".pdf") {
+      const pdfParse = require("pdf-parse");
+      const data = await pdfParse(buffer);
+      return data.text || "";
+    }
+    if (ext === ".xlsx" || ext === ".xls") {
+      const XLSX = require("xlsx");
+      const wb = XLSX.read(buffer, { type: "buffer" });
+      let text = "";
+      for (const sheetName of wb.SheetNames) {
+        const ws = wb.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+        text += `\n=== Sheet: ${sheetName} ===\n`;
+        text += rows.map(r => r.filter(c => String(c).trim()).join(" | ")).filter(Boolean).join("\n");
+        text += "\n";
+      }
+      return text;
+    }
+    if ([".txt", ".md", ".csv"].includes(ext)) {
+      return buffer.toString("utf8");
+    }
+    throw new Error(`Unsupported file type: ${ext}`);
+  }
+
+  function selectCodingDeskModel(message) {
+    const COMPLEX = /sequence|sequencing|principal\s+diag|pdx|ms-drg|\bdrg\b|icd-10-pcs|\bpcs\b|or\s+procedure|cc\/mcc|\bmcc\b|\bcc\b|present\s+on\s+admission|\bpoa\b|audit|appeal|denial|walk\s+me\s+through|step\s+by\s+step|explain\s+in\s+detail|complex\s+case|hierarchy|combination\s+code|excludes\s*[12]|instructional\s+note|hac\b/i;
+    return (message.length > 280 || COMPLEX.test(message))
+      ? "claude-sonnet-4-6"
+      : "claude-haiku-4-5";
+  }
+
+  const TRIAL_CHAT_LIMIT = 5;
+  const MEMBER_CHAT_LIMIT = 0; // 0 = unlimited
+
+  async function getChatUsage(identifier) {
+    if (!USE_SUPABASE || !identifier) return 0;
+    const { data } = await supabase
+      .from("ai_chat_usage")
+      .select("message_count")
+      .eq("identifier", identifier)
+      .single();
+    return data?.message_count || 0;
+  }
+
+  async function incrementChatUsage(identifier) {
+    if (!USE_SUPABASE || !identifier) return;
+    await supabase.from("ai_chat_usage").upsert(
+      { identifier, message_count: 1, last_used_at: new Date().toISOString() },
+      { onConflict: "identifier", ignoreDuplicates: false }
+    );
+    // Use a raw increment via RPC if available, otherwise do read-modify-write
+    const { data } = await supabase
+      .from("ai_chat_usage")
+      .select("message_count")
+      .eq("identifier", identifier)
+      .single();
+    const current = data?.message_count || 1;
+    await supabase.from("ai_chat_usage").update({ message_count: current + 1, last_used_at: new Date().toISOString() }).eq("identifier", identifier);
+  }
+
+  const CODING_DESK_SYSTEM = `You are The Coding Desk — an expert medical coding assistant built into PracticeBuddy Lab.
+
+You are powered by a specialized knowledge base of real medical coding materials, guidelines, and training resources. Your role is to help coders at all levels — from freshers learning basics to experienced coders handling complex inpatient cases.
+
+When answering:
+1. ALWAYS check the provided context from the knowledge base first
+2. When context is available, reference it: "According to [source]..." or "Based on the provided materials..."
+3. If context doesn't fully cover the question, use your training knowledge and clearly state "Based on general coding guidelines:"
+4. For complex questions, walk through each step methodically — show your reasoning
+
+Your expertise covers:
+- ICD-10-CM and ICD-10-PCS coding + Official Guidelines
+- CPT and HCPCS Level II coding
+- E/M leveling under 2021 AMA guidelines
+- Sequencing rules: PDX selection, POA indicators, CC/MCC impact
+- MS-DRG assignment and OR procedure definitions
+- Modifier usage, NCCI edits, bundling/unbundling rules
+- Facility vs professional fee coding differences
+- Query processes, audit methodology, denial management
+- AAPC CPC and AHIMA CCS exam preparation
+- Infusion and injection coding hierarchies
+
+Response style:
+- Short questions → concise, direct answer
+- Complex questions → structured with headers and bullet points
+- Always explain the WHY behind coding decisions
+- Cite guideline sections when relevant (e.g. "ICD-10-CM Guideline I.C.1.a")
+- End complex answers with "Need me to break down any part further?" to encourage follow-up
+- For production coding decisions, always add: "Verify with current official guidelines before production use."`;
+
+  // ── Knowledge Base: Upload & Index ────────────────────────────────────────────
+  if (url.pathname === "/api/knowledge/upload" && req.method === "POST") {
+    const trainerKey = getTrainerKey(req);
+    const access = readAccessConfig();
+    if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+    if (!USE_SUPABASE) return json(res, 503, { error: "Supabase required for knowledge base" });
+    if (!process.env.VOYAGE_API_KEY) return json(res, 503, { error: "VOYAGE_API_KEY not configured" });
+    try {
+      const { fileName, buffer } = await parseMultipartFile(req);
+      const originalName = fileName;
+      const fileType = path.extname(fileName).toLowerCase().replace(".", "");
+      const rawText = await extractTextFromBuffer(buffer, fileName);
+      if (!rawText.trim()) return json(res, 400, { error: "Could not extract text from file" });
+
+      const chunks = chunkText(rawText, originalName);
+      if (!chunks.length) return json(res, 400, { error: "No usable text found in file" });
+
+      // Insert document record
+      const { data: doc, error: docErr } = await supabase
+        .from("knowledge_documents")
+        .insert({ original_name: originalName, file_type: fileType, chunk_count: chunks.length, file_size_bytes: buffer.length })
+        .select()
+        .single();
+      if (docErr) throw new Error(docErr.message);
+
+      // Embed in batches of 20
+      const BATCH = 20;
+      for (let i = 0; i < chunks.length; i += BATCH) {
+        const batch = chunks.slice(i, i + BATCH);
+        const embeddings = await embedTexts(batch.map(c => c.content), "document");
+        const rows = batch.map((c, j) => ({
+          document_id: doc.id,
+          chunk_index: i + j,
+          content: c.content,
+          embedding: embeddings[j],
+          metadata: c.metadata
+        }));
+        const { error: chunkErr } = await supabase.from("knowledge_chunks").insert(rows);
+        if (chunkErr) throw new Error(chunkErr.message);
+      }
+      return json(res, 200, { success: true, documentId: doc.id, chunkCount: chunks.length, name: originalName });
+    } catch (err) {
+      return json(res, 500, { error: `Upload failed: ${err.message}` });
+    }
+  }
+
+  // ── Knowledge Base: Index existing disk files ──────────────────────────────
+  if (url.pathname === "/api/knowledge/index-disk" && req.method === "POST") {
+    const trainerKey = getTrainerKey(req);
+    const access = readAccessConfig();
+    if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+    if (!USE_SUPABASE) return json(res, 503, { error: "Supabase required" });
+    if (!process.env.VOYAGE_API_KEY) return json(res, 503, { error: "VOYAGE_API_KEY not configured" });
+
+    const DISK_FILES = [
+      "ED coding master.xlsx",
+      "ED handbook.pdf",
+      "Infusion notes.pdf",
+      "Infusions AHIMA.pdf",
+      "Inj and Infusions.pdf",
+      "QUESTION_BANK_MEMORY.md"
+    ];
+
+    const results = [];
+    for (const filename of DISK_FILES) {
+      const filePath = path.join(__dirname, filename);
+      if (!fs.existsSync(filePath)) { results.push({ name: filename, status: "not found" }); continue; }
+      // Skip if already indexed
+      const { data: existing } = await supabase.from("knowledge_documents").select("id").eq("original_name", filename).limit(1);
+      if (existing && existing.length > 0) { results.push({ name: filename, status: "already indexed" }); continue; }
+      try {
+        const buffer = fs.readFileSync(filePath);
+        const rawText = await extractTextFromBuffer(buffer, filename);
+        if (!rawText.trim()) { results.push({ name: filename, status: "no text extracted" }); continue; }
+        const chunks = chunkText(rawText, filename);
+        const fileType = path.extname(filename).toLowerCase().replace(".", "");
+        const { data: doc, error: docErr } = await supabase
+          .from("knowledge_documents")
+          .insert({ original_name: filename, file_type: fileType, chunk_count: chunks.length, file_size_bytes: buffer.length })
+          .select().single();
+        if (docErr) throw new Error(docErr.message);
+        const BATCH = 20;
+        for (let i = 0; i < chunks.length; i += BATCH) {
+          const batch = chunks.slice(i, i + BATCH);
+          const embeddings = await embedTexts(batch.map(c => c.content), "document");
+          await supabase.from("knowledge_chunks").insert(
+            batch.map((c, j) => ({ document_id: doc.id, chunk_index: i + j, content: c.content, embedding: embeddings[j], metadata: c.metadata }))
+          );
+        }
+        results.push({ name: filename, status: "indexed", chunks: chunks.length });
+      } catch (err) {
+        results.push({ name: filename, status: `error: ${err.message}` });
+      }
+    }
+    return json(res, 200, { results });
+  }
+
+  // ── Knowledge Base: List documents ────────────────────────────────────────
+  if (url.pathname === "/api/knowledge/documents" && req.method === "GET") {
+    const trainerKey = getTrainerKey(req);
+    const access = readAccessConfig();
+    if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+    if (!USE_SUPABASE) return json(res, 200, { documents: [] });
+    const { data, error } = await supabase
+      .from("knowledge_documents")
+      .select("id, original_name, file_type, chunk_count, file_size_bytes, uploaded_at")
+      .order("uploaded_at", { ascending: false });
+    if (error) return json(res, 500, { error: error.message });
+    return json(res, 200, { documents: data || [] });
+  }
+
+  // ── Knowledge Base: Delete document ───────────────────────────────────────
+  if (url.pathname === "/api/knowledge/document" && req.method === "DELETE") {
+    const trainerKey = getTrainerKey(req);
+    const access = readAccessConfig();
+    if (!access.trainerKey || trainerKey !== access.trainerKey) return json(res, 403, { error: "Forbidden" });
+    if (!USE_SUPABASE) return json(res, 503, { error: "Supabase required" });
+    try {
+      const body = await parseBody(req);
+      const docId = String(body.id || "").trim();
+      if (!docId) return json(res, 400, { error: "Document id required" });
+      const { error } = await supabase.from("knowledge_documents").delete().eq("id", docId);
+      if (error) throw new Error(error.message);
+      return json(res, 200, { success: true });
+    } catch (err) {
+      return json(res, 500, { error: err.message });
+    }
+  }
+
+  // ── AI Chat: Get usage count ───────────────────────────────────────────────
+  if (url.pathname === "/api/ai/usage" && req.method === "GET") {
+    const identifier = url.searchParams.get("id") || "";
+    const count = await getChatUsage(identifier);
+    return json(res, 200, { count, limit: TRIAL_CHAT_LIMIT });
+  }
+
+  // ── AI Chat: Streaming RAG chat ────────────────────────────────────────────
+  if (url.pathname === "/api/ai/chat" && req.method === "POST") {
+    const anthropicKey = process.env.ANTHROPIC_API_KEY || "";
+    const voyageKey = process.env.VOYAGE_API_KEY || "";
+    if (!anthropicKey) return json(res, 503, { error: "AI not configured" });
+
+    try {
+      const body = await parseBody(req);
+      const message = String(body.message || "").trim().slice(0, 4000);
+      const history = Array.isArray(body.history) ? body.history.slice(-12) : [];
+      const role = String(body.role || "trial");
+      const identifier = String(body.identifier || "").trim().slice(0, 200);
+
+      if (!message) return json(res, 400, { error: "Message required" });
+
+      // Trial limit check
+      if (role === "trial" && identifier) {
+        const usage = await getChatUsage(identifier);
+        if (usage >= TRIAL_CHAT_LIMIT) {
+          return json(res, 403, { error: "trial_limit_reached", count: usage, limit: TRIAL_CHAT_LIMIT });
+        }
+      }
+
+      // RAG: embed query + search knowledge base
+      let contextBlock = "";
+      let sources = [];
+      if (voyageKey && USE_SUPABASE) {
+        try {
+          const [queryEmbedding] = await embedTexts([message], "query");
+          const { data: chunks } = await supabase.rpc("match_knowledge_chunks", {
+            query_embedding: queryEmbedding,
+            match_threshold: 0.45,
+            match_count: 5
+          });
+          if (chunks && chunks.length > 0) {
+            // Fetch document names for the matched chunks
+            const docIds = [...new Set(chunks.map(c => c.document_id))];
+            const { data: docs } = await supabase.from("knowledge_documents").select("id, original_name").in("id", docIds);
+            const docMap = {};
+            (docs || []).forEach(d => { docMap[d.id] = d.original_name; });
+            sources = chunks.map(c => ({ source: docMap[c.document_id] || "Knowledge Base", similarity: Math.round(c.similarity * 100) }));
+            contextBlock = "RELEVANT KNOWLEDGE BASE CONTEXT:\n" +
+              chunks.map((c, i) => `[${i + 1}] Source: ${docMap[c.document_id] || "Knowledge Base"}\n${c.content}`).join("\n\n---\n\n");
+          }
+        } catch { /* RAG failure is non-fatal — Claude still answers from training */ }
+      }
+
+      // Build Claude messages
+      const systemWithContext = contextBlock
+        ? `${CODING_DESK_SYSTEM}\n\n${contextBlock}`
+        : CODING_DESK_SYSTEM;
+
+      const claudeMessages = [
+        ...history.map(h => ({ role: h.role, content: h.content })),
+        { role: "user", content: message }
+      ];
+
+      const selectedModel = selectCodingDeskModel(message);
+
+      // Stream response
+      const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": anthropicKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({ model: selectedModel, max_tokens: 2048, stream: true, system: systemWithContext, messages: claudeMessages })
+      });
+
+      if (!aiRes.ok) {
+        const e = await aiRes.text();
+        return json(res, 502, { error: `AI error: ${aiRes.status} — ${e}` });
+      }
+
+      // Set SSE headers
+      res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" });
+
+      // Send sources immediately before streaming starts
+      if (sources.length > 0) {
+        res.write(`data: ${JSON.stringify({ sources, model: selectedModel })}\n\n`);
+      }
+
+      // Stream Claude tokens
+      const reader = aiRes.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
+          try {
+            const evt = JSON.parse(data);
+            if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
+              res.write(`data: ${JSON.stringify({ text: evt.delta.text })}\n\n`);
+            } else if (evt.type === "message_stop") {
+              res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+            }
+          } catch {}
+        }
+      }
+
+      // Increment usage after successful response
+      if (role === "trial" && identifier) await incrementChatUsage(identifier);
+
+      res.end();
+      return;
+    } catch (err) {
+      if (!res.headersSent) return json(res, 500, { error: `Chat failed: ${err.message}` });
+      res.end();
+      return;
+    }
+  }
+
   return serveFile(url.pathname, res);
 });
 

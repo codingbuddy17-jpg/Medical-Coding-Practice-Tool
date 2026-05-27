@@ -530,6 +530,9 @@ async function init() {
   if (typeof initAIGenListeners === "function") {
     initAIGenListeners();
   }
+  if (typeof initCodingDesk === "function") {
+    initCodingDesk();
+  }
 
   state.session.isActive = false;
   state.trainerKeyVerified = false;
@@ -636,8 +639,10 @@ const navDom = {
   viewPractice: document.getElementById("view-practice"),
   viewMentor: document.getElementById("view-mentor"),
   viewInterview: document.getElementById("view-interview"),
+  viewCodingDesk: document.getElementById("view-coding-desk"),
   navMentorItem: document.getElementById("navMentorItem"),
-  navInterviewItem: document.getElementById("navInterviewItem")
+  navInterviewItem: document.getElementById("navInterviewItem"),
+  navCodingDeskItem: document.getElementById("navCodingDeskItem")
 };
 
 // Add Listeners
@@ -668,6 +673,7 @@ function handleTabSwitch(tabName) {
   if (navDom.viewPractice) navDom.viewPractice.classList.remove("active");
   if (navDom.viewMentor) navDom.viewMentor.classList.remove("active");
   if (navDom.viewInterview) navDom.viewInterview.classList.remove("active");
+  if (navDom.viewCodingDesk) navDom.viewCodingDesk.classList.remove("active");
 
   // 3. Auto-Close Mock Exam Panel if not on Exam tab
   // 3. Auto-Close Mock Exam Panel only if leaving Practice/Exam context
@@ -735,6 +741,14 @@ function handleTabSwitch(tabName) {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }
+  else if (tabName === "coding-desk") {
+    if (navDom.viewCodingDesk) {
+      navDom.viewCodingDesk.classList.add("active");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      // Refresh usage count when user opens the tab
+      if (typeof fetchCdUsage === "function") fetchCdUsage();
+    }
+  }
 }
 
 // Override show/hide logic (Helper to be called inside startSession)
@@ -771,6 +785,7 @@ function handleMentorSubTab(subTab) {
   document.getElementById("subview-tools").classList.add("hidden");
   document.getElementById("subview-bank").classList.add("hidden");
   document.getElementById("subview-interview")?.classList.add("hidden");
+  document.getElementById("subview-knowledge")?.classList.add("hidden");
 
   // Show target
   if (subTab === "users") {
@@ -796,6 +811,9 @@ function handleMentorSubTab(subTab) {
     loadTagRegistryManager(true);
   } else if (subTab === "interview") {
     document.getElementById("subview-interview").classList.remove("hidden");
+  } else if (subTab === "knowledge") {
+    document.getElementById("subview-knowledge")?.classList.remove("hidden");
+    if (typeof kbLoadDocuments === "function") kbLoadDocuments();
   }
 }
 
